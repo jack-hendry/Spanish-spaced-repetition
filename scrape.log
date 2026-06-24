@@ -1,0 +1,94 @@
+Found 30 Spanish books.
+
+Scraping: Complete Medical Spanish (Menu_ID 43)
+  -> complete-medical-spanish.json: 2854 flashcards
+
+Scraping: Complete Spanish Step-by-Step (Menu_ID 50)
+  -> complete-spanish-step-by-step.json: 2530 flashcards
+
+Scraping: The Complete Ultimate Spanish (Menu_ID 131239)
+  -> the-complete-ultimate-spanish.json: 1080 flashcards
+
+Scraping: Correct Your Spanish Blunders (Menu_ID 7)
+  -> correct-your-spanish-blunders.json: 223 flashcards
+
+Scraping: Easy Spanish Reader (Menu_ID 37)
+  -> easy-spanish-reader.json: 513 flashcards
+
+Scraping: Easy Spanish Step-by-Step (Menu_ID 18)
+  -> easy-spanish-step-by-step.json: 1607 flashcards
+
+Scraping: PMP Basic Spanish (Menu_ID 41)
+  -> pmp-basic-spanish.json: 1164 flashcards
+
+Scraping: PMP Complete Spanish All-in-One (Menu_ID 83)
+  -> pmp-complete-spanish-all-in-one.json: 1965 flashcards
+
+Scraping: PMP Complete Spanish Grammar (Menu_ID 49)
+  -> pmp-complete-spanish-grammar.json: 1774 flashcards
+
+Scraping: PMP Intermediate Spanish Grammar (Menu_ID 88)
+  -> pmp-intermediate-spanish-grammar.json: 862 flashcards
+
+Scraping: PMP Spanish Conversation (Menu_ID 47)
+  -> pmp-spanish-conversation.json: 118 flashcards
+
+Scraping: PMP Spanish Pronouns and Prepositions (Menu_ID 48)
+  -> pmp-spanish-pronouns-and-prepositions.json: 843 flashcards
+
+Scraping: PMP Spanish Verb Tenses (Menu_ID 38)
+  -> pmp-spanish-verb-tenses.json: 1489 flashcards
+
+Scraping: PMP Spanish Vocabulary (Menu_ID 12)
+  -> pmp-spanish-vocabulary.json: 3374 flashcards
+
+Scraping: PMP Spanish Vocabulary Building with Suffixes (Menu_ID 35)
+  -> pmp-spanish-vocabulary-building-with-suffixes.json: 1265 flashcards
+
+Scraping: Quick Spanish for Law Enforcement (Menu_ID 89756)
+  -> quick-spanish-for-law-enforcement.json: 0 flashcards
+
+Scraping: Read & Think Spanish (Menu_ID 60)
+  -> read-think-spanish.json: 9007 flashcards
+
+Scraping: Say It Right in Spanish (Menu_ID 79)
+  -> say-it-right-in-spanish.json: 460 flashcards
+
+Scraping: Spanish Demystified (Menu_ID 14)
+  -> spanish-demystified.json: 887 flashcards
+
+Scraping: Spanish for Educators (Menu_ID 89018)
+  -> spanish-for-educators.json: 2027 flashcards
+
+Scraping: Spanish for the Rest of Us (Menu_ID 92165)
+  -> spanish-for-the-rest-of-us.json: 2544 flashcards
+
+Scraping: Spanish Grammar Drills (Menu_ID 75)
+  -> spanish-grammar-drills.json: 58 flashcards
+
+Scraping: Spanish Verb Drills (Menu_ID 64)
+  -> spanish-verb-drills.json: 257 flashcards
+
+Scraping: Spanish Vocabulary Drills (Menu_ID 31)
+  -> spanish-vocabulary-drills.json: 450 flashcards
+
+Scraping: Stories from Latin America (Menu_ID 67)
+  -> stories-from-latin-america.json: 0 flashcards
+
+Scraping: Stories from Mexico (Menu_ID 68)
+  -> stories-from-mexico.json: 0 flashcards
+
+Scraping: Stories from Spain (Menu_ID 69)
+  -> stories-from-spain.json: 0 flashcards
+
+Scraping: The Ultimate Spanish 101 (Menu_ID 84443)
+  -> the-ultimate-spanish-101.json: 892 flashcards
+
+Scraping: The Ultimate Spanish Review and Practice (Menu_ID 16)
+  -> the-ultimate-spanish-review-and-practice.json: 3510 flashcards
+
+Scraping: The Ultimate Spanish Verb Review and Practice (Menu_ID 132852)
+  -> the-ultimate-spanish-verb-review-and-practice.json: 0 flashcards
+
+Done. 30 books, 41753 flashcards total.
+Output written to /Users/jhend/repos/Spanish-spaced-repetition/data/spanish/
