@@ -1,0 +1,56 @@
+<section class="deck-list">
+  <header class="deck-list__head">
+    <h1>Decks</h1>
+    <div class="head-right">
+      <a routerLink="/browse" class="browse-link">Browse</a>
+      <a routerLink="/stats" class="browse-link">Stats</a>
+      <div class="legend">
+        <span class="count count--new">new</span>
+        <span class="count count--learning">learning</span>
+        <span class="count count--review">due</span>
+      </div>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <p class="status">Loading collection…</p>
+  } @else if (error()) {
+    <p class="status status--error">{{ error() }}</p>
+  } @else {
+    <ul class="tree">
+      @for (node of visibleNodes(); track node.deck.id) {
+        <li class="row" [style.paddingLeft.px]="12 + node.depth * 18">
+          <button
+            class="twisty"
+            [class.twisty--hidden]="!node.hasChildren"
+            (click)="toggle(node)"
+            [attr.aria-label]="isExpanded(node) ? 'Collapse' : 'Expand'"
+          >
+            {{ node.hasChildren ? (isExpanded(node) ? '▾' : '▸') : '' }}
+          </button>
+
+          <span class="name" (click)="toggle(node)">{{ leafName(node) }}</span>
+
+          <span class="counts">
+            <span class="count count--new">{{ node.total.new }}</span>
+            <span class="count count--learning">{{ node.total.learning }}</span>
+            <span class="count count--review">{{ node.total.review }}</span>
+          </span>
+
+          <a
+            class="study"
+            [class.study--disabled]="!hasDue(node)"
+            [routerLink]="hasDue(node) ? ['/study', node.deck.id] : null"
+          >Study</a>
+
+          <a
+            class="gear"
+            [routerLink]="['/options', node.deck.optionsId]"
+            aria-label="Deck options"
+            title="Deck options"
+          >⚙</a>
+        </li>
+      }
+    </ul>
+  }
+</section>

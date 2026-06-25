@@ -1,0 +1,86 @@
+<section class="stats">
+  <header class="stats__bar">
+    <a routerLink="/" class="back">← Decks</a>
+    <span class="title">Statistics</span>
+  </header>
+
+  @if (loading()) {
+    <p class="status">Loading…</p>
+  } @else {
+    <!-- Card counts -->
+    <div class="card">
+      <h2>Card counts <span class="muted">· {{ totalCards() }} total</span></h2>
+      @if (totalCards() > 0) {
+        <div class="stacked">
+          @for (seg of stateSegments(); track seg.key) {
+            <div
+              class="stacked__seg {{ seg.cls }}"
+              [style.width.%]="seg.pct"
+              [title]="seg.key + ': ' + seg.count"
+            ></div>
+          }
+        </div>
+        <ul class="legend">
+          @for (seg of stateSegments(); track seg.key) {
+            <li><span class="dot {{ seg.cls }}"></span>{{ seg.key }} — {{ seg.count }}</li>
+          }
+        </ul>
+      } @else {
+        <p class="muted">No cards yet.</p>
+      }
+    </div>
+
+    <!-- Future due -->
+    <div class="card">
+      <h2>Future due <span class="muted">· next {{ forecast().length }} days · {{ dueTotal() }} reviews</span></h2>
+      <div class="chart">
+        @for (bar of forecast(); track $index) {
+          <div class="bar" [title]="bar.label + ': ' + bar.count">
+            <div class="bar__fill bar__fill--due" [style.height.%]="bar.pct"></div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Reviews per day -->
+    <div class="card">
+      <h2>Reviews <span class="muted">· last {{ history().length }} days · {{ reviewsTotal() }} total</span></h2>
+      @if (reviewsTotal() > 0) {
+        <div class="chart">
+          @for (bar of history(); track $index) {
+            <div class="bar" [title]="bar.label + ': ' + bar.count">
+              <div class="bar__fill bar__fill--rev" [style.height.%]="bar.pct"></div>
+            </div>
+          }
+        </div>
+      } @else {
+        <p class="muted">No reviews logged yet.</p>
+      }
+    </div>
+
+    <!-- Answer buttons -->
+    <div class="card">
+      <h2>
+        Answer buttons
+        @if (retention() !== null) {
+          <span class="muted">· {{ retention() }}% pass rate</span>
+        }
+      </h2>
+      @if (reviewsTotal() > 0) {
+        <ul class="buttons">
+          @for (b of buttons(); track b.label) {
+            <li class="brow">
+              <span class="brow__label">{{ b.label }}</span>
+              <span class="brow__track">
+                <span class="brow__fill {{ b.cls }}" [style.width.%]="b.pct"></span>
+              </span>
+              <span class="brow__count">{{ b.count }}</span>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="muted">No reviews logged yet.</p>
+      }
+    </div>
+  }
+</section>

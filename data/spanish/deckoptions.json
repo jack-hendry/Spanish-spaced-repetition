@@ -1,0 +1,74 @@
+[
+  {
+    "id": "opts-default",
+    "name": "Default",
+    "new": {
+      "perDay": 20,
+      "steps": [
+        1,
+        10
+      ],
+      "graduatingInterval": 1,
+      "easyInterval": 4,
+      "startingEase": 2500,
+      "insertionOrder": "sequential"
+    },
+    "review": {
+      "perDay": 200,
+      "maxInterval": 36500,
+      "easyBonus": 1.3,
+      "intervalModifier": 1,
+      "hardInterval": 1.2
+    },
+    "lapse": {
+      "steps": [
+        10
+      ],
+      "newIntervalPct": 0,
+      "minInterval": 1,
+      "leechThreshold": 8,
+      "leechAction": "suspend"
+    },
+    "display": {
+      "newGatherOrder": "deck",
+      "newSortOrder": "orderGathered",
+      "reviewOrder": "dueRandom",
+      "buryNewSiblings": true,
+      "buryReviewSiblings": true,
+      "buryInterdaySiblings": true
+    },
+    "scheduler": "sm2",
+    "fsrs": {
+      "desiredRetention": 0.9,
+      "weights": [
+        0.40255,
+        1.18385,
+        3.173,
+        15.69105,
+        7.1949,
+        0.5345,
+        1.4604,
+        0.0046,
+        1.54575,
+        0.1192,
+        1.01925,
+        1.9395,
+        0.11,
+        0.29605,
+        2.2698,
+        0.2315,
+        2.9898,
+        0.51655,
+        0.6621
+      ],
+      "maxInterval": 36500,
+      "learningSteps": [
+        1,
+        10
+      ],
+      "relearningSteps": [
+        10
+      ]
+    }
+  }
+]

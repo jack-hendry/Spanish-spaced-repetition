@@ -1,0 +1,67 @@
+<section class="review">
+  <header class="review__bar">
+    <a routerLink="/" class="back">← Decks</a>
+    <span class="deck">{{ deckName() }}</span>
+    <span class="tally">
+      <span class="count count--new">{{ counts().new }}</span>
+      <span class="count count--learning">{{ counts().learning }}</span>
+      <span class="count count--review">{{ counts().review }}</span>
+    </span>
+    @if (state()) {
+      <button class="suspend" [disabled]="busy()" (click)="suspend()" title="Suspend card (-)">
+        Suspend
+      </button>
+    }
+  </header>
+
+  @if (loading()) {
+    <p class="status">Loading…</p>
+  } @else if (finished()) {
+    <div class="done">
+      <h2>🎉 All done</h2>
+      <p>No more cards due in this deck right now.</p>
+      <a routerLink="/" class="btn">Back to decks</a>
+    </div>
+  } @else if (state(); as s) {
+    <article class="card-area">
+      @if (revealed()) {
+        <div class="rendered" [innerHTML]="s.answer"></div>
+      } @else {
+        <div class="rendered" [innerHTML]="s.question"></div>
+        @if (s.isTypeIn) {
+          <input
+            #typeInput
+            class="type-input"
+            autofocus
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            placeholder="Type the answer…"
+            [value]="typed()"
+            (input)="typed.set($any($event.target).value)"
+            (keydown.enter)="reveal()"
+          />
+        }
+      }
+    </article>
+
+    <footer class="controls">
+      @if (!revealed()) {
+        <button class="btn btn--show" (click)="reveal()">Show Answer</button>
+      } @else {
+        <div class="ratings">
+          @for (rating of ratings; track rating) {
+            <button
+              class="rate rate--{{ rating }}"
+              [disabled]="busy()"
+              (click)="rate(rating)"
+            >
+              <span class="rate__label">{{ rating }}</span>
+              <span class="rate__ivl">{{ buttonLabel(rating) }}</span>
+            </button>
+          }
+        </div>
+      }
+    </footer>
+  }
+</section>

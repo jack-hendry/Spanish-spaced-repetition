@@ -1,0 +1,144 @@
+[
+  {
+    "id": "nt-basic",
+    "name": "Basic",
+    "kind": "standard",
+    "fields": [
+      {
+        "name": "Front",
+        "ord": 0
+      },
+      {
+        "name": "Back",
+        "ord": 1
+      }
+    ],
+    "templates": [
+      {
+        "name": "Card 1",
+        "ord": 0,
+        "qfmt": "{{Front}}",
+        "afmt": "{{FrontSide}}\n<hr id=\"answer\">\n{{Back}}"
+      }
+    ],
+    "css": ".card {\n  font-family: -apple-system, system-ui, sans-serif;\n  font-size: 22px;\n  text-align: center;\n  color: #1a1a1a;\n  background: #ffffff;\n}\n.card img { max-width: 100%; height: auto; }\nhr#answer { margin: 1em 0; border: none; border-top: 1px solid #ddd; }"
+  },
+  {
+    "id": "nt-basic-reversed",
+    "name": "Basic (and reversed)",
+    "kind": "standard",
+    "fields": [
+      {
+        "name": "Front",
+        "ord": 0
+      },
+      {
+        "name": "Back",
+        "ord": 1
+      }
+    ],
+    "templates": [
+      {
+        "name": "Card 1",
+        "ord": 0,
+        "qfmt": "{{Front}}",
+        "afmt": "{{FrontSide}}\n<hr id=\"answer\">\n{{Back}}"
+      },
+      {
+        "name": "Card 2",
+        "ord": 1,
+        "qfmt": "{{Back}}",
+        "afmt": "{{FrontSide}}\n<hr id=\"answer\">\n{{Front}}"
+      }
+    ],
+    "css": ".card {\n  font-family: -apple-system, system-ui, sans-serif;\n  font-size: 22px;\n  text-align: center;\n  color: #1a1a1a;\n  background: #ffffff;\n}\n.card img { max-width: 100%; height: auto; }\nhr#answer { margin: 1em 0; border: none; border-top: 1px solid #ddd; }"
+  },
+  {
+    "id": "nt-basic-typein",
+    "name": "Basic (type in the answer)",
+    "kind": "standard",
+    "fields": [
+      {
+        "name": "Front",
+        "ord": 0
+      },
+      {
+        "name": "Back",
+        "ord": 1
+      }
+    ],
+    "templates": [
+      {
+        "name": "Card 1",
+        "ord": 0,
+        "qfmt": "{{Front}}\n{{type:Back}}",
+        "afmt": "{{FrontSide}}\n<hr id=\"answer\">\n{{type:Back}}"
+      }
+    ],
+    "css": ".card {\n  font-family: -apple-system, system-ui, sans-serif;\n  font-size: 22px;\n  text-align: center;\n  color: #1a1a1a;\n  background: #ffffff;\n}\n.card img { max-width: 100%; height: auto; }\nhr#answer { margin: 1em 0; border: none; border-top: 1px solid #ddd; }"
+  },
+  {
+    "id": "nt-cloze",
+    "name": "Cloze",
+    "kind": "cloze",
+    "fields": [
+      {
+        "name": "Text",
+        "ord": 0
+      },
+      {
+        "name": "Back Extra",
+        "ord": 1
+      }
+    ],
+    "templates": [
+      {
+        "name": "Cloze",
+        "ord": 0,
+        "qfmt": "{{cloze:Text}}",
+        "afmt": "{{cloze:Text}}\n<hr id=\"answer\">\n{{Back Extra}}"
+      }
+    ],
+    "css": ".card {\n  font-family: -apple-system, system-ui, sans-serif;\n  font-size: 22px;\n  text-align: center;\n  color: #1a1a1a;\n  background: #ffffff;\n}\n.card img { max-width: 100%; height: auto; }\nhr#answer { margin: 1em 0; border: none; border-top: 1px solid #ddd; }\n.cloze { font-weight: bold; color: #2563eb; }"
+  },
+  {
+    "id": "nt-spanish-2sided",
+    "name": "Spanish 2-sided",
+    "kind": "standard",
+    "fields": [
+      {
+        "name": "SideA",
+        "ord": 0
+      },
+      {
+        "name": "SideAAudio",
+        "ord": 1
+      },
+      {
+        "name": "SideAImage",
+        "ord": 2
+      },
+      {
+        "name": "SideB",
+        "ord": 3
+      },
+      {
+        "name": "SideBAudio",
+        "ord": 4
+      },
+      {
+        "name": "SideBImage",
+        "ord": 5
+      }
+    ],
+    "templates": [
+      {
+        "name": "A → B",
+        "ord": 0,
+        "qfmt": "{{SideA}}{{SideAImage}}{{SideAAudio}}",
+        "afmt": "{{FrontSide}}\n<hr id=\"answer\">\n{{SideB}}{{SideBImage}}{{SideBAudio}}"
+      }
+    ],
+    "css": ".card {\n  font-family: -apple-system, system-ui, sans-serif;\n  font-size: 22px;\n  text-align: center;\n  color: #1a1a1a;\n  background: #ffffff;\n}\n.card img { max-width: 100%; height: auto; }\nhr#answer { margin: 1em 0; border: none; border-top: 1px solid #ddd; }"
+  }
+]

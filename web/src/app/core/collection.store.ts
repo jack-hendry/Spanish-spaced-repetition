@@ -1,0 +1,280 @@
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { lastValueFrom } from 'rxjs';
+
+import { ApiService } from './api.service';
+import { bumpDaily } from './daily-limits';
+import { isBuried, restoreQueue, siblingsToBury } from './lifecycle';
+import type {
+  Card,
+  Collection,
+  Deck,
+  DeckOptions,
+  Note,
+  NoteType,
+} from './models';
+
+export interface DeckCounts {
+  new: number;
+  learning: number;
+  review: number;
+}
+
+export interface DeckNode {
+  deck: Deck;
+  depth: number;
+  /** Counts for this deck alone. */
+  own: DeckCounts;
+  /** Counts including all descendant decks (what the deck list shows). */
+  total: DeckCounts;
+  hasChildren: boolean;
+}
+
+const ZERO: DeckCounts = { new: 0, learning: 0, review: 0 };
+
+/** The number of days since collection creation, honouring the day cutoff hour. */
+export function todayNumber(collection: Collection, now = Date.now()): number {
+  const cutoffMs = collection.dayCutoffHour * 3600_000;
+  return Math.floor((now - collection.created - cutoffMs) / 86_400_000);
+}
+
+/**
+ * Signal store holding the loaded collection (note types, decks, options) plus
+ * all cards. Exposes computed per-deck due counts rolled up over subdecks.
+ */
+@Injectable({ providedIn: 'root' })
+export class CollectionStore {
+  private readonly api = inject(ApiService);
+
+  readonly collection = signal<Collection | null>(null);
+  readonly noteTypes = signal<NoteType[]>([]);
+  readonly decks = signal<Deck[]>([]);
+  readonly deckOptions = signal<DeckOptions[]>([]);
+  readonly cards = signal<Card[]>([]);
+
+  readonly loading = signal(false);
+  readonly error = signal<string | null>(null);
+  readonly loaded = computed(() => this.collection() !== null && this.cards().length >= 0);
+
+  /** Per-deck own counts keyed by deckId. */
+  private readonly ownCounts = computed<Map<string, DeckCounts>>(() => {
+    const coll = this.collection();
+    const map = new Map<string, DeckCounts>();
+    if (!coll) return map;
+    const today = todayNumber(coll);
+    for (const c of this.cards()) {
+      let m = map.get(c.deckId);
+      if (!m) {
+        m = { new: 0, learning: 0, review: 0 };
+        map.set(c.deckId, m);
+      }
+      if (c.queue === 'new') m.new++;
+      else if (c.queue === 'learning') m.learning++;
+      else if (c.queue === 'review' && c.type === 'review' && c.due <= today) m.review++;
+    }
+    return map;
+  });
+
+  /** Decks as a flat, display-ordered list with rolled-up counts. */
+  readonly deckTree = computed<DeckNode[]>(() => {
+    const decks = [...this.decks()].sort((a, b) => a.name.localeCompare(b.name));
+    const own = this.ownCounts();
+
+    const nodes: DeckNode[] = decks.map((deck) => {
+      const depth = deck.name.split('::').length - 1;
+      return {
+        deck,
+        depth,
+        own: own.get(deck.id) ?? ZERO,
+        total: { ...(own.get(deck.id) ?? ZERO) },
+        hasChildren: false,
+      };
+    });
+
+    // Roll descendant counts into ancestors using the "::" name prefix.
+    const byName = new Map(nodes.map((n) => [n.deck.name, n]));
+    for (const node of nodes) {
+      const parts = node.deck.name.split('::');
+      for (let i = 1; i < parts.length; i++) {
+        const ancestorName = parts.slice(0, i).join('::');
+        const ancestor = byName.get(ancestorName);
+        if (ancestor) {
+          ancestor.total.new += node.own.new;
+          ancestor.total.learning += node.own.learning;
+          ancestor.total.review += node.own.review;
+          ancestor.hasChildren = true;
+        }
+      }
+    }
+    return nodes;
+  });
+
+  async load(): Promise<void> {
+    if (this.loading()) return;
+    this.loading.set(true);
+    this.error.set(null);
+    try {
+      const bundle = await lastValueFrom(this.api.getCollection());
+      this.collection.set(bundle.collection);
+      this.noteTypes.set(bundle.notetypes);
+      this.decks.set(bundle.decks);
+      this.deckOptions.set(bundle.deckoptions);
+      const cards = await lastValueFrom(this.api.getCards());
+      this.cards.set(cards);
+      await this.unburyForNewDay();
+    } catch (err) {
+      this.error.set(err instanceof Error ? err.message : 'Failed to load collection');
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  /** Replace a single card in the local cache after it's been reviewed. */
+  applyCard(updated: Card): void {
+    this.cards.update((cards) => {
+      const i = cards.findIndex((c) => c.id === updated.id);
+      if (i === -1) return cards;
+      const next = cards.slice();
+      next[i] = updated;
+      return next;
+    });
+  }
+
+  /** Note cache, populated on demand during review (notes.json isn't bulk-loaded). */
+  private readonly noteCache = new Map<string, Note>();
+
+  /** All notes, bulk-loaded for the browser. Empty until loadNotes() runs. */
+  readonly notes = signal<Note[]>([]);
+  private notesLoaded = false;
+
+  async getNote(id: string): Promise<Note> {
+    const cached = this.noteCache.get(id);
+    if (cached) return cached;
+    const note = await lastValueFrom(this.api.getNote(id));
+    this.noteCache.set(id, note);
+    return note;
+  }
+
+  /** Bulk-load every note once (for the browser); subsequent calls are no-ops. */
+  async loadNotes(): Promise<void> {
+    if (this.notesLoaded) return;
+    const notes = await lastValueFrom(this.api.getNotes());
+    for (const n of notes) this.noteCache.set(n.id, n);
+    this.notes.set(notes);
+    this.notesLoaded = true;
+  }
+
+  /** Persist edited note fields; the server reconciles the note's cards. */
+  saveNoteFields(id: string, fields: Record<string, string>) {
+    return lastValueFrom(this.api.patchNote(id, { fields }));
+  }
+
+  /** Apply a saved note edit: refresh the note cache and reconciled cards. */
+  applyNoteSave(result: { note: Note; cards: Card[] }): void {
+    const { note, cards } = result;
+    this.noteCache.set(note.id, note);
+    this.notes.update((all) => all.map((n) => (n.id === note.id ? note : n)));
+    this.cards.update((all) => [...all.filter((c) => c.noteId !== note.id), ...cards]);
+  }
+
+  /** Restore a suspended/buried card to its active queue. */
+  async unsuspendCard(card: Card): Promise<void> {
+    const queue = restoreQueue(card.type);
+    this.setQueues(new Map([[card.id, queue]]));
+    await lastValueFrom(this.api.patchCard(card.id, { queue }));
+  }
+
+  noteTypeById(id: string): NoteType | undefined {
+    return this.noteTypes().find((t) => t.id === id);
+  }
+
+  deckById(id: string): Deck | undefined {
+    return this.decks().find((d) => d.id === id);
+  }
+
+  optionsFor(deck: Deck): DeckOptions | undefined {
+    return this.deckOptions().find((o) => o.id === deck.optionsId);
+  }
+
+  deckOptionsById(id: string): DeckOptions | undefined {
+    return this.deckOptions().find((o) => o.id === id);
+  }
+
+  /** Replace a deck-options group in the local cache after it's been saved. */
+  applyDeckOptions(updated: DeckOptions): void {
+    this.deckOptions.update((all) => {
+      const i = all.findIndex((o) => o.id === updated.id);
+      if (i === -1) return [...all, updated];
+      const next = all.slice();
+      next[i] = updated;
+      return next;
+    });
+  }
+
+  // ---- card lifecycle ------------------------------------------------------
+
+  /** Patch a set of cards' queue in the local cache by id. */
+  private setQueues(updates: Map<string, Card['queue']>): void {
+    this.cards.update((cards) =>
+      cards.map((c) => (updates.has(c.id) ? { ...c, queue: updates.get(c.id)! } : c)),
+    );
+  }
+
+  /**
+   * Bury the siblings of a just-answered card for the rest of the day, honouring
+   * the deck's bury options. Updates the cache immediately, then persists.
+   */
+  async burySiblings(answered: Card, opts: DeckOptions): Promise<void> {
+    const targets = siblingsToBury(this.cards(), answered, opts);
+    if (!targets.length) return;
+    this.setQueues(new Map(targets.map((c) => [c.id, 'schedBuried' as const])));
+    await Promise.all(
+      targets.map((c) => lastValueFrom(this.api.patchCard(c.id, { queue: 'schedBuried' }))),
+    );
+  }
+
+  /**
+   * Record that a card was studied today, bumping its deck's daily tally so the
+   * per-day new/review limits survive a reload. No-op for learning-step reviews.
+   */
+  async recordStudied(card: Card): Promise<void> {
+    const coll = this.collection();
+    const deck = this.deckById(card.deckId);
+    if (!coll || !deck) return;
+    const daily = bumpDaily(deck, card, todayNumber(coll));
+    if (!daily) return;
+    this.decks.update((decks) =>
+      decks.map((d) => (d.id === deck.id ? { ...d, daily } : d)),
+    );
+    await lastValueFrom(this.api.patchDeck(deck.id, { daily }));
+  }
+
+  /** Suspend a single card (hidden until manually un-suspended). */
+  async suspendCard(card: Card): Promise<void> {
+    this.setQueues(new Map([[card.id, 'suspended']]));
+    await lastValueFrom(this.api.patchCard(card.id, { queue: 'suspended' }));
+  }
+
+  /**
+   * At the first study of a new day, restore every buried card to its active
+   * queue and advance the collection's unbury checkpoint. No-op within a day.
+   */
+  async unburyForNewDay(): Promise<void> {
+    const coll = this.collection();
+    if (!coll) return;
+    const today = todayNumber(coll);
+    if (today <= (coll.lastUnburyDay ?? -1)) return;
+
+    const buried = this.cards().filter(isBuried);
+    if (buried.length) {
+      this.setQueues(new Map(buried.map((c) => [c.id, restoreQueue(c.type)])));
+      await Promise.all(
+        buried.map((c) =>
+          lastValueFrom(this.api.patchCard(c.id, { queue: restoreQueue(c.type) })),
+        ),
+      );
+    }
+
+    this.collection.set({ ...coll, lastUnburyDay: today });
+    await lastValueFrom(this.api.patchCollection({ lastUnburyDay: today }));
+  }
+}

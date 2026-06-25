@@ -1,0 +1,78 @@
+<section class="browser">
+  <header class="browser__bar">
+    <a routerLink="/" class="back">← Decks</a>
+    <input
+      class="search"
+      placeholder="Search…  e.g.  gato  deck:verbs  is:due  tag:grammar"
+      [ngModel]="query()"
+      (ngModelChange)="query.set($event)"
+      autocomplete="off"
+      spellcheck="false"
+    />
+  </header>
+
+  @if (loading()) {
+    <p class="status">Loading…</p>
+  } @else {
+    <p class="meta">
+      Showing {{ matches().length }} of {{ totalCount() }}
+      @if (matches().length >= ROW_CAP) {
+        <span class="capped">(first {{ ROW_CAP }} — refine your search)</span>
+      }
+    </p>
+
+    <div class="table">
+      <div class="thead">
+        <span class="col col--q">Question</span>
+        <span class="col col--deck">Deck</span>
+        <span class="col col--state">State</span>
+        <span class="col col--act"></span>
+      </div>
+
+      @for (row of matches(); track row.card.id) {
+        <div class="trow" [class.trow--suspended]="isSuspended(row)">
+          <span class="col col--q" (click)="edit(row)" title="Edit note">{{ row.question }}</span>
+          <span class="col col--deck">{{ row.deckLeaf }}</span>
+          <span class="col col--state">{{ row.state }}</span>
+          <span class="col col--act">
+            <button class="link" [disabled]="busy()" (click)="toggleSuspend(row)">
+              {{ isSuspended(row) ? 'Unsuspend' : 'Suspend' }}
+            </button>
+          </span>
+        </div>
+      } @empty {
+        <p class="status">No cards match.</p>
+      }
+    </div>
+  }
+
+  @if (editingId(); as id) {
+    <div class="editor-backdrop" (click)="cancelEdit()"></div>
+    <aside class="editor">
+      <header class="editor__head">
+        <h2>Edit note</h2>
+        <button class="link" (click)="cancelEdit()">✕</button>
+      </header>
+
+      <div class="editor__body">
+        @for (f of editFields(); track f.name) {
+          <label class="field">
+            <span class="field__label">{{ f.name }}</span>
+            <textarea
+              rows="2"
+              [ngModel]="draft()[f.name] ?? ''"
+              (ngModelChange)="setField(f.name, $event)"
+            ></textarea>
+          </label>
+        }
+      </div>
+
+      <footer class="editor__foot">
+        <button class="btn btn--ghost" (click)="cancelEdit()">Cancel</button>
+        <button class="btn" [disabled]="busy()" (click)="saveEdit()">
+          {{ busy() ? 'Saving…' : 'Save' }}
+        </button>
+      </footer>
+    </aside>
+  }
+</section>
