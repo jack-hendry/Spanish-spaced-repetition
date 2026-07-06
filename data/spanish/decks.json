@@ -1,5 +1,17 @@
 [
   {
+    "id": "dec724d1698056083",
+    "name": "10000 Spanish Vocabulary (Part 1 of 3)",
+    "parentId": null,
+    "optionsId": "opts-default",
+    "collapsed": false,
+    "daily": {
+      "day": 12,
+      "newStudied": 0,
+      "reviewStudied": 20
+    }
+  },
+  {
     "id": "d252a4f8199b5d0e7",
     "name": "550+ Phrasal Verbs Part 1 (English–Spanish)",
     "parentId": null,
