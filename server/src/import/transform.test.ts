@@ -70,6 +70,43 @@ describe('transformBooks', () => {
     expect(cards[0].queue).toBe('new');
   });
 
+  it('accepts site-relative local audio and generates both directions for spanish2both', () => {
+    const twoWay: SourceBook = {
+      slug: 'phrasal',
+      root: {
+        Menu_ID: 9,
+        MenuTitle: 'Phrasal Verbs',
+        noteType: 'spanish2both',
+        children: [
+          {
+            Menu_ID: 10,
+            MenuTitle: 'Flashcards: Study Mode',
+            DeckType: 'Flashcards: Study Mode',
+            cards: [
+              {
+                Card_ID: 200,
+                SideA: 'to call off',
+                SideB: 'cancelar',
+                SideAAudio: '/media/200-to-call-off.mp3',
+                SideBAudio: null,
+                SideAImage: null,
+                SideBImage: null,
+              },
+            ],
+          },
+        ],
+      },
+    };
+    const { notes, cards } = transformBooks([twoWay], empty, 1000);
+    expect(notes).toHaveLength(1);
+    // local path survives as a [sound:] marker
+    expect(notes[0].fields.SideAAudio).toBe('[sound:/media/200-to-call-off.mp3]');
+    expect(notes[0].noteTypeId).toBe('nt-spanish-2sided-both');
+    // both study directions -> two cards (ord 0 and ord 1)
+    expect(cards).toHaveLength(2);
+    expect(cards.map((c) => c.ord).sort()).toEqual([0, 1]);
+  });
+
   it('is idempotent and preserves scheduling on re-import', () => {
     const first = transformBooks([book], empty, 1000);
     // Simulate the card having been reviewed.

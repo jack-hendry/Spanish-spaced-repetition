@@ -21,7 +21,7 @@
         "afmt": "{{FrontSide}}\n<hr id=\"answer\">\n{{Back}}"
       }
     ],
-    "css": ".card {\n  font-family: -apple-system, system-ui, sans-serif;\n  font-size: 22px;\n  text-align: center;\n  color: #1a1a1a;\n  background: #ffffff;\n}\n.card img { max-width: 100%; height: auto; }\nhr#answer { margin: 1em 0; border: none; border-top: 1px solid #ddd; }"
+    "css": ".card {\n  font-family: -apple-system, system-ui, sans-serif;\n  font-size: 22px;\n  text-align: center;\n  color: #1a1a1a;\n  background: #ffffff;\n}\n.card img { max-width: 100%; height: auto; }\nhr#answer { margin: 1em 0; border: none; border-top: 1px solid #ddd; }\n.type-result { margin: 0.5em 0; }\n.type-given, .type-expected {\n  display: block;\n  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;\n  font-size: 1.1em;\n}\n.type-expected { margin-top: 0.3em; color: #6b7280; }\n.type-result--ok .type-given { color: #16a34a; }\n.type-good { color: #16a34a; }\n.type-bad { color: #dc2626; text-decoration: underline; }\n.type-have { color: #16a34a; }\n.type-missing { color: #dc2626; background: #fee2e2; }"
   },
   {
     "id": "nt-basic-reversed",
@@ -51,7 +51,7 @@
         "afmt": "{{FrontSide}}\n<hr id=\"answer\">\n{{Front}}"
       }
     ],
-    "css": ".card {\n  font-family: -apple-system, system-ui, sans-serif;\n  font-size: 22px;\n  text-align: center;\n  color: #1a1a1a;\n  background: #ffffff;\n}\n.card img { max-width: 100%; height: auto; }\nhr#answer { margin: 1em 0; border: none; border-top: 1px solid #ddd; }"
+    "css": ".card {\n  font-family: -apple-system, system-ui, sans-serif;\n  font-size: 22px;\n  text-align: center;\n  color: #1a1a1a;\n  background: #ffffff;\n}\n.card img { max-width: 100%; height: auto; }\nhr#answer { margin: 1em 0; border: none; border-top: 1px solid #ddd; }\n.type-result { margin: 0.5em 0; }\n.type-given, .type-expected {\n  display: block;\n  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;\n  font-size: 1.1em;\n}\n.type-expected { margin-top: 0.3em; color: #6b7280; }\n.type-result--ok .type-given { color: #16a34a; }\n.type-good { color: #16a34a; }\n.type-bad { color: #dc2626; text-decoration: underline; }\n.type-have { color: #16a34a; }\n.type-missing { color: #dc2626; background: #fee2e2; }"
   },
   {
     "id": "nt-basic-typein",
@@ -75,7 +75,7 @@
         "afmt": "{{FrontSide}}\n<hr id=\"answer\">\n{{type:Back}}"
       }
     ],
-    "css": ".card {\n  font-family: -apple-system, system-ui, sans-serif;\n  font-size: 22px;\n  text-align: center;\n  color: #1a1a1a;\n  background: #ffffff;\n}\n.card img { max-width: 100%; height: auto; }\nhr#answer { margin: 1em 0; border: none; border-top: 1px solid #ddd; }"
+    "css": ".card {\n  font-family: -apple-system, system-ui, sans-serif;\n  font-size: 22px;\n  text-align: center;\n  color: #1a1a1a;\n  background: #ffffff;\n}\n.card img { max-width: 100%; height: auto; }\nhr#answer { margin: 1em 0; border: none; border-top: 1px solid #ddd; }\n.type-result { margin: 0.5em 0; }\n.type-given, .type-expected {\n  display: block;\n  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;\n  font-size: 1.1em;\n}\n.type-expected { margin-top: 0.3em; color: #6b7280; }\n.type-result--ok .type-given { color: #16a34a; }\n.type-good { color: #16a34a; }\n.type-bad { color: #dc2626; text-decoration: underline; }\n.type-have { color: #16a34a; }\n.type-missing { color: #dc2626; background: #fee2e2; }"
   },
   {
     "id": "nt-cloze",
@@ -99,7 +99,7 @@
         "afmt": "{{cloze:Text}}\n<hr id=\"answer\">\n{{Back Extra}}"
       }
     ],
-    "css": ".card {\n  font-family: -apple-system, system-ui, sans-serif;\n  font-size: 22px;\n  text-align: center;\n  color: #1a1a1a;\n  background: #ffffff;\n}\n.card img { max-width: 100%; height: auto; }\nhr#answer { margin: 1em 0; border: none; border-top: 1px solid #ddd; }\n.cloze { font-weight: bold; color: #2563eb; }"
+    "css": ".card {\n  font-family: -apple-system, system-ui, sans-serif;\n  font-size: 22px;\n  text-align: center;\n  color: #1a1a1a;\n  background: #ffffff;\n}\n.card img { max-width: 100%; height: auto; }\nhr#answer { margin: 1em 0; border: none; border-top: 1px solid #ddd; }\n.type-result { margin: 0.5em 0; }\n.type-given, .type-expected {\n  display: block;\n  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;\n  font-size: 1.1em;\n}\n.type-expected { margin-top: 0.3em; color: #6b7280; }\n.type-result--ok .type-given { color: #16a34a; }\n.type-good { color: #16a34a; }\n.type-bad { color: #dc2626; text-decoration: underline; }\n.type-have { color: #16a34a; }\n.type-missing { color: #dc2626; background: #fee2e2; }\n.cloze { font-weight: bold; color: #2563eb; }"
   },
   {
     "id": "nt-spanish-2sided",
@@ -139,6 +139,52 @@
         "afmt": "{{FrontSide}}\n<hr id=\"answer\">\n{{SideB}}{{SideBImage}}{{SideBAudio}}"
       }
     ],
-    "css": ".card {\n  font-family: -apple-system, system-ui, sans-serif;\n  font-size: 22px;\n  text-align: center;\n  color: #1a1a1a;\n  background: #ffffff;\n}\n.card img { max-width: 100%; height: auto; }\nhr#answer { margin: 1em 0; border: none; border-top: 1px solid #ddd; }"
+    "css": ".card {\n  font-family: -apple-system, system-ui, sans-serif;\n  font-size: 22px;\n  text-align: center;\n  color: #1a1a1a;\n  background: #ffffff;\n}\n.card img { max-width: 100%; height: auto; }\nhr#answer { margin: 1em 0; border: none; border-top: 1px solid #ddd; }\n.type-result { margin: 0.5em 0; }\n.type-given, .type-expected {\n  display: block;\n  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;\n  font-size: 1.1em;\n}\n.type-expected { margin-top: 0.3em; color: #6b7280; }\n.type-result--ok .type-given { color: #16a34a; }\n.type-good { color: #16a34a; }\n.type-bad { color: #dc2626; text-decoration: underline; }\n.type-have { color: #16a34a; }\n.type-missing { color: #dc2626; background: #fee2e2; }"
+  },
+  {
+    "id": "nt-spanish-2sided-both",
+    "name": "Spanish 2-sided (both ways)",
+    "kind": "standard",
+    "fields": [
+      {
+        "name": "SideA",
+        "ord": 0
+      },
+      {
+        "name": "SideAAudio",
+        "ord": 1
+      },
+      {
+        "name": "SideAImage",
+        "ord": 2
+      },
+      {
+        "name": "SideB",
+        "ord": 3
+      },
+      {
+        "name": "SideBAudio",
+        "ord": 4
+      },
+      {
+        "name": "SideBImage",
+        "ord": 5
+      }
+    ],
+    "templates": [
+      {
+        "name": "A → B",
+        "ord": 0,
+        "qfmt": "{{SideA}}{{SideAImage}}{{SideAAudio}}",
+        "afmt": "{{FrontSide}}\n<hr id=\"answer\">\n{{SideB}}{{SideBImage}}{{SideBAudio}}"
+      },
+      {
+        "name": "B → A",
+        "ord": 1,
+        "qfmt": "{{SideB}}{{SideBImage}}{{SideBAudio}}",
+        "afmt": "{{FrontSide}}\n<hr id=\"answer\">\n{{SideA}}{{SideAImage}}{{SideAAudio}}"
+      }
+    ],
+    "css": ".card {\n  font-family: -apple-system, system-ui, sans-serif;\n  font-size: 22px;\n  text-align: center;\n  color: #1a1a1a;\n  background: #ffffff;\n}\n.card img { max-width: 100%; height: auto; }\nhr#answer { margin: 1em 0; border: none; border-top: 1px solid #ddd; }\n.type-result { margin: 0.5em 0; }\n.type-given, .type-expected {\n  display: block;\n  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;\n  font-size: 1.1em;\n}\n.type-expected { margin-top: 0.3em; color: #6b7280; }\n.type-result--ok .type-given { color: #16a34a; }\n.type-good { color: #16a34a; }\n.type-bad { color: #dc2626; text-decoration: underline; }\n.type-have { color: #16a34a; }\n.type-missing { color: #dc2626; background: #fee2e2; }"
   }
 ]

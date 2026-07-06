@@ -15,8 +15,18 @@
 
 import { createHash } from 'node:crypto';
 
-import type { Card, Deck, Note } from '../models/index.js';
-import { NOTE_TYPE_IDS } from '../store/seed.js';
+import type { Card, Deck, Note, NoteType } from '../models/index.js';
+import { NOTE_TYPE_IDS, buildSeedNoteTypes } from '../store/seed.js';
+
+/** Note types keyed by id, so a book can select one and we can read its templates. */
+const NOTE_TYPES_BY_ID = new Map(buildSeedNoteTypes().map((nt) => [nt.id, nt]));
+
+/** Map a book's optional `noteType` hint to a seeded note type id. */
+function resolveNoteType(hint: string | undefined): NoteType {
+  const id =
+    hint === 'spanish2both' ? NOTE_TYPE_IDS.spanish2both : NOTE_TYPE_IDS.spanish2;
+  return NOTE_TYPES_BY_ID.get(id)!;
+}
 
 export interface ScrapedCard {
   Card_ID: number;
@@ -39,6 +49,8 @@ export interface ScrapedNode {
 
 export interface ScrapedBook extends ScrapedNode {
   language?: string;
+  /** Optional note-type hint; "spanish2both" generates both study directions. */
+  noteType?: string;
 }
 
 export interface SourceBook {
@@ -71,12 +83,18 @@ function isUrl(v: string | null | undefined): v is string {
   return !!v && /^https?:\/\/\S+$/.test(v) && !/\s/.test(v);
 }
 
+/** A site-relative media path served by the app (e.g. "/media/foo.mp3"). */
+function isLocalMedia(v: string | null | undefined): v is string {
+  return !!v && /^\/media\/\S+$/.test(v) && !/\s/.test(v);
+}
+
 function mediaImage(url: string | null): string {
-  return isUrl(url) && IMAGE_RE.test(url) ? `<img src="${url}">` : '';
+  const ok = (isUrl(url) && IMAGE_RE.test(url)) || (isLocalMedia(url) && IMAGE_RE.test(url));
+  return ok ? `<img src="${url}">` : '';
 }
 
 function mediaAudio(url: string | null): string {
-  return isUrl(url) ? `[sound:${url}]` : '';
+  return isUrl(url) || isLocalMedia(url) ? `[sound:${url}]` : '';
 }
 
 interface DeckRegistry {
@@ -131,6 +149,8 @@ export function transformBooks(
 
   for (const book of books) {
     const rootTitle = book.root.MenuTitle;
+    const noteType = resolveNoteType(book.root.noteType);
+    const ords = noteType.templates.map((t) => t.ord);
 
     const walk = (node: ScrapedNode, ancestorPath: string[]): void => {
       const carriesCards = Array.isArray(node.cards) && node.cards.length > 0;
@@ -148,7 +168,7 @@ export function transformBooks(
 
           const note: Note = {
             id: noteId,
-            noteTypeId: NOTE_TYPE_IDS.spanish2,
+            noteTypeId: noteType.id,
             fields: {
               SideA: sc.SideA ?? '',
               SideAAudio: mediaAudio(sc.SideAAudio),
@@ -164,37 +184,39 @@ export function transformBooks(
           };
           notes.push(note);
 
-          const cardId = 'c' + guid + '-0';
-          const priorCard = existingCardsById.get(cardId);
-          if (priorCard) {
-            // Preserve scheduling state; only refresh placement.
-            cards.push({
-              ...priorCard,
-              noteId,
-              deckId,
-              ord: 0,
-              modified: now,
-            });
-          } else {
-            cards.push({
-              id: cardId,
-              noteId,
-              deckId,
-              ord: 0,
-              type: 'new',
-              queue: 'new',
-              due: newCardPosition++,
-              reps: 0,
-              lapses: 0,
-              left: 0,
-              lastReviewed: null,
-              created: now,
-              modified: now,
-              ease: 2500,
-              interval: 0,
-              stability: null,
-              difficulty: null,
-            });
+          for (const ord of ords) {
+            const cardId = 'c' + guid + '-' + ord;
+            const priorCard = existingCardsById.get(cardId);
+            if (priorCard) {
+              // Preserve scheduling state; only refresh placement.
+              cards.push({
+                ...priorCard,
+                noteId,
+                deckId,
+                ord,
+                modified: now,
+              });
+            } else {
+              cards.push({
+                id: cardId,
+                noteId,
+                deckId,
+                ord,
+                type: 'new',
+                queue: 'new',
+                due: newCardPosition++,
+                reps: 0,
+                lapses: 0,
+                left: 0,
+                lastReviewed: null,
+                created: now,
+                modified: now,
+                ease: 2500,
+                interval: 0,
+                stability: null,
+                difficulty: null,
+              });
+            }
           }
         }
       }

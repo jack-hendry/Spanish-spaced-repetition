@@ -1,3 +1,5 @@
+import { join } from 'node:path';
+
 import cors from 'cors';
 import express from 'express';
 
@@ -14,6 +16,8 @@ async function main(): Promise<void> {
   const app = express();
   app.use(cors());
   app.use(express.json({ limit: '50mb' }));
+  // Locally imported deck audio (e.g. Anki .apkg media) lives here.
+  app.use('/media', express.static(join(dataDir(), 'media')));
   app.use('/api', buildRouter(store));
 
   app.get('/api/health', (_req, res) => res.json({ ok: true }));

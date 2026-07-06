@@ -104,6 +104,7 @@ export const NOTE_TYPE_IDS = {
   basicTypeIn: 'nt-basic-typein',
   cloze: 'nt-cloze',
   spanish2: 'nt-spanish-2sided',
+  spanish2both: 'nt-spanish-2sided-both',
 } as const;
 
 export function buildSeedNoteTypes(): NoteType[] {
@@ -205,6 +206,37 @@ export function buildSeedNoteTypes(): NoteType[] {
           ord: 0,
           qfmt: '{{SideA}}{{SideAImage}}{{SideAAudio}}',
           afmt: '{{FrontSide}}\n<hr id="answer">\n{{SideB}}{{SideBImage}}{{SideBAudio}}',
+        },
+      ],
+      css: BASIC_CSS,
+    },
+    {
+      // Like spanish2 but generates both study directions (A→B and B→A). Used
+      // for imports of two-way decks (e.g. Anki phrasal-verb packs). Audio lives
+      // on SideA, so it plays on the A→B question and on the B→A answer.
+      id: NOTE_TYPE_IDS.spanish2both,
+      name: 'Spanish 2-sided (both ways)',
+      kind: 'standard',
+      fields: [
+        { name: 'SideA', ord: 0 },
+        { name: 'SideAAudio', ord: 1 },
+        { name: 'SideAImage', ord: 2 },
+        { name: 'SideB', ord: 3 },
+        { name: 'SideBAudio', ord: 4 },
+        { name: 'SideBImage', ord: 5 },
+      ],
+      templates: [
+        {
+          name: 'A → B',
+          ord: 0,
+          qfmt: '{{SideA}}{{SideAImage}}{{SideAAudio}}',
+          afmt: '{{FrontSide}}\n<hr id="answer">\n{{SideB}}{{SideBImage}}{{SideBAudio}}',
+        },
+        {
+          name: 'B → A',
+          ord: 1,
+          qfmt: '{{SideB}}{{SideBImage}}{{SideBAudio}}',
+          afmt: '{{FrontSide}}\n<hr id="answer">\n{{SideA}}{{SideAImage}}{{SideAAudio}}',
         },
       ],
       css: BASIC_CSS,
