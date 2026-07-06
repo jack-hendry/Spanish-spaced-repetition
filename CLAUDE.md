@@ -75,11 +75,37 @@ The review loop: the SPA loads the collection + cards, the user rates a card, th
 
 ## SDD Harness Rules
 
-- All feature work follows: specify → plan → implement. No skipping phases.
-- Each phase MUST update specs/{feature}/STATE.md before finishing.
-- Never hold important state only in conversation — write it to STATE.md.
-- Pause for human approval after SPEC.md and after PLAN.md (phase gates).
-- During implement, work one task at a time; check off tasks in STATE.md
-  immediately after completing each one.
-- If context is getting long, update STATE.md, then tell the user it is
-  safe to /clear and /resume.
+**Pipeline:** every feature moves through specify → plan → implement → done.
+No phase is skipped, and no phase writes files outside its role
+(specify/plan never touch source code; implement never touches
+SPEC.md/PLAN.md except to read them).
+
+**State is the source of truth.** Conversation context is disposable;
+specs/{feature}/STATE.md is not. Any phase that changes the state of
+the feature (completes a task, hits a blocker, makes a scope decision)
+must update STATE.md before ending its turn. If it's not written to
+disk, it didn't happen.
+
+**Phase gates require human approval.** After SPEC.md and after
+PLAN.md, stop and wait — do not auto-advance into the next phase.
+Task-to-task transitions in the implement phase need no formal
+review gate, but /resume still runs exactly one task per invocation
+and checks in with the user before starting the next.
+
+**Entry points:**
+- `/feature {description}` — starts a new feature at phase=specify
+- `/resume [feature-name]` — reads STATE.md and continues from exactly
+  where it left off; use this after every /clear or new session
+
+**Model routing for this pipeline:**
+- spec-writer, planner: inherit (run the main session on Opus for these)
+- implementer: sonnet (enforced via `model: sonnet` in its agent frontmatter)
+- Keep effort at medium for implementer; use high for planner on
+  complex features
+
+**Scope discipline:** if any subagent notices unrelated issues, log
+them under a "Discovered" section in STATE.md — do not fix them
+inline. Drift is the main failure mode this harness exists to prevent.
+
+**When context is getting long:** update STATE.md fully, tell the user
+it's safe to /clear, and that /resume will pick up correctly.

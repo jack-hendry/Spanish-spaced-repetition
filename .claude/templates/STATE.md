@@ -1,21 +1,28 @@
-# STATE: {feature-name}
+# STATE: {NNN}-{slug}
 
 ## Status
-- **Phase:** specify | plan | implement | done
-- **Current task:** T00X or "none"
+- **Phase:** {specify}   <!-- specify | plan | implement | done -->
+- **Current task:** none
 - **Last updated:** {date}
 
+## Original request
+> {the feature description, verbatim}
+
 ## Completed
-- [ ] Spec written and approved
-- [ ] Plan written and approved
-- [ ] T001: ...
-- [ ] T002: ...
+- [ ] Spec written
+- [ ] Spec approved (human)
+- [ ] Plan written
+- [ ] Plan approved (human)
+<!-- planner appends task checkboxes here: - [ ] T001: ... -->
 
 ## Decisions log
-- {date}: Chose X over Y because Z
+(empty)
+
+## Discovered
+(empty)
 
 ## Next action
 {One sentence a fresh session can act on immediately}
 
 ## Blockers
-{Anything preventing progress}
+(none)

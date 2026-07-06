@@ -1,7 +1,8 @@
 ---
 name: implementer
 description: Implements one task at a time from PLAN.md. Use for the implement phase of the SDD pipeline.
-tools: [read, write, edit, glob, grep, bash]
+tools: [Read, Write, Edit, Glob, Grep, Bash]
+model: sonnet
 ---
 You implement exactly ONE task per invocation, then stop.
 

@@ -1,13 +1,18 @@
 # STATE: cli-version-flag
 
 ## Status
-- **Phase:** specify
+- **Phase:** plan
 - **Current task:** none
 - **Last updated:** 2026-07-06
 
+## Original request
+> add a --version flag to the cli
+
 ## Completed
-- [x] Spec written (awaiting approval)
-- [ ] Plan written and approved
+- [x] Spec written
+- [ ] Spec approved (human)
+- [ ] Plan written
+- [ ] Plan approved (human)
 
 ## Decisions log
 - 2026-07-06: Feature initiated: add a --version flag to the cli
@@ -16,9 +21,14 @@
   target is server/src/import/cli.ts (the only file literally named "cli"),
   run via `npm run import`. Flagged as an open assumption in SPEC.md for
   human review.
+- 2026-07-06: Migrated to fixed pipeline format: phase advanced to plan
+  (spec exists, awaiting approval), checkboxes split into written/approved.
+
+## Discovered
+(empty)
 
 ## Next action
-Pause for human approval of SPEC.md before proceeding to plan phase.
+review SPEC.md, then /resume to run planner
 
 ## Blockers
 None
