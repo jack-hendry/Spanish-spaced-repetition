@@ -2,7 +2,7 @@
 
 ## Status
 - **Phase:** implement   <!-- specify | plan | implement | done -->
-- **Current task:** T003
+- **Current task:** T004
 - **Last updated:** 2026-07-07
 
 ## Original request
@@ -21,7 +21,7 @@ Decks/Browse/Stats is functionally the same, only the UI differs.)
 - [x] Plan approved (human)
 - [x] T001: Pure stat helpers + relative-due formatter (core/stats.ts + spec)
 - [x] T002: Heatmap grid-builder helper (new core/heatmap.ts + spec)
-- [ ] T003: Shared `app-heatmap` component (shared/heatmap/)
+- [x] T003: Shared `app-heatmap` component (shared/heatmap/)
 - [ ] T004: Shell sidebar restructure + dashboard slimming (same task)
 - [ ] T005: Dashboard adopts shared heatmap + polished forecast card
 - [ ] T006: Browse rebuild + tag saving
@@ -132,6 +132,53 @@ Decks/Browse/Stats is functionally the same, only the UI differs.)
   is T005 per plan). `npm run test -w web`: 13 test files, 130 tests, all
   passed (up from 124 pre-T002, i.e. the 6 new heatmap tests).
 
+- 2026-07-07: T003 done. Added `web/src/app/shared/heatmap/heatmap.{ts,html,scss}`
+  (NEW), a standalone `app-heatmap` component (`imports: []`, `selector:
+  'app-heatmap'`) with three **signal inputs** — `reviewDays =
+  input.required<number[]>()`, `collection = input.required<Collection |
+  null>()`, `year = input.required<number>()` — feeding a `grid = computed(()
+  => buildHeatGrid(...))`. This is the first component in the codebase to use
+  Angular signal `input()` (no prior `@Input`/`input()` precedent existed in
+  `features/`); chose `.required()` over defaults since all three values are
+  meaningless individually and callers (T005/T007) will always supply real
+  ones. `Collection` imported from `../../core/models` (matches the
+  `features/*` import-path convention one directory shallower). Implementation
+  choices not spelled out verbatim in PLAN/SPEC: (1) `core/heatmap.ts`'s
+  `HeatGrid.weeks` rows are Sun-anchored (row 0 = Sun … 6 = Sat, per T002's
+  own docstring/tests) but Req 9 asks for "Mon…Sun" labels down the left, so
+  the component reorders for **display only** via a `ROW_ORDER = [1, 2, 3, 4,
+  5, 6, 0]` map (`orderedCell(week, displayRow)`) rather than changing the
+  core grid-builder (out of scope, T002 is done); (2) month gaps (Req 10) are
+  built as real empty CSS Grid column tracks — `weekColumns()` computes a
+  1-based grid column per week, inserting a narrow 6px spacer track before
+  every month boundary after the first (via `grid-template-columns` built in
+  `gridTemplateColumns()`), and month labels + day cells are placed with
+  explicit `[style.grid-column]`/`[style.grid-row]` rather than DOM order, so
+  the "gap" is a genuine grid track (not a margin hack) and month labels
+  align exactly over their first column with no separate pixel math; (3) the
+  heat scale reuses the existing `--color-accent-blue` custom property via
+  `color-mix(in srgb, var(--color-accent-blue) N%, var(--color-surface-alt))`
+  for levels 1–3 and the bare var for level 4, rather than hardcoding new
+  rgba literals (the old inline `deck-list.scss` heatmap hardcoded
+  `rgba(79, 141, 253, N)`, which is numerically `--color-accent-blue`'s hex
+  `#4f8dfd` — `color-mix` reuses the actual custom property per the task's
+  "do not hardcode new colors" instruction; this is the first `color-mix`
+  usage in the codebase, no browser-support concerns since the app targets
+  evergreen browsers only). Added `heatmap.spec.ts` (NEW, 3 `it`s, TestBed
+  render tests following `app.spec.ts`'s existing convention: `setInput` on
+  `fixture.componentRef` for the three signal inputs) asserting weekday
+  labels are exactly `Mon..Sun`, the legend has 5 swatches labelled `0 / 1–9
+  / 10–19 / 20–39 / 40+`, 12 month labels render for a populated year, day
+  cells carry a `level-N` class, and a null `collection` input renders zero
+  cells/month-labels (mirrors `buildHeatGrid`'s null-collection guard). Did
+  **not** touch `deck-list.{ts,html,scss}` (inline heatmap stays until T005)
+  or `core/heatmap.ts`/`core/stats.ts` (untouched, per constraints). Not
+  wired into any route/component yet (that's T005/T007). `npm run build -w
+  web`: clean. `npm run test -w web`: 14 test files, 133 tests, all passed
+  (up from 13 files/130 tests pre-T003 — the 3 new heatmap render tests); the
+  Angular test pipeline also type-checked the new component even though
+  nothing imports it yet, confirming it compiles standalone.
+
 ## Discovered
 - `server/src/models/index.ts` (Card.due doc-comment, line ~84) says
   "learning: epoch seconds" but every actual scheduler
@@ -143,7 +190,7 @@ Decks/Browse/Stats is functionally the same, only the UI differs.)
   discipline.
 
 ## Next action
-/resume to start T003 (Shared `app-heatmap` component, shared/heatmap/)
+/resume to start T004 (Shell sidebar restructure + dashboard slimming, same task)
 
 ## Blockers
 (none)

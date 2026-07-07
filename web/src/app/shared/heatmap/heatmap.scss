@@ -1,0 +1,94 @@
+.heatmap-wrap {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding-bottom: 0.2rem;
+}
+
+// ---- weekday labels (Mon..Sun, left column) --------------------------------
+
+.heatmap__weekdays {
+  display: grid;
+  grid-template-rows: 14px repeat(7, 11px);
+  row-gap: 3px;
+  flex: none;
+}
+
+.heatmap__weekday-label {
+  font-size: 0.6rem;
+  line-height: 11px;
+  color: var(--color-text-muted);
+  text-align: right;
+  padding-right: 0.35rem;
+  white-space: nowrap;
+}
+
+// ---- grid (month labels row + day cells) -----------------------------------
+
+.heatmap__grid {
+  display: grid;
+  grid-template-rows: 14px repeat(7, 11px);
+  row-gap: 3px;
+  column-gap: 3px;
+}
+
+.heatmap__month-label {
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+  align-self: start;
+  white-space: nowrap;
+}
+
+.heatmap__cell {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  background: var(--color-surface-alt);
+
+  // Compound selector so padding always wins over the level-N background,
+  // regardless of declaration order (both are single-class, equal specificity).
+  &.heatmap__cell--pad {
+    background: transparent;
+  }
+}
+
+// Blue heat scale, derived from the existing --color-accent-blue custom
+// property (not a new/hardcoded palette) — level 0 is the neutral surface,
+// level 4 is the full accent color.
+.level-0 {
+  background: var(--color-surface-alt);
+}
+.level-1 {
+  background: color-mix(in srgb, var(--color-accent-blue) 28%, var(--color-surface-alt));
+}
+.level-2 {
+  background: color-mix(in srgb, var(--color-accent-blue) 52%, var(--color-surface-alt));
+}
+.level-3 {
+  background: color-mix(in srgb, var(--color-accent-blue) 76%, var(--color-surface-alt));
+}
+.level-4 {
+  background: var(--color-accent-blue);
+}
+
+// ---- legend ------------------------------------------------------------------
+
+.heatmap__legend {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.6rem;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+}
+
+.heatmap__legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.heatmap__legend-label {
+  margin-right: 0.55rem;
+}
