@@ -94,3 +94,86 @@ export function buttonCounts(revlog: RevlogEntry[]): Record<1 | 2 | 3 | 4, numbe
   }
   return c;
 }
+
+// ---- dashboard helpers -----------------------------------------------------
+// Same idiom as above: callers map `RevlogEntry.reviewedAt` to a study-day
+// number via `todayNumber(collection, entry.reviewedAt)` (see
+// `collection.store.ts`) before calling these, so the maths here stays a pure,
+// trivially-testable function of plain numbers.
+
+/** Count of revlog entries whose mapped study-day equals `today`. */
+export function studiedToday(reviewDays: number[], today: number): number {
+  return reviewDays.filter((day) => day === today).length;
+}
+
+export interface DayTime {
+  /** Study-day number the entry was reviewed on. */
+  day: number;
+  timeMs: number;
+}
+
+/** Sum of `timeMs` for entries whose mapped study-day equals `today`. */
+export function timeToday(entries: DayTime[], today: number): number {
+  let total = 0;
+  for (const entry of entries) {
+    if (entry.day === today) total += entry.timeMs;
+  }
+  return total;
+}
+
+/** Average time per card in ms. Guards divide-by-zero -> 0 (UI formats the sentinel). */
+export function pace(timeMs: number, cards: number): number {
+  if (cards <= 0) return 0;
+  return timeMs / cards;
+}
+
+/**
+ * Consecutive days up to and including `today` with at least one review.
+ * Walks backward from `today`; stops at the first day (starting at `today`
+ * itself) with zero reviews.
+ */
+export function dayStreak(reviewDays: number[], today: number): number {
+  const days = new Set(reviewDays);
+  let streak = 0;
+  let day = today;
+  while (days.has(day)) {
+    streak++;
+    day--;
+  }
+  return streak;
+}
+
+export interface HeatPoint {
+  /** Absolute study-day number. */
+  day: number;
+  count: number;
+}
+
+/**
+ * Per-day review counts across an inclusive day-number range, e.g. the ~365
+ * days of a heatmap year. Generalises `reviewsByDay`'s bucketing to an
+ * arbitrary absolute range instead of an offset window from today, so callers
+ * can pick any window (a rolling year, or a specific calendar year mapped to
+ * day numbers via the collection's creation date).
+ */
+export function yearlyHeat(reviewDays: number[], startDay: number, endDay: number): HeatPoint[] {
+  const buckets = new Map<number, number>();
+  for (const day of reviewDays) {
+    if (day < startDay || day > endDay) continue;
+    buckets.set(day, (buckets.get(day) ?? 0) + 1);
+  }
+  const out: HeatPoint[] = [];
+  for (let day = startDay; day <= endDay; day++) {
+    out.push({ day, count: buckets.get(day) ?? 0 });
+  }
+  return out;
+}
+
+/** Heatmap intensity bucket for a day's review count: 0 / 1-9 / 10-19 / 20-39 / 40+. */
+export function heatLevel(count: number): 0 | 1 | 2 | 3 | 4 {
+  if (count <= 0) return 0;
+  if (count < 10) return 1;
+  if (count < 20) return 2;
+  if (count < 40) return 3;
+  return 4;
+}

@@ -1,12 +1,12 @@
 <section class="review">
-  <header class="review__bar">
+  <header class="review__topbar">
     <a routerLink="/" class="back">← Decks</a>
-    <span class="deck">{{ deckName() }}</span>
-    <span class="tally">
-      <span class="count count--new">{{ counts().new }}</span>
-      <span class="count count--learning">{{ counts().learning }}</span>
-      <span class="count count--review">{{ counts().review }}</span>
-    </span>
+    <div class="session-info">
+      <span class="session-info__label">{{ deckName() }} — {{ sessionN() }} of {{ sessionTotal() }}</span>
+      <div class="progress-bar">
+        <div class="progress-bar__fill" [style.width.%]="progressPct()"></div>
+      </div>
+    </div>
     @if (state()) {
       <button class="suspend" [disabled]="busy()" (click)="suspend()" title="Suspend card (-)">
         Suspend
@@ -18,12 +18,19 @@
     <p class="status">Loading…</p>
   } @else if (finished()) {
     <div class="done">
-      <h2>🎉 All done</h2>
+      <h2>All done</h2>
       <p>No more cards due in this deck right now.</p>
       <a routerLink="/" class="btn">Back to decks</a>
     </div>
   } @else if (state(); as s) {
-    <article class="card-area">
+    <article class="card-panel">
+      <div class="breadcrumb">
+        <span class="breadcrumb__deck">{{ deckName() }}</span>
+        @if (s.tags.length) {
+          <span class="breadcrumb__tag">· {{ s.tags.join(', ') }}</span>
+        }
+      </div>
+
       @if (revealed()) {
         <div class="rendered" [innerHTML]="s.answer"></div>
       } @else {
@@ -50,7 +57,7 @@
         <button class="btn btn--show" (click)="reveal()">Show Answer</button>
       } @else {
         <div class="ratings">
-          @for (rating of ratings; track rating) {
+          @for (rating of ratings; track rating; let i = $index) {
             <button
               class="rate rate--{{ rating }}"
               [disabled]="busy()"
@@ -58,10 +65,12 @@
             >
               <span class="rate__label">{{ rating }}</span>
               <span class="rate__ivl">{{ buttonLabel(rating) }}</span>
+              <span class="rate__key">{{ i + 1 }}</span>
             </button>
           }
         </div>
       }
+      <p class="helper">space to flip · 1–4 to grade · − suspend</p>
     </footer>
   }
 </section>

@@ -1,56 +1,172 @@
-<section class="deck-list">
-  <header class="deck-list__head">
-    <h1>Decks</h1>
-    <div class="head-right">
-      <a routerLink="/browse" class="browse-link">Browse</a>
-      <a routerLink="/stats" class="browse-link">Stats</a>
+<div class="dashboard">
+  <aside class="dashboard__decks">
+    <header class="decks__head">
+      <h2>Decks</h2>
       <div class="legend">
         <span class="count count--new">new</span>
         <span class="count count--learning">learning</span>
         <span class="count count--review">due</span>
       </div>
-    </div>
-  </header>
+    </header>
 
-  @if (loading()) {
-    <p class="status">Loading collection…</p>
-  } @else if (error()) {
-    <p class="status status--error">{{ error() }}</p>
-  } @else {
-    <ul class="tree">
-      @for (node of visibleNodes(); track node.deck.id) {
-        <li class="row" [style.paddingLeft.px]="12 + node.depth * 18">
-          <button
-            class="twisty"
-            [class.twisty--hidden]="!node.hasChildren"
-            (click)="toggle(node)"
-            [attr.aria-label]="isExpanded(node) ? 'Collapse' : 'Expand'"
-          >
-            {{ node.hasChildren ? (isExpanded(node) ? '▾' : '▸') : '' }}
-          </button>
+    <div class="tree-scroll">
+      @if (loading()) {
+        <p class="status">Loading collection…</p>
+      } @else if (error()) {
+        <p class="status status--error">{{ error() }}</p>
+      } @else {
+        <ul class="tree">
+          @for (node of visibleNodes(); track node.deck.id) {
+            <li class="row" [style.paddingLeft.px]="12 + node.depth * 18">
+              <button
+                class="twisty"
+                [class.twisty--hidden]="!node.hasChildren"
+                (click)="toggle(node)"
+                [attr.aria-label]="isExpanded(node) ? 'Collapse' : 'Expand'"
+              >
+                {{ node.hasChildren ? (isExpanded(node) ? '▾' : '▸') : '' }}
+              </button>
 
-          <span class="name" (click)="toggle(node)">{{ leafName(node) }}</span>
+              <span class="deck-dot" [style.background]="colorFor(node.deck.name)"></span>
 
-          <span class="counts">
-            <span class="count count--new">{{ node.total.new }}</span>
-            <span class="count count--learning">{{ node.total.learning }}</span>
-            <span class="count count--review">{{ node.total.review }}</span>
-          </span>
+              <span class="name" (click)="toggle(node)">{{ leafName(node) }}</span>
 
-          <a
-            class="study"
-            [class.study--disabled]="!hasDue(node)"
-            [routerLink]="hasDue(node) ? ['/study', node.deck.id] : null"
-          >Study</a>
+              <span class="counts">
+                <span class="count count--new">{{ node.total.new }}</span>
+                <span class="count count--learning">{{ node.total.learning }}</span>
+                <span class="count count--review">{{ node.total.review }}</span>
+              </span>
 
-          <a
-            class="gear"
-            [routerLink]="['/options', node.deck.optionsId]"
-            aria-label="Deck options"
-            title="Deck options"
-          >⚙</a>
-        </li>
+              <a
+                class="study"
+                [class.study--disabled]="!hasDue(node)"
+                [routerLink]="hasDue(node) ? ['/study', node.deck.id] : null"
+              >Study</a>
+
+              <a
+                class="gear"
+                [routerLink]="['/options', node.deck.optionsId]"
+                aria-label="Deck options"
+                title="Deck options"
+              >⚙</a>
+            </li>
+          }
+        </ul>
       }
-    </ul>
-  }
-</section>
+    </div>
+
+    <a
+      class="study-all"
+      [class.study-all--disabled]="totalDue() === 0"
+      [routerLink]="totalDue() > 0 ? ['/study', 'all'] : null"
+    >
+      <span class="study-all__label">Study all due</span>
+      <span class="study-all__count">{{ totalDue() }}</span>
+    </a>
+  </aside>
+
+  <section class="dashboard__stats">
+    @if (statsLoading()) {
+      <p class="status">Loading stats…</p>
+    } @else {
+      <div class="stat-cards">
+        <div class="stat-card">
+          <span class="stat-card__label">Studied today</span>
+          <span class="stat-card__value">{{ studiedTodayCount() }}</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-card__label">Time</span>
+          <span class="stat-card__value">{{ formatDuration(timeTodayMs()) }}</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-card__label">Pace</span>
+          <span class="stat-card__value">{{ formatPace() }}</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-card__label">Retention</span>
+          <span class="stat-card__value">{{ formatRetention(retention()) }}</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <header class="panel__head">
+          <div>
+            <h3>Activity</h3>
+            <span class="muted">{{ heatmapTotal() }} reviews in {{ selectedYear() }}</span>
+          </div>
+          <div class="panel__head-right">
+            <span class="streak-badge">🔥 {{ displayStreak() }} day{{ displayStreak() === 1 ? '' : 's' }}</span>
+            <select class="year-select" (change)="onYearChange($event)">
+              @for (y of yearOptions(); track y) {
+                <option [value]="y" [selected]="y === selectedYear()">{{ y }}</option>
+              }
+            </select>
+          </div>
+        </header>
+
+        <div class="heatmap">
+          @for (week of heatWeeks(); track $index) {
+            <div class="heatmap__week">
+              @for (cell of week; track $index) {
+                <div
+                  class="heatmap__cell"
+                  [class.level-0]="!cell.inYear || cell.level === 0"
+                  [class.level-1]="cell.inYear && cell.level === 1"
+                  [class.level-2]="cell.inYear && cell.level === 2"
+                  [class.level-3]="cell.inYear && cell.level === 3"
+                  [class.level-4]="cell.inYear && cell.level === 4"
+                  [class.heatmap__cell--pad]="!cell.inYear"
+                  [title]="cellTitle(cell)"
+                ></div>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="heatmap-legend">
+          <span>Less</span>
+          <span class="heatmap__cell level-0"></span>
+          <span class="heatmap__cell level-1"></span>
+          <span class="heatmap__cell level-2"></span>
+          <span class="heatmap__cell level-3"></span>
+          <span class="heatmap__cell level-4"></span>
+          <span>More</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <header class="panel__head">
+          <h3>Today's forecast</h3>
+        </header>
+
+        <div class="forecast-stats">
+          <div class="forecast-stat">
+            <span class="forecast-stat__label">Total due</span>
+            <span class="forecast-stat__value">{{ totalDue() }}</span>
+          </div>
+          <div class="forecast-stat">
+            <span class="forecast-stat__label">Est. time</span>
+            <span class="forecast-stat__value">{{ formatEstTime() }}</span>
+          </div>
+        </div>
+
+        <div class="stacked">
+          @for (seg of forecastSegments(); track seg.key) {
+            <div
+              class="stacked__seg {{ seg.cls }}"
+              [style.width.%]="seg.pct"
+              [title]="seg.key + ': ' + seg.count"
+            ></div>
+          } @empty {
+            <div class="stacked__empty"></div>
+          }
+        </div>
+        <ul class="legend legend--forecast">
+          <li><span class="dot dot--new"></span>New — {{ forecastCounts().new }}</li>
+          <li><span class="dot dot--learning"></span>Learning — {{ forecastCounts().learning }}</li>
+          <li><span class="dot dot--review"></span>Review — {{ forecastCounts().review }}</li>
+        </ul>
+      </div>
+    }
+  </section>
+</div>

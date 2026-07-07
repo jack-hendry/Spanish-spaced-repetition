@@ -36,6 +36,8 @@ interface RenderState {
   afmt: string;
   fields: Record<string, string>;
   css: string;
+  /** The note's tags, used for the breadcrumb sub-topic. */
+  tags: string[];
 }
 
 const TYPE_FILTER = /\{\{\s*type:/;
@@ -69,11 +71,27 @@ export class Review {
   readonly counts = signal<QueueCounts>({ new: 0, learning: 0, review: 0 });
   /** The answer the user typed for a {{type:}} card (current card only). */
   readonly typed = signal('');
+  /** Number of cards graded so far this session. */
+  readonly answeredCount = signal(0);
+  /** Due count at session start; the denominator for "n of total". */
+  readonly sessionTotal = signal(0);
 
   readonly deckName = computed(() => {
     const id = this.deckId();
     const deck = id ? this.store.deckById(id) : undefined;
     return deck ? deck.name.split('::').pop()! : 'Study';
+  });
+
+  /** 1-indexed position of the current card within the session. */
+  readonly sessionN = computed(() =>
+    Math.min(this.answeredCount() + 1, Math.max(this.sessionTotal(), 1)),
+  );
+
+  /** Percentage of the session progress bar to fill. */
+  readonly progressPct = computed(() => {
+    const total = this.sessionTotal();
+    if (total <= 0) return 0;
+    return Math.min(100, Math.round((this.answeredCount() / total) * 100));
   });
 
   private answerStart = 0;
@@ -95,6 +113,8 @@ export class Review {
       this.finished.set(true);
       return;
     }
+    const startCounts = this.queue.counts(this.ctx());
+    this.sessionTotal.set(startCounts.new + startCounts.learning + startCounts.review);
     await this.loadNext();
     this.loading.set(false);
   }
@@ -140,6 +160,7 @@ export class Review {
       afmt: template.afmt,
       fields: note.fields,
       css: noteType.css,
+      tags: note.tags,
     });
   }
 
@@ -184,6 +205,7 @@ export class Review {
       // Optimistically update local state, then persist.
       this.store.applyCard(next);
       this.queue.onAnswered(current.card);
+      this.answeredCount.update((n) => n + 1);
       await lastValueFrom(this.api.submitReview(next, revlog));
       // Persist the daily tally so limits survive a reload, and hide the other
       // cards of this note for the rest of the day.
