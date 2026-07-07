@@ -2,7 +2,7 @@
 
 ## Status
 - **Phase:** implement   <!-- specify | plan | implement | done -->
-- **Current task:** none
+- **Current task:** T003
 - **Last updated:** 2026-07-07
 
 ## Original request
@@ -18,9 +18,9 @@ Decks/Browse/Stats is functionally the same, only the UI differs.)
 - [x] Spec written
 - [x] Spec approved (human)
 - [x] Plan written
-- [ ] Plan approved (human)
-- [ ] T001: Pure stat helpers + relative-due formatter (core/stats.ts + spec)
-- [ ] T002: Heatmap grid-builder helper (new core/heatmap.ts + spec)
+- [x] Plan approved (human)
+- [x] T001: Pure stat helpers + relative-due formatter (core/stats.ts + spec)
+- [x] T002: Heatmap grid-builder helper (new core/heatmap.ts + spec)
 - [ ] T003: Shared `app-heatmap` component (shared/heatmap/)
 - [ ] T004: Shell sidebar restructure + dashboard slimming (same task)
 - [ ] T005: Dashboard adopts shared heatmap + polished forecast card
@@ -75,11 +75,75 @@ Decks/Browse/Stats is functionally the same, only the UI differs.)
   spec requirement (1–23) and Q1–Q7 default maps to a task. Phase advanced
   to implement, awaiting plan-review gate before T001.
 
+- 2026-07-07: T001 done. Added `bestStreak`, `periodDelta`, `sumTimeInRange`,
+  `countInRange`, `formatRelativeDue` to `core/stats.ts`, all unit-tested in
+  `core/stats.spec.ts`. Notable implementation choices not spelled out
+  verbatim in PLAN/SPEC: (1) `formatRelativeDue`'s review-card day math
+  clamps overdue cards to "today" via `Math.max(0, due - today)`, mirroring
+  the existing `dueForecast` clamp convention, rather than emitting a
+  negative day count; (2) the learning-card branch compares `card.due`
+  directly against the `now` param in the same units as `ReviewContext.now`
+  (epoch **ms**, per `scheduling/types.ts` and how `study-queue.service.ts`
+  actually compares `card.due <= ctx.now`) — this contradicts the stale
+  `due: epoch seconds` comment on the server's `Card.due` field
+  (`server/src/models/index.ts` line 84) and the PLAN.md task text, which
+  both say "epoch seconds" for learning cards; the codebase's real scheduling
+  code has never used seconds there. Left the stale comment alone (out of
+  scope for this task) but noting it here since a future task/spec author
+  should reconcile the comment with reality.
+
+- 2026-07-07: T002 done. Added `web/src/app/core/heatmap.ts` (NEW), exporting
+  `HeatCell` (moved verbatim from `features/deck-list/deck-list.ts`),
+  `MonthLabel { name; weekIndex }`, `HeatGrid { weeks; months }`, and
+  `buildHeatGrid(reviewDays, collection, year)` — a straight port of
+  `DeckList.buildYearGrid`'s Sun-anchored 7-row-week grid maths (jan1/dec31
+  padded out to whole weeks via `getDay()`, `todayNumber` mapping the grid's
+  start/end dates to day numbers, `yearlyHeat`+`heatLevel` from `core/stats.ts`
+  filling counts/levels, `inYear` marking padding cells outside the target
+  calendar year), plus new logic recording each month's first in-year cell's
+  week (column) index for month labels/gaps. `buildHeatGrid(reviewDays, null,
+  year)` returns `{ weeks: [], months: [] }` (mirrors the original's `if
+  (!coll) return []` guard, extended to the new return shape). Added
+  `web/src/app/core/heatmap.spec.ts` (NEW, 6 `it`s under one `describe`)
+  asserting: null-collection short-circuit; 53 weeks for 2024 (leap year,
+  Jan-1-is-Monday case) with every week 7-cells Sun..Sat; 54 weeks for 2028
+  (the rarer leap-year-starting-Saturday case, found by brute-forcing
+  2016-2040 in Node, where padding spills a 54th week — included so the
+  week-count test isn't just re-deriving the one case already used
+  elsewhere); first/last-week `inYear` padding correctness plus a total
+  inYear-cell count of 366 for 2024; a review-count/`heatLevel` mapping
+  smoke test (12 reviews on Jan 1 -> count 12, level 2); and 12 ascending
+  `months` entries with names `Jan`..`Dec`, `months[0].weekIndex === 0`.
+  Implementation choices not spelled out verbatim in PLAN.md: (1) imports
+  `todayNumber` from `core/collection.store.ts` (same as the original
+  `deck-list.ts` did) rather than duplicating it — this pulls in
+  `CollectionStore`'s `@Injectable`-decorated class as a side effect of the
+  module import, but since the test only calls the plain `todayNumber`
+  function (no DI/TestBed needed), `heatmap.spec.ts` runs as a plain vitest
+  unit test, matching the "pure helper" framing in PLAN.md; (2) month
+  detection scans `weeks` in order and, within each week, cells in order,
+  taking the first occurrence of each `cell.date.getMonth()` for `inYear`
+  cells only — this is safe because `cells` (and therefore each 7-cell week
+  chunk) is built by a single date cursor incrementing one day at a time
+  chronologically start-to-end, so a single forward scan naturally yields
+  both "first in-year cell of the month" and ascending `weekIndex` order
+  with no separate sort needed. Did NOT touch `deck-list.ts` (its inline
+  `buildYearGrid`/`HeatCell`/etc. are untouched duplicates for now; removal
+  is T005 per plan). `npm run test -w web`: 13 test files, 130 tests, all
+  passed (up from 124 pre-T002, i.e. the 6 new heatmap tests).
+
 ## Discovered
-(empty)
+- `server/src/models/index.ts` (Card.due doc-comment, line ~84) says
+  "learning: epoch seconds" but every actual scheduler
+  (`web/src/app/core/scheduling/{sm2,fsrs}.ts`) and consumer
+  (`study-queue.service.ts`) treats learning `due` as epoch **milliseconds**
+  (`ctx.now + delayMin * 60_000`, compared via `card.due <= ctx.now` where
+  `ctx.now` is `Date.now()`-scale ms). The doc comment is misleading and
+  should probably be corrected in a future pass; not fixed here per scope
+  discipline.
 
 ## Next action
-review PLAN.md, then /resume to start T001
+/resume to start T003 (Shared `app-heatmap` component, shared/heatmap/)
 
 ## Blockers
 (none)

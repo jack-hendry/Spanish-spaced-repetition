@@ -177,3 +177,77 @@ export function heatLevel(count: number): 0 | 1 | 2 | 3 | 4 {
   if (count < 40) return 3;
   return 4;
 }
+
+// ---- stats-page helpers -----------------------------------------------------
+
+/**
+ * The longest run of consecutive study-days with at least one review, over
+ * the entire log (all-time best). Unlike `dayStreak`, this is not anchored to
+ * `today` and does not require the run to be current.
+ */
+export function bestStreak(reviewDays: number[]): number {
+  if (reviewDays.length === 0) return 0;
+  const days = Array.from(new Set(reviewDays)).sort((a, b) => a - b);
+  let best = 1;
+  let current = 1;
+  for (let i = 1; i < days.length; i++) {
+    current = days[i] === days[i - 1] + 1 ? current + 1 : 1;
+    best = Math.max(best, current);
+  }
+  return best;
+}
+
+/**
+ * Rounded percentage change from `previous` to `current`, e.g. `periodDelta(120, 100) === 20`.
+ * Returns `null` when there's no baseline (`previous === 0`) rather than a
+ * misleading infinite/undefined percentage — callers should render no delta
+ * line in that case (see spec Q7).
+ */
+export function periodDelta(current: number, previous: number): number | null {
+  if (previous === 0) return null;
+  return Math.round(((current - previous) / previous) * 100);
+}
+
+/**
+ * Sum of `timeMs` for entries whose mapped study-day falls within the
+ * inclusive `[startDay, endDay]` range. Same range semantics as `yearlyHeat`.
+ */
+export function sumTimeInRange(entries: DayTime[], startDay: number, endDay: number): number {
+  let total = 0;
+  for (const entry of entries) {
+    if (entry.day >= startDay && entry.day <= endDay) total += entry.timeMs;
+  }
+  return total;
+}
+
+/**
+ * Count of reviews whose mapped study-day falls within the inclusive
+ * `[startDay, endDay]` range. Same range semantics as `yearlyHeat`/`sumTimeInRange`.
+ */
+export function countInRange(reviewDays: number[], startDay: number, endDay: number): number {
+  let count = 0;
+  for (const day of reviewDays) {
+    if (day >= startDay && day <= endDay) count++;
+  }
+  return count;
+}
+
+/**
+ * A relative due string for the Browse table: "—" for new cards (no due
+ * date yet); "today"/"N days" for review cards (`due` is a day number,
+ * clamped like `dueForecast` so an overdue card reads "today" rather than a
+ * negative count); "today"/"N min" for learning cards (`due` is compared
+ * directly against `now`, matching the epoch-ms convention the schedulers
+ * already use for `ReviewContext.now` — see `scheduling/types.ts`).
+ */
+export function formatRelativeDue(card: Card, today: number, now: number): string {
+  if (card.queue === 'new') return '—';
+  if (card.queue === 'learning') {
+    const diffMs = card.due - now;
+    if (diffMs <= 0) return 'today';
+    const minutes = Math.max(1, Math.round(diffMs / 60_000));
+    return `${minutes} min`;
+  }
+  const diffDays = Math.max(0, card.due - today);
+  return diffDays === 0 ? 'today' : `${diffDays} days`;
+}

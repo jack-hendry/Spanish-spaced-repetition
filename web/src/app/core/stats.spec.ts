@@ -2,14 +2,19 @@ import { describe, expect, it } from 'vitest';
 
 import type { Card, RevlogEntry } from './models';
 import {
+  bestStreak,
   buttonCounts,
   cardStateCounts,
+  countInRange,
   dayStreak,
   dueForecast,
+  formatRelativeDue,
   heatLevel,
   pace,
+  periodDelta,
   reviewsByDay,
   studiedToday,
+  sumTimeInRange,
   timeToday,
   yearlyHeat,
   type DayTime,
@@ -173,5 +178,116 @@ describe('heatLevel', () => {
     expect(heatLevel(39)).toBe(3);
     expect(heatLevel(40)).toBe(4);
     expect(heatLevel(41)).toBe(4);
+  });
+});
+
+describe('bestStreak', () => {
+  it('finds the longest all-time consecutive-day run, not just the trailing one', () => {
+    // Runs: [1,2,3] (len 3), [5] (len 1), [8,9,10,11] (len 4, best), current
+    // trailing streak from "today" would be different from this all-time best.
+    expect(bestStreak([1, 2, 3, 5, 8, 9, 10, 11])).toBe(4);
+  });
+
+  it('is 0 for an empty log', () => {
+    expect(bestStreak([])).toBe(0);
+  });
+
+  it('ignores duplicate same-day entries', () => {
+    expect(bestStreak([1, 1, 2, 2, 3])).toBe(3);
+  });
+
+  it('is 1 when there are no consecutive days', () => {
+    expect(bestStreak([1, 5, 10])).toBe(1);
+  });
+
+  it('is unaffected by unsorted input', () => {
+    // Sorted unique days: 1,2,3,8,9,10 -> two runs of length 3 each.
+    expect(bestStreak([10, 9, 1, 8, 2, 3])).toBe(3);
+  });
+});
+
+describe('periodDelta', () => {
+  it('computes a rounded percentage increase', () => {
+    expect(periodDelta(120, 100)).toBe(20);
+  });
+
+  it('computes a rounded percentage decrease', () => {
+    expect(periodDelta(80, 100)).toBe(-20);
+  });
+
+  it('rounds to the nearest whole percent', () => {
+    expect(periodDelta(110, 3)).toBe(Math.round(((110 - 3) / 3) * 100));
+  });
+
+  it('returns null when there is no baseline (previous === 0)', () => {
+    expect(periodDelta(50, 0)).toBeNull();
+    expect(periodDelta(0, 0)).toBeNull();
+  });
+});
+
+describe('sumTimeInRange', () => {
+  it('sums timeMs for entries within an inclusive day range', () => {
+    const entries: DayTime[] = [
+      { day: 5, timeMs: 1000 },
+      { day: 6, timeMs: 2000 },
+      { day: 7, timeMs: 4000 },
+      { day: 8, timeMs: 9999 }, // outside range
+    ];
+    expect(sumTimeInRange(entries, 5, 7)).toBe(7000);
+  });
+
+  it('is 0 for an empty series', () => {
+    expect(sumTimeInRange([], 0, 10)).toBe(0);
+  });
+
+  it('includes both range endpoints', () => {
+    const entries: DayTime[] = [
+      { day: 0, timeMs: 100 },
+      { day: 10, timeMs: 200 },
+    ];
+    expect(sumTimeInRange(entries, 0, 10)).toBe(300);
+  });
+});
+
+describe('countInRange', () => {
+  it('counts reviews within an inclusive day range', () => {
+    expect(countInRange([5, 5, 6, 7, 8], 5, 7)).toBe(4);
+  });
+
+  it('is 0 for an empty log', () => {
+    expect(countInRange([], 0, 10)).toBe(0);
+  });
+
+  it('includes both range endpoints', () => {
+    expect(countInRange([0, 10, 20], 0, 10)).toBe(2);
+  });
+});
+
+describe('formatRelativeDue', () => {
+  it('returns an em dash for new cards', () => {
+    expect(formatRelativeDue(card({ queue: 'new', type: 'new', due: 5 }), 10, Date.now())).toBe('—');
+  });
+
+  it('returns "today" for a review card due today', () => {
+    expect(formatRelativeDue(card({ queue: 'review', type: 'review', due: 10 }), 10, Date.now())).toBe('today');
+  });
+
+  it('returns "N days" for a review card due in the future', () => {
+    expect(formatRelativeDue(card({ queue: 'review', type: 'review', due: 13 }), 10, Date.now())).toBe('3 days');
+  });
+
+  it('clamps an overdue review card to "today" rather than a negative count', () => {
+    expect(formatRelativeDue(card({ queue: 'review', type: 'review', due: 7 }), 10, Date.now())).toBe('today');
+  });
+
+  it('returns "today" for a learning card whose due time has already passed', () => {
+    const now = 1_000_000;
+    expect(formatRelativeDue(card({ queue: 'learning', type: 'learning', due: now - 60_000 }), 0, now)).toBe('today');
+  });
+
+  it('returns "N min" for a learning card due later', () => {
+    const now = 1_000_000;
+    const due = now + 8 * 60_000;
+    expect(formatRelativeDue(card({ queue: 'learning', type: 'learning', due }), 0, now)).toBe('8 min');
   });
 });
