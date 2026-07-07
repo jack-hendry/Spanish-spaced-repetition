@@ -9,14 +9,14 @@
   align-items: center;
   gap: 1rem;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-border);
   position: sticky;
   top: 0;
-  background: #fff;
+  background: var(--color-bg);
   z-index: 1;
 
   .back {
-    color: #2563eb;
+    color: var(--color-accent);
     text-decoration: none;
     white-space: nowrap;
   }
@@ -25,30 +25,32 @@
 .search {
   flex: 1;
   padding: 0.5rem 0.7rem;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   font-size: 0.95rem;
 
   &:focus {
     outline: none;
-    border-color: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px rgba(109, 139, 255, 0.2);
   }
 }
 
 .status {
   text-align: center;
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin-top: 2rem;
 }
 
 .meta {
   padding: 0.5rem 1rem 0;
-  color: #6b7280;
+  color: var(--color-text-muted);
   font-size: 0.85rem;
 
   .capped {
-    color: #b45309;
+    color: var(--color-accent-amber);
   }
 }
 
@@ -69,19 +71,20 @@
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: #94a3b8;
-  border-bottom: 1px solid #e5e7eb;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .trow {
-  border-bottom: 1px solid #f1f5f9;
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-border);
 
   &:hover {
-    background: #f8fafc;
+    background: var(--color-surface-alt);
   }
   &--suspended {
-    color: #b45309;
-    background: #fffbeb;
+    color: var(--color-accent-amber);
+    background: rgba(245, 166, 35, 0.08);
   }
 }
 
@@ -96,14 +99,14 @@
   &--deck,
   &--state {
     font-size: 0.85rem;
-    color: #6b7280;
+    color: var(--color-text-muted);
   }
 }
 
 .link {
   border: none;
   background: none;
-  color: #2563eb;
+  color: var(--color-accent);
   cursor: pointer;
   font-size: 0.82rem;
   padding: 0;
@@ -117,7 +120,7 @@
 .editor-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.35);
+  background: rgba(0, 0, 0, 0.55);
   z-index: 10;
 }
 
@@ -127,8 +130,9 @@
   right: 0;
   bottom: 0;
   width: min(440px, 92vw);
-  background: #fff;
-  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12);
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.4);
   z-index: 11;
   display: flex;
   flex-direction: column;
@@ -139,11 +143,12 @@
   align-items: center;
   justify-content: space-between;
   padding: 1rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-border);
 
   h2 {
     margin: 0;
     font-size: 1.1rem;
+    color: var(--color-text);
   }
 }
 
@@ -163,21 +168,23 @@
 
   &__label {
     font-size: 0.8rem;
-    color: #4b5563;
+    color: var(--color-text-muted);
   }
 
   textarea {
     resize: vertical;
     padding: 0.5rem 0.6rem;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
+    background: var(--color-surface-alt);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
     font-size: 0.95rem;
     font-family: inherit;
 
     &:focus {
       outline: none;
-      border-color: #2563eb;
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+      border-color: var(--color-accent);
+      box-shadow: 0 0 0 3px rgba(109, 139, 255, 0.2);
     }
   }
 }
@@ -187,16 +194,17 @@
   justify-content: flex-end;
   gap: 0.75rem;
   padding: 1rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--color-border);
 }
 
 .btn {
   padding: 0.55rem 1.3rem;
   border: none;
-  border-radius: 8px;
-  background: #2563eb;
-  color: #fff;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  color: #0e0e10;
   font-size: 0.95rem;
+  font-weight: 600;
   cursor: pointer;
 
   &:disabled {
@@ -204,7 +212,7 @@
     cursor: default;
   }
   &--ghost {
-    background: #f3f4f6;
-    color: #374151;
+    background: var(--color-surface-alt);
+    color: var(--color-text);
   }
 }

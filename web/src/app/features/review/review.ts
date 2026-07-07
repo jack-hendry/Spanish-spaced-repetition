@@ -78,6 +78,7 @@ export class Review {
 
   readonly deckName = computed(() => {
     const id = this.deckId();
+    if (id === 'all') return 'All decks';
     const deck = id ? this.store.deckById(id) : undefined;
     return deck ? deck.name.split('::').pop()! : 'Study';
   });
@@ -108,7 +109,8 @@ export class Review {
   private async init(): Promise<void> {
     if (this.store.decks().length === 0) await this.store.load();
     const id = this.deckId();
-    if (!id || !this.queue.start(id)) {
+    const started = id === 'all' ? this.queue.startAll() : id ? this.queue.start(id) : false;
+    if (!started) {
       this.loading.set(false);
       this.finished.set(true);
       return;

@@ -8,24 +8,25 @@
   align-items: center;
   gap: 1rem;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-border);
 
   .back {
-    color: #2563eb;
+    color: var(--color-accent);
     text-decoration: none;
   }
   .title {
     font-weight: 600;
+    color: var(--color-text);
   }
 }
 
 .status {
   text-align: center;
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin-top: 3rem;
 
   &--error {
-    color: #dc2626;
+    color: var(--color-accent-red);
   }
 }
 
@@ -37,8 +38,9 @@
 }
 
 .group {
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
   padding: 0.75rem 1rem 1rem;
   display: flex;
   flex-direction: column;
@@ -47,7 +49,7 @@
   legend {
     font-weight: 600;
     padding: 0 0.4rem;
-    color: #374151;
+    color: var(--color-text);
   }
 }
 
@@ -58,20 +60,22 @@
 
   &__label {
     font-size: 0.85rem;
-    color: #4b5563;
+    color: var(--color-text-muted);
   }
 
   input,
   select {
     padding: 0.5rem 0.6rem;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
+    background: var(--color-surface-alt);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
     font-size: 1rem;
 
     &:focus {
       outline: none;
-      border-color: #2563eb;
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+      border-color: var(--color-accent);
+      box-shadow: 0 0 0 3px rgba(109, 139, 255, 0.2);
     }
   }
 
@@ -85,12 +89,12 @@
   align-items: center;
   gap: 0.5rem;
   font-size: 0.95rem;
-  color: #374151;
+  color: var(--color-text);
 }
 
 .hint {
   font-size: 0.8rem;
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin: 0;
 }
 
@@ -101,7 +105,7 @@
   margin-top: 0.25rem;
 
   &__note {
-    color: #15803d;
+    color: var(--color-accent-green);
   }
 }
 
@@ -114,10 +118,11 @@
 .btn {
   padding: 0.6rem 1.4rem;
   border: none;
-  border-radius: 8px;
-  background: #2563eb;
-  color: #fff;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  color: #0e0e10;
   font-size: 1rem;
+  font-weight: 600;
   cursor: pointer;
   text-decoration: none;
 
@@ -127,7 +132,7 @@
   }
 
   &--ghost {
-    background: #f3f4f6;
-    color: #374151;
+    background: var(--color-surface-alt);
+    color: var(--color-text);
   }
 }

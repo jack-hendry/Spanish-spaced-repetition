@@ -61,6 +61,27 @@ export class StudyQueueService {
     return true;
   }
 
+  /** Starts a session spanning every deck, using the default options group. */
+  startAll(): boolean {
+    const decks = this.store.decks();
+    const opts = this.store.deckOptions()[0];
+    if (decks.length === 0 || !opts) {
+      this.session = null;
+      return false;
+    }
+    const subtree = new Set(decks.map((d) => d.id));
+    const coll = this.store.collection();
+    const today = coll ? todayNumber(coll) : 0;
+    const { newRemaining, reviewRemaining } = remainingLimits(
+      decks,
+      subtree,
+      today,
+      opts,
+    );
+    this.session = { deckId: 'all', subtree, opts, newRemaining, reviewRemaining };
+    return true;
+  }
+
   get options(): DeckOptions | null {
     return this.session?.opts ?? null;
   }
