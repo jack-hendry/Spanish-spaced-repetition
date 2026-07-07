@@ -24,12 +24,9 @@
 
       <div class="panel">
         <header class="panel__head">
-          <div>
-            <h3>Activity</h3>
-            <span class="muted">{{ heatmapTotal() }} reviews in {{ selectedYear() }}</span>
-          </div>
+          <h3>Activity</h3>
           <div class="panel__head-right">
-            <span class="streak-badge">🔥 {{ displayStreak() }} day{{ displayStreak() === 1 ? '' : 's' }}</span>
+            <span class="streak-badge">🔥 {{ displayStreak() }} day streak</span>
             <select class="year-select" (change)="onYearChange($event)">
               @for (y of yearOptions(); track y) {
                 <option [value]="y" [selected]="y === selectedYear()">{{ y }}</option>
@@ -38,34 +35,8 @@
           </div>
         </header>
 
-        <div class="heatmap">
-          @for (week of heatWeeks(); track $index) {
-            <div class="heatmap__week">
-              @for (cell of week; track $index) {
-                <div
-                  class="heatmap__cell"
-                  [class.level-0]="!cell.inYear || cell.level === 0"
-                  [class.level-1]="cell.inYear && cell.level === 1"
-                  [class.level-2]="cell.inYear && cell.level === 2"
-                  [class.level-3]="cell.inYear && cell.level === 3"
-                  [class.level-4]="cell.inYear && cell.level === 4"
-                  [class.heatmap__cell--pad]="!cell.inYear"
-                  [title]="cellTitle(cell)"
-                ></div>
-              }
-            </div>
-          }
-        </div>
-
-        <div class="heatmap-legend">
-          <span>Less</span>
-          <span class="heatmap__cell level-0"></span>
-          <span class="heatmap__cell level-1"></span>
-          <span class="heatmap__cell level-2"></span>
-          <span class="heatmap__cell level-3"></span>
-          <span class="heatmap__cell level-4"></span>
-          <span>More</span>
-        </div>
+        <app-heatmap [reviewDays]="reviewDays()" [collection]="collection()" [year]="selectedYear()" />
+        <p class="heatmap-caption">Cards studied per day</p>
       </div>
 
       <div class="panel">
@@ -73,16 +44,7 @@
           <h3>Today's forecast</h3>
         </header>
 
-        <div class="forecast-stats">
-          <div class="forecast-stat">
-            <span class="forecast-stat__label">Total due</span>
-            <span class="forecast-stat__value">{{ totalDue() }}</span>
-          </div>
-          <div class="forecast-stat">
-            <span class="forecast-stat__label">Est. time</span>
-            <span class="forecast-stat__value">{{ formatEstTime() }}</span>
-          </div>
-        </div>
+        <p class="forecast-line">{{ formatForecastLine() }}</p>
 
         <div class="stacked">
           @for (seg of forecastSegments(); track seg.key) {

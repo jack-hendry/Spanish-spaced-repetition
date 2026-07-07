@@ -78,22 +78,17 @@
   padding: 1rem 1.1rem;
 }
 
-.stat-card__label,
-.forecast-stat__label {
+.stat-card__label {
   font-size: 0.78rem;
   color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
 
-.stat-card__value,
-.forecast-stat__value {
+.stat-card__value {
   font-weight: 600;
   color: var(--color-text);
   font-variant-numeric: tabular-nums;
-}
-
-.stat-card__value {
   font-size: 1.7rem;
 }
 
@@ -111,7 +106,7 @@
   margin-bottom: 0.9rem;
 
   h3 {
-    margin: 0 0 0.15rem;
+    margin: 0;
     font-size: 1rem;
     color: var(--color-text);
   }
@@ -123,14 +118,15 @@
   gap: 0.75rem;
 }
 
-.muted {
-  color: var(--color-text-muted);
-  font-size: 0.8rem;
-}
-
 .streak-badge {
-  font-size: 0.85rem;
-  color: var(--color-text);
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-accent-amber);
+  background: color-mix(in srgb, var(--color-accent-amber) 16%, transparent);
+  border-radius: 999px;
+  padding: 0.25rem 0.65rem;
   white-space: nowrap;
 }
 
@@ -145,78 +141,18 @@
 
 // ---- heatmap ----------------------------------------------------------------
 
-.heatmap {
-  display: flex;
-  gap: 3px;
-  overflow-x: auto;
-  padding-bottom: 0.3rem;
-}
-
-.heatmap__week {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.heatmap__cell {
-  width: 11px;
-  height: 11px;
-  border-radius: 2px;
-  background: var(--color-surface-alt);
-
-  // Compound selector so padding always wins over the level-N background,
-  // regardless of declaration order (both are single-class, equal specificity).
-  &.heatmap__cell--pad {
-    background: transparent;
-  }
-}
-
-.level-0 {
-  background: var(--color-surface-alt);
-}
-.level-1 {
-  background: rgba(79, 141, 253, 0.28);
-}
-.level-2 {
-  background: rgba(79, 141, 253, 0.52);
-}
-.level-3 {
-  background: rgba(79, 141, 253, 0.76);
-}
-.level-4 {
-  background: rgba(79, 141, 253, 1);
-}
-
-.heatmap-legend {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  margin-top: 0.5rem;
-  font-size: 0.75rem;
+.heatmap-caption {
+  margin: 0.6rem 0 0;
+  font-size: 0.78rem;
   color: var(--color-text-muted);
-
-  .heatmap__cell {
-    width: 10px;
-    height: 10px;
-  }
 }
 
 // ---- today's forecast --------------------------------------------------------
 
-.forecast-stats {
-  display: flex;
-  gap: 2rem;
-  margin-bottom: 1rem;
-}
-
-.forecast-stat {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.forecast-stat__value {
-  font-size: 1.3rem;
+.forecast-line {
+  margin: 0 0 1rem;
+  font-size: 0.95rem;
+  color: var(--color-text);
 }
 
 .stacked {

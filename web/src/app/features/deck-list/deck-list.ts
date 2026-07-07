@@ -4,25 +4,8 @@ import { lastValueFrom } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { CollectionStore, todayNumber } from '../../core/collection.store';
 import type { RevlogEntry } from '../../core/models';
-import {
-  buttonCounts,
-  dayStreak,
-  heatLevel,
-  pace,
-  studiedToday,
-  timeToday,
-  yearlyHeat,
-  type DayTime,
-} from '../../core/stats';
-
-/** One day cell in the activity heatmap grid. */
-interface HeatCell {
-  date: Date;
-  count: number;
-  level: 0 | 1 | 2 | 3 | 4;
-  /** False for padding cells outside the selected calendar year. */
-  inYear: boolean;
-}
+import { buttonCounts, dayStreak, pace, studiedToday, timeToday, type DayTime } from '../../core/stats';
+import { Heatmap } from '../../shared/heatmap/heatmap';
 
 interface ForecastSegment {
   key: string;
@@ -33,7 +16,7 @@ interface ForecastSegment {
 
 @Component({
   selector: 'app-deck-list',
-  imports: [],
+  imports: [Heatmap],
   templateUrl: './deck-list.html',
   styleUrl: './deck-list.scss',
 })
@@ -43,6 +26,7 @@ export class DeckList {
 
   readonly loading = this.store.loading;
   readonly error = this.store.error;
+  readonly collection = this.store.collection;
 
   /** True until both the collection and the review log have loaded once. */
   readonly statsLoading = signal(true);
@@ -92,7 +76,8 @@ export class DeckList {
     return coll ? todayNumber(coll) : 0;
   });
 
-  private readonly reviewDays = computed<number[]>(() => {
+  /** Public: fed directly into `<app-heatmap [reviewDays]>`. */
+  readonly reviewDays = computed<number[]>(() => {
     const coll = this.store.collection();
     if (!coll) return [];
     return this.revlog().map((e) => todayNumber(coll, e.reviewedAt));
@@ -149,52 +134,6 @@ export class DeckList {
 
   readonly selectedYear = signal(new Date().getFullYear());
 
-  /** Weeks (columns) of 7 day-cells (rows, Sun..Sat) covering the selected year. */
-  readonly heatWeeks = computed<HeatCell[][]>(() => this.buildYearGrid(this.selectedYear()));
-
-  readonly heatmapTotal = computed(() =>
-    this.heatWeeks()
-      .flat()
-      .filter((c) => c.inYear)
-      .reduce((sum, c) => sum + c.count, 0),
-  );
-
-  private buildYearGrid(year: number): HeatCell[][] {
-    const coll = this.store.collection();
-    if (!coll) return [];
-
-    const jan1 = new Date(year, 0, 1);
-    const dec31 = new Date(year, 11, 31);
-    const gridStart = new Date(jan1);
-    gridStart.setDate(jan1.getDate() - jan1.getDay());
-    const gridEnd = new Date(dec31);
-    gridEnd.setDate(dec31.getDate() + (6 - dec31.getDay()));
-
-    const startDay = todayNumber(coll, gridStart.getTime());
-    const endDay = todayNumber(coll, gridEnd.getTime());
-    const heat = yearlyHeat(this.reviewDays(), startDay, endDay);
-    const byDay = new Map(heat.map((h) => [h.day, h.count]));
-
-    const cells: HeatCell[] = [];
-    const cursor = new Date(gridStart);
-    for (let day = startDay; day <= endDay; day++) {
-      const count = byDay.get(day) ?? 0;
-      cells.push({
-        date: new Date(cursor),
-        count,
-        level: heatLevel(count),
-        inYear: cursor.getFullYear() === year,
-      });
-      cursor.setDate(cursor.getDate() + 1);
-    }
-
-    const weeks: HeatCell[][] = [];
-    for (let i = 0; i < cells.length; i += 7) {
-      weeks.push(cells.slice(i, i + 7));
-    }
-    return weeks;
-  }
-
   onYearChange(event: Event): void {
     const value = Number((event.target as HTMLSelectElement).value);
     if (!Number.isNaN(value)) this.selectedYear.set(value);
@@ -221,19 +160,12 @@ export class DeckList {
     return r === null ? '—' : `${r}%`;
   }
 
-  formatEstTime(): string {
+  /** "N due · ~X min at your usual pace", or just "N due" until a pace baseline exists. */
+  formatForecastLine(): string {
+    const due = this.totalDue();
     const ms = this.estTimeMs();
-    return ms === null ? '—' : this.formatDuration(ms);
-  }
-
-  formatCellDate(date: Date): string {
-    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-  }
-
-  cellTitle(cell: HeatCell): string {
-    if (!cell.inYear) return '';
-    const noun = cell.count === 1 ? 'review' : 'reviews';
-    return `${cell.count} ${noun} on ${this.formatCellDate(cell.date)}`;
+    if (ms === null) return `${due} due`;
+    return `${due} due · ~${this.formatDuration(ms)} at your usual pace`;
   }
 
   constructor() {

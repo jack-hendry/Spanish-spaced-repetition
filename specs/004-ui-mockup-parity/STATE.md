@@ -2,7 +2,7 @@
 
 ## Status
 - **Phase:** implement   <!-- specify | plan | implement | done -->
-- **Current task:** T005
+- **Current task:** T006
 - **Last updated:** 2026-07-07
 
 ## Original request
@@ -23,7 +23,7 @@ Decks/Browse/Stats is functionally the same, only the UI differs.)
 - [x] T002: Heatmap grid-builder helper (new core/heatmap.ts + spec)
 - [x] T003: Shared `app-heatmap` component (shared/heatmap/)
 - [x] T004: Shell sidebar restructure + dashboard slimming (same task)
-- [ ] T005: Dashboard adopts shared heatmap + polished forecast card
+- [x] T005: Dashboard adopts shared heatmap + polished forecast card
 - [ ] T006: Browse rebuild + tag saving
 - [ ] T007: Stats rebuild
 
@@ -239,6 +239,51 @@ Decks/Browse/Stats is functionally the same, only the UI differs.)
   `npm run test -w web`: 14 test files, 135 tests, all passed (up from 133;
   net +2 since the old app.spec.ts had 2 tests and the new one has 4).
 
+- 2026-07-07: T005 done. In `deck-list.ts`: imported/registered the shared
+  `Heatmap` component (`imports: [Heatmap]`); added `readonly collection =
+  this.store.collection` (mirrors the existing `readonly loading =
+  this.store.loading` pattern) so the template can bind it; widened
+  `reviewDays` from `private` to `readonly` (public) so `<app-heatmap
+  [reviewDays]>` can read it; deleted the inline `HeatCell` interface, the
+  `heatWeeks`/`heatmapTotal` computeds, `buildYearGrid`, and
+  `formatCellDate`/`cellTitle` (all redundant now that `<app-heatmap>` owns
+  grid-building/tooltips/legend internally), and dropped the now-unused
+  `heatLevel`/`yearlyHeat` imports from `core/stats.ts`. Replaced
+  `formatEstTime()` with `formatForecastLine(): string` → `"N due · ~X min at
+  your usual pace"` (reusing `totalDue()` + `formatDuration()`), degrading to
+  just `"N due"` when `estTimeMs()` is `null` (no pace baseline yet today —
+  a fallback not spelled out in the plan). In `deck-list.html`: swapped the
+  inline heatmap block for `<app-heatmap [reviewDays]="reviewDays()"
+  [collection]="collection()" [year]="selectedYear()" />` plus a
+  `.heatmap-caption` "Cards studied per day" line beneath it (dropped the old
+  "{{ heatmapTotal() }} reviews in {{ selectedYear() }}" line, superseded by
+  the caption); kept the `<h3>Activity</h3>`, amber streak badge, and
+  `<select class="year-select">` unchanged. Forecast panel's two-stat block
+  (Total due / Est. time) became a single `<p class="forecast-line">{{
+  formatForecastLine() }}</p>`; the stacked bar + dot legend were left as-is
+  (already matched the target). In `deck-list.scss`: removed dead rules
+  (`.heatmap*`, `.level-0`..`.level-4` old hardcoded rgba scale,
+  `.heatmap-legend`, `.forecast-stats`/`.forecast-stat*`, orphaned `.muted`),
+  merged `.stat-card__label`/`.forecast-stat__label` and
+  `.stat-card__value`/`.forecast-stat__value` down to the `.stat-card__*`
+  half, added `.heatmap-caption`/`.forecast-line`, and restyled
+  `.streak-badge` as an amber pill via `color-mix(in srgb,
+  var(--color-accent-amber) 16%, transparent)` — first UI use of
+  `--color-accent-amber`, no new color literals, following T003's
+  `color-mix` convention. Implementation choices not spelled out verbatim:
+  (1) streak pill text is literally `"🔥 N day streak"` per Req 13's quoted
+  string, dropping the old singular/plural "day"/"days" logic; (2)
+  `formatForecastLine()` renders `~{{ formatDuration(ms) }}` (e.g. `"~1h
+  20m"`) reusing the existing duration formatter rather than a literal `"N
+  min"` string — Req 14's wording treated as illustrative, not a format
+  spec; (3) the "Cards studied per day" caption sits below the heatmap grid
+  rather than above (minor placement call, plan only said "around it"). No
+  `deck-list.spec.ts` exists, so no spec update was needed; grepped the repo
+  to confirm no other file referenced the deleted symbols. `npm run build -w
+  web`: clean. `npm run test -w web`: 14 test files, 135 tests, all passed —
+  unchanged from the T004 baseline (T005 added no new independently-testable
+  pure logic).
+
 ## Discovered
 - `server/src/models/index.ts` (Card.due doc-comment, line ~84) says
   "learning: epoch seconds" but every actual scheduler
@@ -250,7 +295,7 @@ Decks/Browse/Stats is functionally the same, only the UI differs.)
   discipline.
 
 ## Next action
-/resume to start T005 (Dashboard adopts shared heatmap + polished forecast card)
+/resume to start T006 (Browse rebuild + tag saving)
 
 ## Blockers
 (none)
