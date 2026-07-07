@@ -13,8 +13,9 @@ active=$(grep -rlE '\*\*Phase:\*\* *(plan|implement)' specs/*/STATE.md 2>/dev/nu
 changed=$(git status --porcelain -uall 2>/dev/null | cut -c4-)
 [ -z "$changed" ] && exit 0
 
-# Harness config (specs/, .claude/, CLAUDE.md) doesn't count as source code
-code_changed=$(echo "$changed" | grep -v '^specs/' | grep -v '^\.claude/' | grep -v '^CLAUDE\.md$' | grep -v 'STATE\.md')
+# Harness config (specs/, .claude/, CLAUDE.md) doesn't count as source code,
+# nor does the live data store (data/spanish/) the running server writes to.
+code_changed=$(echo "$changed" | grep -v '^specs/' | grep -v '^\.claude/' | grep -v '^CLAUDE\.md$' | grep -v '^data/spanish/' | grep -v 'STATE\.md')
 state_changed=$(echo "$changed" | grep '^specs/.*STATE\.md')
 
 if [ -n "$code_changed" ] && [ -z "$state_changed" ]; then

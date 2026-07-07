@@ -98,7 +98,8 @@ and checks in with the user before starting the next.
   where it left off; use this after every /clear or new session
 
 **Model routing for this pipeline:**
-- spec-writer, planner: inherit (run the main session on Opus for these)
+- spec-writer, planner: inherit the main-session model (no `model:` in their
+  frontmatter — run the main session on Fable/Opus for these phases)
 - implementer: sonnet (enforced via `model: sonnet` in its agent frontmatter)
 - Keep effort at medium for implementer; use high for planner on
   complex features
