@@ -1,8 +1,8 @@
 # STATE: 004-ui-mockup-parity
 
 ## Status
-- **Phase:** implement   <!-- specify | plan | implement | done -->
-- **Current task:** T007
+- **Phase:** done   <!-- specify | plan | implement | done -->
+- **Current task:** none — feature complete
 - **Last updated:** 2026-07-07
 
 ## Original request
@@ -25,7 +25,7 @@ Decks/Browse/Stats is functionally the same, only the UI differs.)
 - [x] T004: Shell sidebar restructure + dashboard slimming (same task)
 - [x] T005: Dashboard adopts shared heatmap + polished forecast card
 - [x] T006: Browse rebuild + tag saving
-- [ ] T007: Stats rebuild
+- [x] T007: Stats rebuild
 
 ## Decisions log
 - 2026-07-07: Feature initiated. Builds on the completed 003-app-ui-redesign:
@@ -342,6 +342,77 @@ Decks/Browse/Stats is functionally the same, only the UI differs.)
   note; `formatRelativeDue`/`MATURE_THRESHOLD`/`clozeOrds`/`renderCloze` were
   already unit-tested in prior tasks and reused here unmodified).
 
+- 2026-07-07: T007 done (final task). Rewrote `features/stats/stats.{ts,html,scss}` —
+  full replacement of the pre-redesign page, not a diff. `stats.ts`'s public
+  shape: `reviews30`/`reviewsDelta`, `studyTime30`/`studyTimeDelta`, `streak`/
+  `best`, `states`/`totalCards`/`maturePct` for the four stat cards;
+  `history: HistoryBar[]` for the 14-day chart; `buttons`/`reviewsTotal`/
+  `retention` for the answer-buttons card (buttons/retention logic carried
+  over unchanged from the old component — same `buttonCounts` + pass-rate
+  formula); `reviewDays`/`collection`/`year` feeding `<app-heatmap>` directly,
+  same wiring pattern as `deck-list.ts` (T005). Every new number reuses T001
+  helpers exactly as planned: `countInRange`+`periodDelta` for (a)/(b)'s
+  vs-last-month deltas (30-day window immediately followed by the prior
+  30-day window, `[today-59, today-30]`, so the two ranges are contiguous and
+  non-overlapping), `sumTimeInRange` for (b)'s value, `dayStreak`+`bestStreak`
+  for (c), `cardStateCounts` for (d) — so, per the plan's own prediction,
+  **no new inline maths landed** and `stats.spec.ts` was not created (there
+  never was one; none was needed). Implementation choices not spelled out
+  verbatim in PLAN/SPEC: (1) `toDelta(pct: number | null): Delta | null`
+  reshapes `periodDelta`'s signed percentage into `{ value: abs, positive }`
+  so the template can pick the ▲/▼ glyph and a `delta--up`/`delta--down`
+  colour class (green/red via the existing `--color-accent-green`/`-red`
+  custom properties) without doing sign arithmetic in the template; a `null`
+  either from `periodDelta` (previous===0) simply renders no delta `<span>`
+  at all, satisfying Q7 exactly ("no delta line when null", not a placeholder
+  dash); (2) "coloured" was read as *both* directions get a colour (green up,
+  red down), not just a highlight on increases — no spec/plan text said
+  decreases should be neutral, and green/red up/down is the codebase's
+  existing convention for good/bad (e.g. the pill palette); (3) the streak
+  card uses the literal `dayStreak` (not `deck-list.ts`'s `displayStreak`
+  yesterday-carry trick from T005) since the plan explicitly names
+  `dayStreak` for this card, not the dashboard's UX massaging — a 0-until-
+  first-review-today streak is arguably more "true" for a stats page anyway;
+  (4) the 14-day chart's "first bar date-labelled" is a real calendar-date
+  string (e.g. "Jun 24") computed by a small private `dateLabel(offset)`
+  helper (`new Date(Date.now() + offset * 86_400_000)`, formatted via
+  `toLocaleDateString`) — this is arithmetic, not a `core/stats.ts` helper,
+  but judged to be display-only formatting (same category as `deck-list.ts`'s
+  pre-existing untested `formatDuration`/`formatForecastLine`/`cellTitle` in
+  `shared/heatmap/heatmap.ts`), not the kind of "new inline maths" the plan
+  meant to gate behind a spec extension; "today's bar highlighted" is a pure
+  CSS treatment (`.bar--today .bar__fill` at full `--color-accent-blue`
+  strength vs. a `color-mix(... 45%, transparent)` muted tone for the other
+  13 bars) rather than a label, per the plan's wording distinguishing "date-
+  labelled" (text) from "highlighted" (visual); (5) answer-button rows now
+  right-align `{{ b.pct }}%` (renamed the old `.brow__count`/`b.count` cell
+  to `.brow__pct`/`b.pct`) instead of the old raw count, per Req 21's
+  "right-aligned percentages"; (6) "True retention: R% over N reviews" only
+  renders when `retention() !== null` (an explicit null-check, not `@if
+  (retention(); as r)`, since a *true* 0% retention is a legitimate value
+  that a truthy-check would incorrectly hide); (7) the "Year in review"
+  heatmap has no year `<select>` (unlike the dashboard's T005 adoption) —
+  neither PLAN.md's T007 text nor SPEC Req 22 mention a selector for this
+  card, so `year` is a fixed `new Date().getFullYear()` component field, not
+  a signal; revisit if a future pass wants parity with the dashboard's
+  selector. Dropped per Q6: the old `stateSegments`/`stacked`/`.legend`
+  card-counts bar and the `dueForecast`/`forecast`/`dueTotal` future-due
+  panel, plus their now-dead SCSS (`.stacked`, `.seg--*`, `.dot`, `.legend`,
+  `.bar__fill--due`/`--rev`) and the old `← Decks` header bar (dropped for
+  the same reason T006 dropped browser's back-link — the persistent T004
+  sidebar already provides navigation; grepped to confirm no other file
+  referenced the deleted `RouterLink` import or symbols). `stats.scss` is a
+  near-full rewrite reusing `deck-list.scss`'s `.stat-card`/`.panel` chrome
+  class-for-class (duplicated rather than shared, consistent with this
+  codebase's existing per-feature SCSS convention — no shared stylesheet
+  module exists) plus new `.stat-card__delta`/`.chart-labels`/
+  `.retention-line` rules, all via `color-mix()`/existing custom properties
+  (no new colour literals, per constraints). `npm run build -w web`: clean.
+  `npm run test -w web`: 14 test files, 135 tests, all passed — unchanged
+  from the T006 baseline, confirming no regressions and no new pure logic
+  needed a spec. `npm run test` (server + web): server 17/17, web 135/135,
+  both green. This was the last task in PLAN.md; feature 004 is complete.
+
 ## Discovered
 - `server/src/models/index.ts` (Card.due doc-comment, line ~84) says
   "learning: epoch seconds" but every actual scheduler
@@ -352,8 +423,39 @@ Decks/Browse/Stats is functionally the same, only the UI differs.)
   should probably be corrected in a future pass; not fixed here per scope
   discipline.
 
+## Summary
+Feature 004 closed the visual/interaction gaps between the 003 dark redesign
+and the target mockups, frontend-only, with no server/scheduling/routing
+changes. End to end it shipped: (1) two reusable data/UI building blocks —
+pure helpers in `core/stats.ts` (`bestStreak`, `periodDelta`, `sumTimeInRange`,
+`countInRange`, `formatRelativeDue`) and a full heatmap stack (`core/heatmap.ts`'s
+`buildHeatGrid` + the standalone `shared/heatmap/app-heatmap` component with
+month/weekday labels, month gaps, hover tooltips and a labelled blue legend)
+now shared by both the dashboard and Stats; (2) a shell restructure moving the
+deck list and Decks/Browse/Stats navigation out of the dashboard and into a
+persistent `app.*` sidebar (segmented tabs, colour-dot deck rows with
+zero-hidden count pills, subdeck expand/collapse, hover-revealed per-deck
+gear, a pinned "Study all due" button) that now renders on every route; (3)
+the dashboard (`features/deck-list`) slimmed to stat cards + the shared
+heatmap + a polished one-line forecast card with a thin stacked bar; (4) a
+rebuilt Browse page (`features/browser`) with a single search input + result
+count, a FRONT/DECK/STATE/DUE table (state pills including a new Young/mature
+split, relative due strings), row selection, and an EDIT CARD panel with tag
+editing (`CollectionStore.saveNoteFields` extended to persist tags) plus
+Suspend/Save; (5) a rebuilt Stats page with four delta-aware stat cards
+(Reviews/Study time vs last month, Current streak with best-ever, Mature
+cards with % of collection), a 14-day reviews bar chart, an answer-buttons
+card with right-aligned percentages and a true-retention line, and a
+year-in-review heatmap — dropping the old card-counts stacked bar and
+future-due forecast per Q6. All seven open questions from SPEC.md (Q1–Q7)
+were resolved with their recommended defaults during implementation. Full
+suite is green: server 17/17, web 135/135 (up from the pre-004 baseline by
+the T001–T003 unit tests plus the new `app.spec.ts`/`heatmap.spec.ts` render
+tests); `npm run build -w web` clean throughout.
+
 ## Next action
-/resume to start T007 (Stats rebuild) — final task in this feature
+Feature 004-ui-mockup-parity is complete — all 7 tasks done, build and full
+test suite green. Run `/feature {description}` to start a new feature.
 
 ## Blockers
 (none)
