@@ -2,7 +2,7 @@
 
 ## Status
 - **Phase:** implement   <!-- specify | plan | implement | done -->
-- **Current task:** T006
+- **Current task:** T007
 - **Last updated:** 2026-07-07
 
 ## Original request
@@ -24,7 +24,7 @@ Decks/Browse/Stats is functionally the same, only the UI differs.)
 - [x] T003: Shared `app-heatmap` component (shared/heatmap/)
 - [x] T004: Shell sidebar restructure + dashboard slimming (same task)
 - [x] T005: Dashboard adopts shared heatmap + polished forecast card
-- [ ] T006: Browse rebuild + tag saving
+- [x] T006: Browse rebuild + tag saving
 - [ ] T007: Stats rebuild
 
 ## Decisions log
@@ -284,6 +284,64 @@ Decks/Browse/Stats is functionally the same, only the UI differs.)
   unchanged from the T004 baseline (T005 added no new independently-testable
   pure logic).
 
+- 2026-07-07: T006 done. `collection.store.ts`: `saveNoteFields(id, fields,
+  tags?)` now sends `{ fields, tags }` in one `patchNote` call (was `{ fields }`,
+  2-arg); passing `tags: undefined` when a caller omits it is harmless since
+  `HttpClient`'s JSON body serialization drops `undefined` properties.
+  `browser.ts` (full rewrite of component logic, public shape — `edit`/
+  `cancelEdit`/`toggleSuspend`/`isSuspended`/`matches`/`totalCount`/
+  `parseQuery`/500-row cap — reused verbatim): renamed `BrowserRow.question`→
+  `front`, `state`(string)→`stateLabel`+`stateClass` (pill tint suffix:
+  `new|learning|young|review|muted`), added `due` and `noteTypeName`.
+  `stateInfo(card)` replaces `stateLabel()`: splits `review` into Young (amber,
+  `interval < MATURE_THRESHOLD`) vs Review (green, mature) per Q4/Req16;
+  suspended/buried both map to a neutral `muted` pill class (not one of
+  Req16's four enumerated colors, so reused the existing "muted" convention
+  rather than inventing a fifth accent color). `frontText(note, noteType,
+  cardOrd)` reuses `clozeOrds` (to find which field carries cloze markup) and
+  `renderCloze(text, cardOrd + 1, false)` (to render that card's own deletion
+  hidden) rather than new cloze-stripping regex — for cloze note types this
+  produces Anki's own `"[...]"` placeholder (three literal dots, not a unicode
+  ellipsis — PLAN.md's "[…]" wording read as descriptive, not a literal format
+  spec); non-cloze types keep the old "first non-empty field" fallback. `due`
+  is computed once per row inside `allRows()` via `formatRelativeDue(card,
+  today, Date.now())` (T001), not a live-ticking clock — only recomputes when
+  the store's cards/notes signals change. Added `editingRow` computed
+  (`allRows().find(note.id === editingId())`) as the single source of truth
+  for the open panel, replacing separate `editingId()`/`store.notes()`
+  lookups (small simplification, not spelled out in the plan). Added
+  `draftTags`/`newTag` signals + `addTag()`/`removeTag()`; `edit()` seeds
+  `draftTags` from `row.note.tags`; `saveEdit()` calls `saveNoteFields(id,
+  this.draft(), this.draftTags())`. `browser.html`: header is now just the
+  search input (placeholder "Search cards, tags, decks…", `autofocus` per
+  Q1) + a muted "M of N cards" span — dropped the old `← Decks` back-link and
+  separate "Showing…" paragraph since the shell's persistent sidebar (T004)
+  already provides deck navigation and the plan's wording specified only
+  those two header elements. Table is FRONT/DECK/STATE/DUE (dropped the old
+  inline per-row Suspend-link action column — Suspend now lives only in the
+  edit panel per the plan). Rows are `(click)="edit(row)"` on the whole
+  `.trow`, `.trow--selected` highlight via `color-mix(in srgb,
+  var(--color-accent) 12%, transparent)`. EDIT CARD panel gained a muted
+  caption ("<deckLeaf> · <noteTypeName> · due <due>"), a Tags section (chips
+  with per-chip ✕ remove + an add-tag input, Enter-to-add), and a two-button
+  pinned footer (Suspend/Unsuspend + Save) — dropped the old standalone
+  Cancel button since the plan specifies exactly "pinned Suspend + Save" and
+  the header ✕ / backdrop-click already cancel. `browser.scss`: new
+  `.pill`/`.pill--{new,learning,young,review,muted}` rules following T003/
+  T005's `color-mix(in srgb, var(--color-accent-X) 16%, transparent)`
+  convention (no new color literals); `.tags`/`.tag-chip`/
+  `.tag-chip__remove`/`.tag-input`; `.trow--selected`; `.editor__caption`;
+  grid columns changed from 4 cols (incl. action col) to `1fr 140px 110px
+  90px` (FRONT/DECK/STATE/DUE). Removed the dead `.back` link rule and the
+  old `.trow--suspended` red-tint rule (superseded by the STATE pill itself
+  carrying that signal). Did not touch `core/stats.ts`, `core/heatmap.ts`,
+  `shared/heatmap/`, `app.*`, or `features/deck-list/` (out of scope, already
+  done). `npm run build -w web`: clean. `npm run test -w web`: 14 test files,
+  135 tests, all passed — unchanged from the T005 baseline (T006 added no new
+  independently-testable pure logic per PLAN.md's "build + manual" testing
+  note; `formatRelativeDue`/`MATURE_THRESHOLD`/`clozeOrds`/`renderCloze` were
+  already unit-tested in prior tasks and reused here unmodified).
+
 ## Discovered
 - `server/src/models/index.ts` (Card.due doc-comment, line ~84) says
   "learning: epoch seconds" but every actual scheduler
@@ -295,7 +353,7 @@ Decks/Browse/Stats is functionally the same, only the UI differs.)
   discipline.
 
 ## Next action
-/resume to start T006 (Browse rebuild + tag saving)
+/resume to start T007 (Stats rebuild) — final task in this feature
 
 ## Blockers
 (none)

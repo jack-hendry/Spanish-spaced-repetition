@@ -163,9 +163,9 @@ export class CollectionStore {
     this.notesLoaded = true;
   }
 
-  /** Persist edited note fields; the server reconciles the note's cards. */
-  saveNoteFields(id: string, fields: Record<string, string>) {
-    return lastValueFrom(this.api.patchNote(id, { fields }));
+  /** Persist edited note fields and (optionally) tags; the server reconciles the note's cards. */
+  saveNoteFields(id: string, fields: Record<string, string>, tags?: string[]) {
+    return lastValueFrom(this.api.patchNote(id, { fields, tags }));
   }
 
   /** Apply a saved note edit: refresh the note cache and reconciled cards. */
