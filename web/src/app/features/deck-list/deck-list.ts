@@ -1,10 +1,8 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { lastValueFrom } from 'rxjs';
 
 import { ApiService } from '../../core/api.service';
-import { CollectionStore, todayNumber, type DeckNode } from '../../core/collection.store';
-import { deckColor } from '../../core/deck-color';
+import { CollectionStore, todayNumber } from '../../core/collection.store';
 import type { RevlogEntry } from '../../core/models';
 import {
   buttonCounts,
@@ -35,7 +33,7 @@ interface ForecastSegment {
 
 @Component({
   selector: 'app-deck-list',
-  imports: [RouterLink],
+  imports: [],
   templateUrl: './deck-list.html',
   styleUrl: './deck-list.scss',
 })
@@ -49,21 +47,6 @@ export class DeckList {
   /** True until both the collection and the review log have loaded once. */
   readonly statsLoading = signal(true);
   private readonly revlog = signal<RevlogEntry[]>([]);
-
-  /** Names of decks whose children are expanded. Top level shown by default. */
-  private readonly expanded = signal<Set<string>>(new Set());
-
-  /** Only nodes whose ancestors are all expanded are visible. */
-  readonly visibleNodes = computed<DeckNode[]>(() => {
-    const exp = this.expanded();
-    return this.store.deckTree().filter((node) => {
-      const parts = node.deck.name.split('::');
-      for (let i = 1; i < parts.length; i++) {
-        if (!exp.has(parts.slice(0, i).join('::'))) return false;
-      }
-      return true;
-    });
-  });
 
   /** Total due across every top-level deck (children are already rolled up). */
   readonly totalDue = computed(() => {
@@ -253,8 +236,6 @@ export class DeckList {
     return `${cell.count} ${noun} on ${this.formatCellDate(cell.date)}`;
   }
 
-  // ---- deck tree (unchanged expand/collapse logic) --------------------------
-
   constructor() {
     void this.init();
   }
@@ -265,34 +246,5 @@ export class DeckList {
     }
     this.revlog.set(await lastValueFrom(this.api.getRevlog()));
     this.statsLoading.set(false);
-  }
-
-  isExpanded(node: DeckNode): boolean {
-    return this.expanded().has(node.deck.name);
-  }
-
-  toggle(node: DeckNode): void {
-    if (!node.hasChildren) return;
-    this.expanded.update((prev) => {
-      const next = new Set(prev);
-      if (next.has(node.deck.name)) next.delete(node.deck.name);
-      else next.add(node.deck.name);
-      return next;
-    });
-  }
-
-  /** Leaf label = last segment of the hierarchical name. */
-  leafName(node: DeckNode): string {
-    const parts = node.deck.name.split('::');
-    return parts[parts.length - 1];
-  }
-
-  hasDue(node: DeckNode): boolean {
-    return node.total.new + node.total.learning + node.total.review > 0;
-  }
-
-  /** Deterministic per-deck color dot (see core/deck-color.ts). */
-  colorFor(name: string): string {
-    return deckColor(name);
   }
 }

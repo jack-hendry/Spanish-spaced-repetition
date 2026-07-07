@@ -2,7 +2,7 @@
 
 ## Status
 - **Phase:** implement   <!-- specify | plan | implement | done -->
-- **Current task:** T004
+- **Current task:** T005
 - **Last updated:** 2026-07-07
 
 ## Original request
@@ -22,7 +22,7 @@ Decks/Browse/Stats is functionally the same, only the UI differs.)
 - [x] T001: Pure stat helpers + relative-due formatter (core/stats.ts + spec)
 - [x] T002: Heatmap grid-builder helper (new core/heatmap.ts + spec)
 - [x] T003: Shared `app-heatmap` component (shared/heatmap/)
-- [ ] T004: Shell sidebar restructure + dashboard slimming (same task)
+- [x] T004: Shell sidebar restructure + dashboard slimming (same task)
 - [ ] T005: Dashboard adopts shared heatmap + polished forecast card
 - [ ] T006: Browse rebuild + tag saving
 - [ ] T007: Stats rebuild
@@ -179,6 +179,66 @@ Decks/Browse/Stats is functionally the same, only the UI differs.)
   Angular test pipeline also type-checked the new component even though
   nothing imports it yet, confirming it compiles standalone.
 
+- 2026-07-07: T004 done. `app.ts` now injects `CollectionStore` (+ `Router`)
+  and ports `expanded`/`visibleNodes`/`totalDue`/`leafName`/`hasDue`/`colorFor`
+  from the old `deck-list.ts` verbatim (same expand-by-default-top-level
+  semantics); the shell's `constructor()` calls the same guarded
+  `store.load()` deck-list used (`if (collection() === null) void load()`).
+  `app.html` replaced the brand + vertical nav with: a 3-tab segmented pill
+  (`.tabs`/`.tab`/`.tab--active`, `routerLink`+`routerLinkActive`, Decks exact-
+  matched); a "Decks" label row with a search icon (`routerLink="/browse"`,
+  Q1) and a `disabled` add `<button>` (Q2, non-functional per non-goals); deck
+  rows now each an `<a class="deck-row" [routerLink]="['/study', deck.id]">`
+  wrapping a disclosure `<span role="button">` twisty, the color dot, name,
+  count pills (each wrapped in `@if (...> 0)` so zero-count pills don't
+  render — Req 3), and a `<span class="gear" role="button">` that's
+  `opacity: 0` until `.deck-row:hover` (Q3); a pinned `.study-all` anchor at
+  the bottom linking `/study/all` with a trailing total-due count. Implementation
+  choices not spelled out verbatim in PLAN/SPEC: (1) the twisty and gear are
+  `<span role="button" tabindex="0">` rather than `<button>`, specifically to
+  avoid nesting interactive `<button>` elements inside the row's outer `<a>`
+  (invalid HTML5 — `<a>` must not contain interactive-content descendants);
+  their `(click)` handlers (`onToggleClick`/`onGearClick` in `app.ts`) call
+  `event.preventDefault()` + `event.stopPropagation()` so clicking them
+  doesn't also trigger the row's `/study/:deckId` navigation, and `onGearClick`
+  navigates programmatically via injected `Router` since it can't be a nested
+  `routerLink` anchor either; (2) unlike the old deck-list's "Study" link,
+  the row is **unconditionally** a study link now (Req 4 doesn't condition
+  this on `hasDue`, unlike the old aside's `study--disabled` treatment) —
+  `hasDue()` is still ported/kept (currently unused in the template) since
+  a later task may want it, noted here rather than deleted to stay in scope;
+  (3) `totalDue` is computed independently in `app.ts` off `deckTree()`,
+  matching the plan's explicit "avoid coupling the shell to the dashboard"
+  note — `deck-list.ts` keeps its own separate `totalDue` for the forecast
+  card unchanged. Simultaneously removed the `<aside class="dashboard__decks">`
+  block and all its backing TS (`expanded`/`visibleNodes`/`toggle`/
+  `isExpanded`/`leafName`/`hasDue`/`colorFor`, the `DeckNode`/`deckColor`/
+  `RouterLink` imports) and SCSS (`.dashboard__decks`, `.decks__head`,
+  `.tree-scroll`, `.tree`, `.row`, `.twisty`, `.deck-dot`, `.name`, `.counts`,
+  `.count`, `.study`, `.gear`, `.study-all*`) from `features/deck-list`; the
+  dashboard's `<section class="dashboard__stats">` (stat cards + inline
+  heatmap + forecast, all untouched per scope) is now the sole content of
+  `.dashboard`, which dropped its flex-row layout for a single centered
+  column (`max-width: 1000px`). Added `app.spec.ts` (replacing the old
+  003-era "renders the brand" smoke test, which no longer applies since the
+  brand+nav markup is gone): populates `CollectionStore` signals directly
+  (never calls `load()`, per the carried-forward 003 gotcha) with a
+  two-deck/one-card fixture (French has zero cards, Spanish has one new
+  card) and asserts (a) the zero-count French row renders no `.count`
+  elements while Spanish renders exactly one (`.count--new` = "1"); (b) the
+  Decks tab is `.tab--active` on `/` and Browse is not; (c) after navigating
+  to `/browse`, Browse becomes active and Decks does not. The route-active
+  tests needed two things not obvious from other specs in this codebase
+  (no prior render test exercised `routerLinkActive` here): `provideRouter`
+  needed at least trivial stub routes for `''`/`'browse'`/`'stats'` (navigating
+  to a URL with zero configured routes throws `NG04002: Cannot match any
+  routes`), and `RouterLinkActive.update()` applies its classes inside a
+  `queueMicrotask`, so each navigation needs `fixture.detectChanges()` +
+  `await fixture.whenStable()` + a second `detectChanges()` before the
+  active class is queryable in the DOM. `npm run build -w web`: clean.
+  `npm run test -w web`: 14 test files, 135 tests, all passed (up from 133;
+  net +2 since the old app.spec.ts had 2 tests and the new one has 4).
+
 ## Discovered
 - `server/src/models/index.ts` (Card.due doc-comment, line ~84) says
   "learning: epoch seconds" but every actual scheduler
@@ -190,7 +250,7 @@ Decks/Browse/Stats is functionally the same, only the UI differs.)
   discipline.
 
 ## Next action
-/resume to start T004 (Shell sidebar restructure + dashboard slimming, same task)
+/resume to start T005 (Dashboard adopts shared heatmap + polished forecast card)
 
 ## Blockers
 (none)
