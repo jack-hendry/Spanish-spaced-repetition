@@ -47,12 +47,28 @@ Never point a test at the live `data/spanish/`. Two mechanisms:
   underneath, but always invoke via `npm run test -w web`, never `npx vitest`
   in `web/` (the builder wires TS paths and the browser-ish env).
 - Both suites: `npm run test` at the root runs server then web.
+- Visual capture: `npm run shoot -- <route...> [--vw WxH[,WxH]] [--out dir]`
+  (`tools/shoot.mjs`, headless Playwright/Chromium). Needs `npm run dev`
+  running (it screenshots the live app at :4200 and fails fast if it isn't up).
+  Default viewport 1440×900; full-page PNGs land in the scratch dir and are
+  ephemeral (not committed). Id-free routes: `/ /browse /stats /study/all
+  /options/opts-default`.
 
 ## Definition of done (SDD tasks)
 
 1. When the task's "done when" is testable, write the failing test first.
 2. Full root `npm run test` green before checking the task off in STATE.md —
    never finish on a broken build, and never scope the final run to one file.
+3. **For UI/visual tasks, additionally screenshot the affected route(s) and
+   compare against the target.** With `npm run dev` up, run
+   `npm run shoot -- <route> [--vw WxH]` (see Runner facts), then `Read` the
+   PNG alongside the target mockup in `specs/{feature}/mockups/`. Log the
+   deltas — spacing, alignment, wrapping, and colour vs the `--color-accent-*`
+   / surface tokens in `web/src/styles.scss` — and only check the task off when
+   they are non-material. This is an **observation/comparison** step, not a
+   vitest assertion: it complements item 2's green suite, it does not replace
+   it, and it is *not* a pixel-diff (mockups are design targets, not
+   pixel-identical renders — Claude reasons about the delta).
 
 ## Gotchas
 
