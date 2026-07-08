@@ -1,50 +1,98 @@
 <div class="app-shell">
   <aside class="app-sidebar">
-    <a routerLink="/" class="brand">{{ title }}</a>
-
-    <nav class="app-nav">
+    <nav class="tabs" aria-label="Primary">
       <a
         routerLink="/"
-        routerLinkActive="active"
+        routerLinkActive="tab--active"
         [routerLinkActiveOptions]="{ exact: true }"
-        class="nav-link"
-      >
-        <svg class="nav-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-          <path
-            d="M10 2 2 6l8 4 8-4-8-4Z M2 10l8 4 8-4 M2 14l8 4 8-4"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        </svg>
-        <span>Decks</span>
-      </a>
-      <a routerLink="/browse" routerLinkActive="active" class="nav-link">
-        <svg class="nav-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-          <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.5" />
-          <path
-            d="m17 17-4-4"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-          />
-        </svg>
-        <span>Browse</span>
-      </a>
-      <a routerLink="/stats" routerLinkActive="active" class="nav-link">
-        <svg class="nav-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-          <path
-            d="M3 17V3 M3 17h14 M7 17v-6 M11 17V7 M15 17v-9"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        </svg>
-        <span>Stats</span>
-      </a>
+        class="tab"
+      >Decks</a>
+      <a routerLink="/browse" routerLinkActive="tab--active" class="tab">Browse</a>
+      <a routerLink="/stats" routerLinkActive="tab--active" class="tab">Stats</a>
     </nav>
+
+    <div class="decks-head">
+      <span class="decks-head__label">Decks</span>
+      <div class="decks-head__actions">
+        <a
+          routerLink="/browse"
+          class="icon-btn"
+          aria-label="Search cards"
+          title="Search cards"
+        >
+          <svg class="icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.5" />
+            <path d="m17 17-4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          </svg>
+        </a>
+        <button
+          type="button"
+          class="icon-btn"
+          disabled
+          aria-label="Add deck"
+          title="Add deck"
+        >
+          <svg class="icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M10 3v14 M3 10h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="tree-scroll">
+      @if (loading()) {
+        <p class="status">Loading collection…</p>
+      } @else if (error()) {
+        <p class="status status--error">{{ error() }}</p>
+      } @else {
+        <ul class="tree">
+          @for (node of visibleNodes(); track node.deck.id) {
+            <li class="row" [style.paddingLeft.px]="8 + node.depth * 16">
+              <a class="deck-row" [routerLink]="['/study', node.deck.id]">
+                <span
+                  class="twisty"
+                  [class.twisty--hidden]="!node.hasChildren"
+                  (click)="onToggleClick($event, node)"
+                  [attr.aria-label]="isExpanded(node) ? 'Collapse' : 'Expand'"
+                  role="button"
+                  tabindex="0"
+                >{{ node.hasChildren ? (isExpanded(node) ? '▾' : '▸') : '' }}</span>
+
+                <span class="deck-dot" [style.background]="colorFor(node.deck.name)"></span>
+
+                <span class="name">{{ leafName(node) }}</span>
+
+                <span class="counts">
+                  @if (node.total.new > 0) {
+                    <span class="count count--new">{{ node.total.new }}</span>
+                  }
+                  @if (node.total.learning > 0) {
+                    <span class="count count--learning">{{ node.total.learning }}</span>
+                  }
+                  @if (node.total.review > 0) {
+                    <span class="count count--review">{{ node.total.review }}</span>
+                  }
+                </span>
+
+                <span
+                  class="gear"
+                  (click)="onGearClick($event, node)"
+                  aria-label="Deck options"
+                  title="Deck options"
+                  role="button"
+                  tabindex="0"
+                >⚙</span>
+              </a>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+
+    <a class="study-all" routerLink="/study/all">
+      <span class="study-all__label">Study all due</span>
+      <span class="study-all__count">{{ totalDue() }}</span>
+    </a>
   </aside>
 
   <main class="app-main">

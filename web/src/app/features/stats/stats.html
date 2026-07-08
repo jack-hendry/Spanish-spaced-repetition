@@ -1,86 +1,87 @@
 <section class="stats">
-  <header class="stats__bar">
-    <a routerLink="/" class="back">← Decks</a>
-    <span class="title">Statistics</span>
-  </header>
-
   @if (loading()) {
     <p class="status">Loading…</p>
   } @else {
-    <!-- Card counts -->
-    <div class="card">
-      <h2>Card counts <span class="muted">· {{ totalCards() }} total</span></h2>
-      @if (totalCards() > 0) {
-        <div class="stacked">
-          @for (seg of stateSegments(); track seg.key) {
-            <div
-              class="stacked__seg {{ seg.cls }}"
-              [style.width.%]="seg.pct"
-              [title]="seg.key + ': ' + seg.count"
-            ></div>
-          }
-        </div>
-        <ul class="legend">
-          @for (seg of stateSegments(); track seg.key) {
-            <li><span class="dot {{ seg.cls }}"></span>{{ seg.key }} — {{ seg.count }}</li>
-          }
-        </ul>
-      } @else {
-        <p class="muted">No cards yet.</p>
-      }
+    <div class="stat-cards">
+      <div class="stat-card">
+        <span class="stat-card__label">Reviews</span>
+        <span class="stat-card__value">{{ reviews30() }}</span>
+        @if (reviewsDelta(); as d) {
+          <span class="stat-card__delta" [class.delta--up]="d.positive" [class.delta--down]="!d.positive">
+            {{ d.positive ? '▲' : '▼' }} {{ d.value }}% vs last month
+          </span>
+        }
+      </div>
+
+      <div class="stat-card">
+        <span class="stat-card__label">Study time</span>
+        <span class="stat-card__value">{{ formatDuration(studyTime30()) }}</span>
+        @if (studyTimeDelta(); as d) {
+          <span class="stat-card__delta" [class.delta--up]="d.positive" [class.delta--down]="!d.positive">
+            {{ d.positive ? '▲' : '▼' }} {{ d.value }}% vs last month
+          </span>
+        }
+      </div>
+
+      <div class="stat-card">
+        <span class="stat-card__label">Current streak</span>
+        <span class="stat-card__value">{{ streak() }}</span>
+        <span class="stat-card__muted">best: {{ best() }}</span>
+      </div>
+
+      <div class="stat-card">
+        <span class="stat-card__label">Mature cards</span>
+        <span class="stat-card__value">{{ states().mature }}</span>
+        <span class="stat-card__muted">{{ maturePct() }}% of collection</span>
+      </div>
     </div>
 
-    <!-- Future due -->
-    <div class="card">
-      <h2>Future due <span class="muted">· next {{ forecast().length }} days · {{ dueTotal() }} reviews</span></h2>
+    <div class="panel">
+      <header class="panel__head">
+        <h3>Reviews — last 14 days</h3>
+      </header>
       <div class="chart">
-        @for (bar of forecast(); track $index) {
-          <div class="bar" [title]="bar.label + ': ' + bar.count">
-            <div class="bar__fill bar__fill--due" [style.height.%]="bar.pct"></div>
+        @for (bar of history(); track $index) {
+          <div class="bar" [class.bar--today]="bar.isToday" [title]="bar.tooltip">
+            <div class="bar__fill" [style.height.%]="bar.pct"></div>
           </div>
+        }
+      </div>
+      <div class="chart-labels">
+        @for (bar of history(); track $index) {
+          <span class="chart-labels__item">{{ bar.dateLabel }}</span>
         }
       </div>
     </div>
 
-    <!-- Reviews per day -->
-    <div class="card">
-      <h2>Reviews <span class="muted">· last {{ history().length }} days · {{ reviewsTotal() }} total</span></h2>
-      @if (reviewsTotal() > 0) {
-        <div class="chart">
-          @for (bar of history(); track $index) {
-            <div class="bar" [title]="bar.label + ': ' + bar.count">
-              <div class="bar__fill bar__fill--rev" [style.height.%]="bar.pct"></div>
-            </div>
-          }
-        </div>
-      } @else {
-        <p class="muted">No reviews logged yet.</p>
+    <div class="panel">
+      <header class="panel__head">
+        <h3>Answer buttons</h3>
+      </header>
+      <ul class="buttons">
+        @for (b of buttons(); track b.label) {
+          <li class="brow">
+            <span class="brow__label">{{ b.label }}</span>
+            <span class="brow__track">
+              <span class="brow__fill {{ b.cls }}" [style.width.%]="b.pct"></span>
+            </span>
+            <span class="brow__pct">{{ b.pct }}%</span>
+          </li>
+        }
+      </ul>
+      @if (retention() !== null) {
+        <p class="retention-line">
+          True retention: <span class="retention-line__value">{{ retention() }}%</span> over
+          {{ reviewsTotal() }} reviews
+        </p>
       }
     </div>
 
-    <!-- Answer buttons -->
-    <div class="card">
-      <h2>
-        Answer buttons
-        @if (retention() !== null) {
-          <span class="muted">· {{ retention() }}% pass rate</span>
-        }
-      </h2>
-      @if (reviewsTotal() > 0) {
-        <ul class="buttons">
-          @for (b of buttons(); track b.label) {
-            <li class="brow">
-              <span class="brow__label">{{ b.label }}</span>
-              <span class="brow__track">
-                <span class="brow__fill {{ b.cls }}" [style.width.%]="b.pct"></span>
-              </span>
-              <span class="brow__count">{{ b.count }}</span>
-            </li>
-          }
-        </ul>
-      } @else {
-        <p class="muted">No reviews logged yet.</p>
-      }
+    <div class="panel">
+      <header class="panel__head">
+        <h3>Year in review — {{ year }}</h3>
+      </header>
+      <app-heatmap [reviewDays]="reviewDays()" [collection]="collection()" [year]="year" />
     </div>
   }
 </section>

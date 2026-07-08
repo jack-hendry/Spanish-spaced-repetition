@@ -1,41 +1,7 @@
 .dashboard {
-  display: flex;
-  align-items: flex-start;
-  gap: 1.5rem;
   padding: 1.5rem;
-  max-width: 1400px;
+  max-width: 1000px;
   margin: 0 auto;
-}
-
-// ---- left column: deck sidebar ---------------------------------------------
-
-.dashboard__decks {
-  flex: 0 0 340px;
-  width: 340px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: 1rem;
-  max-height: calc(100vh - 3rem);
-  position: sticky;
-  top: 1.5rem;
-}
-
-.decks__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  padding-bottom: 0.6rem;
-  border-bottom: 1px solid var(--color-border);
-
-  h2 {
-    margin: 0;
-    font-size: 1.05rem;
-    color: var(--color-text);
-  }
 }
 
 .legend {
@@ -86,148 +52,11 @@
   padding: 1rem 0;
   color: var(--color-text-muted);
   font-size: 0.9rem;
-
-  &--error {
-    color: var(--color-accent-red);
-  }
 }
 
-.tree-scroll {
-  flex: 1 1 auto;
-  overflow-y: auto;
-  min-height: 0;
-}
-
-.tree {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.row {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  height: 36px;
-  border-bottom: 1px solid var(--color-border);
-
-  &:hover {
-    background: var(--color-surface-alt);
-  }
-}
-
-.twisty {
-  width: 16px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  color: var(--color-text-muted);
-  font-size: 0.75rem;
-  padding: 0;
-
-  &--hidden {
-    visibility: hidden;
-    cursor: default;
-  }
-}
-
-.deck-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex: none;
-}
-
-.name {
-  flex: 1;
-  cursor: pointer;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--color-text);
-  font-size: 0.9rem;
-}
-
-.counts {
-  display: flex;
-  gap: 0.55rem;
-  justify-content: flex-end;
-  font-variant-numeric: tabular-nums;
-  font-size: 0.82rem;
-}
-
-.count {
-  min-width: 1.4rem;
-  text-align: right;
-
-  &--new {
-    color: var(--color-accent-blue);
-  }
-  &--learning {
-    color: var(--color-accent-red);
-  }
-  &--review {
-    color: var(--color-accent-green);
-  }
-}
-
-.study {
-  width: 44px;
-  text-align: center;
-  margin-left: 0.4rem;
-  font-size: 0.78rem;
-  text-decoration: none;
-  color: var(--color-accent);
-
-  &--disabled {
-    color: var(--color-text-muted);
-    opacity: 0.4;
-    pointer-events: none;
-  }
-}
-
-.gear {
-  width: 20px;
-  text-align: center;
-  margin-left: 0.15rem;
-  text-decoration: none;
-  color: var(--color-text-muted);
-  font-size: 0.9rem;
-
-  &:hover {
-    color: var(--color-text);
-  }
-}
-
-.study-all {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.7rem 0.9rem;
-  border-radius: var(--radius-md);
-  background: var(--color-accent);
-  color: #0e0e10;
-  font-weight: 600;
-  font-size: 0.9rem;
-  text-decoration: none;
-  flex: none;
-
-  &--disabled {
-    background: var(--color-surface-alt);
-    color: var(--color-text-muted);
-    pointer-events: none;
-  }
-}
-
-.study-all__count {
-  font-variant-numeric: tabular-nums;
-}
-
-// ---- right column: stats ---------------------------------------------------
+// ---- stats -------------------------------------------------------------------
 
 .dashboard__stats {
-  flex: 1 1 auto;
-  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
@@ -249,22 +78,17 @@
   padding: 1rem 1.1rem;
 }
 
-.stat-card__label,
-.forecast-stat__label {
+.stat-card__label {
   font-size: 0.78rem;
   color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
 
-.stat-card__value,
-.forecast-stat__value {
+.stat-card__value {
   font-weight: 600;
   color: var(--color-text);
   font-variant-numeric: tabular-nums;
-}
-
-.stat-card__value {
   font-size: 1.7rem;
 }
 
@@ -282,7 +106,7 @@
   margin-bottom: 0.9rem;
 
   h3 {
-    margin: 0 0 0.15rem;
+    margin: 0;
     font-size: 1rem;
     color: var(--color-text);
   }
@@ -294,14 +118,15 @@
   gap: 0.75rem;
 }
 
-.muted {
-  color: var(--color-text-muted);
-  font-size: 0.8rem;
-}
-
 .streak-badge {
-  font-size: 0.85rem;
-  color: var(--color-text);
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-accent-amber);
+  background: color-mix(in srgb, var(--color-accent-amber) 16%, transparent);
+  border-radius: 999px;
+  padding: 0.25rem 0.65rem;
   white-space: nowrap;
 }
 
@@ -316,78 +141,18 @@
 
 // ---- heatmap ----------------------------------------------------------------
 
-.heatmap {
-  display: flex;
-  gap: 3px;
-  overflow-x: auto;
-  padding-bottom: 0.3rem;
-}
-
-.heatmap__week {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.heatmap__cell {
-  width: 11px;
-  height: 11px;
-  border-radius: 2px;
-  background: var(--color-surface-alt);
-
-  // Compound selector so padding always wins over the level-N background,
-  // regardless of declaration order (both are single-class, equal specificity).
-  &.heatmap__cell--pad {
-    background: transparent;
-  }
-}
-
-.level-0 {
-  background: var(--color-surface-alt);
-}
-.level-1 {
-  background: rgba(79, 141, 253, 0.28);
-}
-.level-2 {
-  background: rgba(79, 141, 253, 0.52);
-}
-.level-3 {
-  background: rgba(79, 141, 253, 0.76);
-}
-.level-4 {
-  background: rgba(79, 141, 253, 1);
-}
-
-.heatmap-legend {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  margin-top: 0.5rem;
-  font-size: 0.75rem;
+.heatmap-caption {
+  margin: 0.6rem 0 0;
+  font-size: 0.78rem;
   color: var(--color-text-muted);
-
-  .heatmap__cell {
-    width: 10px;
-    height: 10px;
-  }
 }
 
 // ---- today's forecast --------------------------------------------------------
 
-.forecast-stats {
-  display: flex;
-  gap: 2rem;
-  margin-bottom: 1rem;
-}
-
-.forecast-stat {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.forecast-stat__value {
-  font-size: 1.3rem;
+.forecast-line {
+  margin: 0 0 1rem;
+  font-size: 0.95rem;
+  color: var(--color-text);
 }
 
 .stacked {

@@ -1,44 +1,45 @@
 <section class="browser">
   <header class="browser__bar">
-    <a routerLink="/" class="back">← Decks</a>
     <input
       class="search"
-      placeholder="Search…  e.g.  gato  deck:verbs  is:due  tag:grammar"
+      placeholder="Search cards, tags, decks…"
       [ngModel]="query()"
       (ngModelChange)="query.set($event)"
       autocomplete="off"
       spellcheck="false"
+      autofocus
     />
+    <span class="meta">
+      {{ matches().length }} of {{ totalCount() }} cards
+      @if (matches().length >= ROW_CAP) {
+        <span class="capped">· showing first {{ ROW_CAP }}</span>
+      }
+    </span>
   </header>
 
   @if (loading()) {
     <p class="status">Loading…</p>
   } @else {
-    <p class="meta">
-      Showing {{ matches().length }} of {{ totalCount() }}
-      @if (matches().length >= ROW_CAP) {
-        <span class="capped">(first {{ ROW_CAP }} — refine your search)</span>
-      }
-    </p>
-
     <div class="table">
       <div class="thead">
-        <span class="col col--q">Question</span>
+        <span class="col col--front">Front</span>
         <span class="col col--deck">Deck</span>
         <span class="col col--state">State</span>
-        <span class="col col--act"></span>
+        <span class="col col--due">Due</span>
       </div>
 
       @for (row of matches(); track row.card.id) {
-        <div class="trow" [class.trow--suspended]="isSuspended(row)">
-          <span class="col col--q" (click)="edit(row)" title="Edit note">{{ row.question }}</span>
+        <div
+          class="trow"
+          [class.trow--selected]="editingId() === row.note.id"
+          (click)="edit(row)"
+        >
+          <span class="col col--front">{{ row.front }}</span>
           <span class="col col--deck">{{ row.deckLeaf }}</span>
-          <span class="col col--state">{{ row.state }}</span>
-          <span class="col col--act">
-            <button class="link" [disabled]="busy()" (click)="toggleSuspend(row)">
-              {{ isSuspended(row) ? 'Unsuspend' : 'Suspend' }}
-            </button>
+          <span class="col col--state">
+            <span class="pill pill--{{ row.stateClass }}">{{ row.stateLabel }}</span>
           </span>
+          <span class="col col--due">{{ row.due }}</span>
         </div>
       } @empty {
         <p class="status">No cards match.</p>
@@ -46,13 +47,15 @@
     </div>
   }
 
-  @if (editingId(); as id) {
+  @if (editingRow(); as row) {
     <div class="editor-backdrop" (click)="cancelEdit()"></div>
     <aside class="editor">
       <header class="editor__head">
-        <h2>Edit note</h2>
+        <h2>Edit card</h2>
         <button class="link" (click)="cancelEdit()">✕</button>
       </header>
+
+      <p class="editor__caption">{{ row.deckLeaf }} · {{ row.noteTypeName }} · due {{ row.due }}</p>
 
       <div class="editor__body">
         @for (f of editFields(); track f.name) {
@@ -65,10 +68,38 @@
             ></textarea>
           </label>
         }
+
+        <div class="field">
+          <span class="field__label">Tags</span>
+          <div class="tags">
+            @for (tag of draftTags(); track tag) {
+              <span class="tag-chip">
+                {{ tag }}
+                <button
+                  type="button"
+                  class="tag-chip__remove"
+                  aria-label="Remove tag"
+                  (click)="removeTag(tag)"
+                >✕</button>
+              </span>
+            }
+            <input
+              class="tag-input"
+              placeholder="Add tag…"
+              [ngModel]="newTag()"
+              (ngModelChange)="newTag.set($event)"
+              (keydown.enter)="addTag(); $event.preventDefault()"
+              autocomplete="off"
+              spellcheck="false"
+            />
+          </div>
+        </div>
       </div>
 
       <footer class="editor__foot">
-        <button class="btn btn--ghost" (click)="cancelEdit()">Cancel</button>
+        <button class="btn btn--ghost" [disabled]="busy()" (click)="toggleSuspend(row)">
+          {{ isSuspended(row) ? 'Unsuspend' : 'Suspend' }}
+        </button>
         <button class="btn" [disabled]="busy()" (click)="saveEdit()">
           {{ busy() ? 'Saving…' : 'Save' }}
         </button>

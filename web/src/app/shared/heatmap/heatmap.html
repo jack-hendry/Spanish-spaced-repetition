@@ -1,0 +1,41 @@
+<div class="heatmap-wrap">
+  <div class="heatmap__weekdays">
+    <span class="heatmap__weekday-spacer"></span>
+    @for (label of weekdayLabels; track label) {
+      <span class="heatmap__weekday-label">{{ label }}</span>
+    }
+  </div>
+
+  <div class="heatmap__grid" [style.grid-template-columns]="gridTemplateColumns()">
+    @for (m of monthLabels(); track m.name + m.column) {
+      <span class="heatmap__month-label" [style.grid-column]="m.column" style="grid-row: 1;">{{
+        m.name
+      }}</span>
+    }
+
+    @for (week of grid().weeks; track $index; let wi = $index) {
+      @for (displayRow of displayRows; track displayRow) {
+        <div
+          class="heatmap__cell level-{{ orderedCell(week, displayRow).level }}"
+          [class.heatmap__cell--pad]="!orderedCell(week, displayRow).inYear"
+          [style.grid-column]="weekColumns()[wi]"
+          [style.grid-row]="displayRow + 2"
+          [title]="cellTitle(orderedCell(week, displayRow))"
+        ></div>
+      }
+    }
+  </div>
+</div>
+
+<div class="heatmap__legend">
+  <span class="heatmap__legend-swatch level-0"></span>
+  <span class="heatmap__legend-label">0</span>
+  <span class="heatmap__legend-swatch level-1"></span>
+  <span class="heatmap__legend-label">1–9</span>
+  <span class="heatmap__legend-swatch level-2"></span>
+  <span class="heatmap__legend-label">10–19</span>
+  <span class="heatmap__legend-swatch level-3"></span>
+  <span class="heatmap__legend-label">20–39</span>
+  <span class="heatmap__legend-swatch level-4"></span>
+  <span class="heatmap__legend-label">40+</span>
+</div>

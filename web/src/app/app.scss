@@ -7,10 +7,10 @@
 .app-sidebar {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  flex: 0 0 216px;
-  width: 216px;
-  padding: 1.25rem 0.75rem;
+  gap: 0.9rem;
+  flex: 0 0 280px;
+  width: 280px;
+  padding: 1rem 0.9rem;
   background: var(--color-surface);
   border-right: 1px solid var(--color-border);
   position: sticky;
@@ -19,49 +19,232 @@
   overflow-y: auto;
 }
 
-.brand {
-  padding: 0 0.5rem;
-  font-weight: 600;
-  font-size: 1.05rem;
-  letter-spacing: 0.01em;
-  color: var(--color-text);
-  text-decoration: none;
-}
+// ---- segmented pill tabs ---------------------------------------------------
 
-.app-nav {
+.tabs {
   display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.nav-link {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  padding: 0.55rem 0.75rem;
+  gap: 0.2rem;
+  background: var(--color-surface-alt);
   border-radius: var(--radius-md);
+  padding: 0.2rem;
+}
+
+.tab {
+  flex: 1 1 0;
+  text-align: center;
+  padding: 0.4rem 0.5rem;
+  border-radius: var(--radius-sm);
   color: var(--color-text-muted);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 500;
   text-decoration: none;
   transition: background-color 0.15s ease, color 0.15s ease;
+
+  &:hover {
+    color: var(--color-text);
+  }
+
+  &.tab--active {
+    background: var(--color-surface);
+    color: var(--color-text);
+  }
+}
+
+// ---- "DECKS" label row ------------------------------------------------------
+
+.decks-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.15rem;
+}
+
+.decks-head__label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.decks-head__actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  text-decoration: none;
 
   &:hover {
     background: var(--color-surface-alt);
     color: var(--color-text);
   }
 
-  &.active {
-    background: var(--color-surface-alt);
-    color: var(--color-text);
-    box-shadow: inset 2px 0 0 var(--color-accent);
+  &:disabled {
+    opacity: 0.35;
+    cursor: default;
+
+    &:hover {
+      background: none;
+      color: var(--color-text-muted);
+    }
   }
 }
 
-.nav-icon {
-  width: 18px;
-  height: 18px;
+.icon {
+  width: 15px;
+  height: 15px;
+}
+
+// ---- deck tree ---------------------------------------------------------------
+
+.status {
+  padding: 0.75rem 0.15rem;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+
+  &--error {
+    color: var(--color-accent-red);
+  }
+}
+
+.tree-scroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.tree {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.row {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.deck-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 36px;
+  color: inherit;
+  text-decoration: none;
+
+  &:hover {
+    background: var(--color-surface-alt);
+  }
+
+  &:hover .gear {
+    opacity: 1;
+  }
+}
+
+.twisty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
   flex: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+
+  &--hidden {
+    visibility: hidden;
+    cursor: default;
+  }
+}
+
+.deck-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  flex: none;
+}
+
+.name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text);
+  font-size: 0.88rem;
+}
+
+.counts {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: flex-end;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.75rem;
+}
+
+.count {
+  min-width: 1.2rem;
+  text-align: right;
+  border-radius: var(--radius-sm);
+  padding: 0.05rem 0.3rem;
+
+  &--new {
+    color: var(--color-accent-blue);
+  }
+  &--learning {
+    color: var(--color-accent-red);
+  }
+  &--review {
+    color: var(--color-accent-green);
+  }
+}
+
+.gear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  flex: none;
+  margin-left: 0.1rem;
+  text-decoration: none;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.1s ease;
+
+  &:hover {
+    color: var(--color-text);
+  }
+}
+
+// ---- pinned "study all due" -------------------------------------------------
+
+.study-all {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--radius-md);
+  background: var(--color-accent);
+  color: #0e0e10;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+  flex: none;
+}
+
+.study-all__count {
+  font-variant-numeric: tabular-nums;
 }
 
 .app-main {
