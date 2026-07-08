@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { todayNumber } from './collection.store';
 import { buildHeatGrid } from './heatmap';
 import type { Collection } from './models';
 
@@ -64,16 +65,37 @@ describe('buildHeatGrid', () => {
   it('maps review days into cell counts and heat levels', () => {
     const coll = collection();
     // Anchor a review on the grid's first in-year day (Jan 1, 2024) via its
-    // computed study-day number, mirroring how callers derive reviewDays.
-    const jan1 = new Date(2024, 0, 1).getTime();
-    const cutoffMs = coll.dayCutoffHour * 3600_000;
-    const day = Math.floor((jan1 - coll.created - cutoffMs) / 86_400_000);
+    // computed study-day number, derived the same way real reviews are
+    // stamped: todayNumber() called with an actual in-day timestamp (noon),
+    // not midnight, mirroring how callers derive reviewDays.
+    const jan1Noon = new Date(2024, 0, 1, 12).getTime();
+    const day = todayNumber(coll, jan1Noon);
     const reviewDays = Array(12).fill(day); // 12 reviews -> level 2 (10-19)
 
     const grid = buildHeatGrid(reviewDays, coll, 2024);
     const jan1Cell = grid.weeks.flat().find((c) => c.inYear && c.date.getMonth() === 0 && c.date.getDate() === 1);
     expect(jan1Cell?.count).toBe(12);
     expect(jan1Cell?.level).toBe(2);
+  });
+
+  it('places a review in the cell for the calendar day it was made on, not the next day (regression)', () => {
+    // Non-zero dayCutoffHour (the seeded default is 4am) is what exposed the
+    // bug: cells were built from local midnight, which floors into the
+    // *previous* study-day whenever the cutoff hour hasn't passed yet.
+    const coll = collection({ dayCutoffHour: 4 });
+    const afternoon = new Date(2024, 6, 8, 15).getTime(); // Jul 8, 2024, 3pm
+    const reviewDay = todayNumber(coll, afternoon);
+
+    const grid = buildHeatGrid([reviewDay], coll, 2024);
+    const jul8Cell = grid.weeks
+      .flat()
+      .find((c) => c.inYear && c.date.getMonth() === 6 && c.date.getDate() === 8);
+    const jul9Cell = grid.weeks
+      .flat()
+      .find((c) => c.inYear && c.date.getMonth() === 6 && c.date.getDate() === 9);
+
+    expect(jul8Cell?.count).toBe(1);
+    expect(jul9Cell?.count).toBe(0);
   });
 
   it('returns exactly 12 months with strictly ascending weekIndex', () => {

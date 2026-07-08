@@ -49,8 +49,14 @@ export function buildHeatGrid(
   const gridEnd = new Date(dec31);
   gridEnd.setDate(dec31.getDate() + (6 - dec31.getDay()));
 
-  const startDay = todayNumber(collection, gridStart.getTime());
-  const endDay = todayNumber(collection, gridEnd.getTime());
+  // Cells are built from local midnight, but todayNumber's cutoff-hour
+  // subtraction means midnight falls before that calendar day's study-day
+  // boundary (whenever dayCutoffHour > 0), which floors it into the
+  // *previous* day-number. Nudge past the cutoff so each cell's day-number
+  // matches what a real review made that calendar day would get.
+  const cutoffMs = collection.dayCutoffHour * 3600_000;
+  const startDay = todayNumber(collection, gridStart.getTime() + cutoffMs);
+  const endDay = todayNumber(collection, gridEnd.getTime() + cutoffMs);
   const heat = yearlyHeat(reviewDays, startDay, endDay);
   const byDay = new Map(heat.map((h) => [h.day, h.count]));
 
