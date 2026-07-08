@@ -36,27 +36,50 @@ of guessing what to do.
   Do NOT overwrite it — set phase=plan, check off "Spec written",
   report the inconsistency, and STOP for human review of the existing
   spec. Only when no spec exists, delegate to spec-writer subagent.
-  On completion: update STATE.md (phase=plan, check off "Spec written",
-  next action: "review SPEC.md, then /resume to run planner").
+  On completion: run the critic subagent (mode=spec, feature dir) —
+  it writes CRITIQUE.md — then update STATE.md (phase=plan, check off
+  "Spec written", next action: "review SPEC.md and CRITIQUE.md, then
+  /resume to run planner"). Report the critique verdict + BLOCKERs.
   STOP for human review.
 
 - **phase = plan** → the human running /resume past the spec gate IS
   the approval: check off "Spec approved (human)" in STATE.md, then
   delegate to planner subagent.
-  On completion: update STATE.md (phase=implement, next action:
-  "review PLAN.md, then /resume to start T001"). STOP for human review.
+  On completion: run the critic subagent (mode=plan, feature dir) —
+  it checks SPEC↔PLAN traceability and writes CRITIQUE.md — then
+  update STATE.md (phase=implement, next action: "review PLAN.md and
+  CRITIQUE.md, then /resume to start T001"). Report the critique
+  verdict + BLOCKERs. STOP for human review — even on REVISE, the
+  human decides whether to re-run the planner or accept the plan.
 
 - **phase = implement** → if "Plan approved (human)" is unchecked,
   check it off now (running /resume past the plan gate is the
   approval). Then delegate to implementer subagent for exactly
   ONE task (the first unchecked T00X in STATE.md). Never batch tasks
   in a single /resume call.
+  **Model routing:** before delegating, read the task's `Complexity:`
+  line from PLAN.md (fallback: the `(low|medium|high)` tag on the
+  STATE.md checkbox; if neither exists — older plans — treat as
+  medium). Pass the Agent tool's `model` parameter accordingly:
+  low → haiku, medium → sonnet, high → opus (the parameter overrides
+  the implementer's frontmatter default). Name the model used in the
+  end-of-task report so the human can audit routing quality.
   On completion:
     - If tasks remain: report progress, update "Next action" to name
       the next task, and ask the user whether to continue or stop here.
-    - If all tasks are checked: set phase=done, write a short summary
-      of what was built into STATE.md, and tell the user the feature
-      is complete.
+    - If all tasks are checked: run the critic subagent (mode=drift,
+      feature dir) — it audits the branch diff + STATE.md decisions
+      against SPEC/PLAN and writes CRITIQUE.md.
+        - Verdict REVISE: do NOT set phase=done. Record the BLOCKER
+          findings under Blockers in STATE.md and stop for the human.
+        - Otherwise: set phase=done, write a short summary of what was
+          built into STATE.md, tell the user the feature is complete,
+          and remind them "Reviewed & verified" still wants
+          /code-review + /verify.
+
+  In every phase: if the critic subagent itself errors out, report the
+  failure but never let it block the gate — the human review happens
+  regardless.
 
 - **phase = done** → report that this feature is already complete;
   ask if the user wants to start a new one with /feature.

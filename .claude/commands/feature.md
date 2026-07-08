@@ -47,14 +47,22 @@ Invoke the spec-writer subagent with:
 When spec-writer returns:
 1. Verify SPEC.md actually exists and is non-empty. If the subagent
    failed, record the failure under Blockers in STATE.md and stop.
-2. Update STATE.md:
+2. Invoke the critic subagent with mode=spec and the feature directory.
+   It writes specs/{NNN}-{slug}/CRITIQUE.md and returns a verdict.
+   If the critic itself errors out, report that and continue — a
+   failed critique never blocks the human gate.
+3. Update STATE.md:
    - Set Phase: plan — this is what routes the next /resume to the
      planner. (Approval is recorded separately: /resume checks off
      "Spec approved (human)" when the user advances past the gate.)
    - Check off "Spec written"; leave "Spec approved (human)" unchecked
-   - Next action: "review SPEC.md, then /resume to run planner"
+   - Next action: "review SPEC.md and CRITIQUE.md, then /resume to
+     run planner"
    - Last updated: today
-3. Report to the user: feature number, spec location, and a 3-5 line
-   summary of what the spec covers — especially the non-goals.
-4. STOP. Do not run the planner. Do not offer to "just continue."
-   The user reviews SPEC.md and runs /resume when ready.
+4. Report to the user: feature number, spec location, a 3-5 line
+   summary of what the spec covers — especially the non-goals — and
+   the critique verdict with any BLOCKER findings (point at
+   CRITIQUE.md for the rest).
+5. STOP. Do not run the planner. Do not offer to "just continue."
+   Even on a REVISE verdict, stop — the user decides whether to
+   re-describe the feature, hand-edit the spec, or accept it as is.

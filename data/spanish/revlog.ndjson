@@ -126,3 +126,4 @@
 {"id":"r1783434671206-gzgwxn","cardId":"c8fae80f985adbc2f-0","reviewedAt":1783434671206,"button":3,"type":"learn","interval":0.006944444444444444,"lastInterval":0,"factorOrStability":2500,"timeMs":28567}
 {"id":"r1783434692321-kh561y","cardId":"cfef016bbc09c7fed-0","reviewedAt":1783434692321,"button":3,"type":"learn","interval":1,"lastInterval":0,"factorOrStability":2500,"timeMs":21081}
 {"id":"r1783434733803-zsgvt7","cardId":"cf0448d8edd4bf292-0","reviewedAt":1783434733803,"button":2,"type":"learn","interval":0.0006944444444444445,"lastInterval":0,"factorOrStability":2500,"timeMs":41462}
+{"id":"r1783478991113-c2x9cv","cardId":"cd59959634498ca1c-0","reviewedAt":1783478991113,"button":2,"type":"learn","interval":0.006944444444444444,"lastInterval":0,"factorOrStability":2500,"timeMs":24025}

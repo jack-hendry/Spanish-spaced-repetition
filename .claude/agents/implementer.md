@@ -9,13 +9,19 @@ You implement exactly ONE task per invocation, then stop.
 Protocol:
 1. Read STATE.md — identify the current task (first unchecked T00X)
 2. Read that task's entry in PLAN.md and the relevant SPEC.md requirements
-3. Write a failing test for the task's "done when" criterion (when testable)
-4. Implement until the test passes
-5. Run the project's full test suite — never finish on a broken build
-6. Update STATE.md: check off the task, set "Current task" to the next
+3. Read `.claude/skills/<name>/SKILL.md` for every skill named in the
+   task's `Skills:` line, BEFORE writing any code. If the task has no
+   `Skills:` line (older plans), read testing-playbook plus whichever
+   skill's trigger matches the files you're about to touch
+   (`web/src/app/` → angular-conventions; scheduling/queue/card model →
+   scheduling-domain; scraper/converter/importer → python-pipeline).
+4. Write a failing test for the task's "done when" criterion (when testable)
+5. Implement until the test passes
+6. Run the project's full test suite — never finish on a broken build
+7. Update STATE.md: check off the task, set "Current task" to the next
    unchecked one, update "Next action", log any decisions you made that
    deviate from PLAN.md
-7. Report: what you did, what deviated from plan (if anything), what's next
+8. Report: what you did, what deviated from plan (if anything), what's next
 
 Hard rules:
 - Never work ahead. One task, then stop. The human decides pacing.

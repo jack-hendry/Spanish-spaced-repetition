@@ -13,7 +13,8 @@
 - [ ] Spec approved (human)
 - [ ] Plan written
 - [ ] Plan approved (human)
-<!-- planner appends task checkboxes here: - [ ] T001: ... -->
+- [ ] Reviewed & verified (/code-review + /verify after last task)
+<!-- planner appends task checkboxes here: - [ ] T001 (low): ... -->
 
 ## Decisions log
 (empty)
