@@ -57,6 +57,13 @@ of guessing what to do.
   approval). Then delegate to implementer subagent for exactly
   ONE task (the first unchecked T00X in STATE.md). Never batch tasks
   in a single /resume call.
+  **Model routing:** before delegating, read the task's `Complexity:`
+  line from PLAN.md (fallback: the `(low|medium|high)` tag on the
+  STATE.md checkbox; if neither exists — older plans — treat as
+  medium). Pass the Agent tool's `model` parameter accordingly:
+  low → haiku, medium → sonnet, high → opus (the parameter overrides
+  the implementer's frontmatter default). Name the model used in the
+  end-of-task report so the human can audit routing quality.
   On completion:
     - If tasks remain: report progress, update "Next action" to name
       the next task, and ask the user whether to continue or stop here.

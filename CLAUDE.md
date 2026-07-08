@@ -104,7 +104,18 @@ and checks in with the user before starting the next.
 **Model routing for this pipeline:**
 - spec-writer, planner, critic: inherit the main-session model (no `model:`
   in their frontmatter — run the main session on Fable/Opus for these phases)
-- implementer: sonnet (enforced via `model: sonnet` in its agent frontmatter)
+- implementer: `model: sonnet` in its frontmatter is only the fallback.
+  The planner rates every task `Complexity: low | medium | high` (rubric
+  in planner.md: low = 1–2 files, fully specified from the plan text
+  alone; medium = 2–4 files following existing patterns; high =
+  cross-cutting restructure or scheduling/data-model contract), and
+  /resume overrides the model per task via the Agent tool's `model`
+  parameter: **low → haiku, medium → sonnet, high → opus**.
+- The planner also tags each task with a `Skills:` line naming the repo
+  skills (angular-conventions, scheduling-domain, testing-playbook,
+  python-pipeline) the implementer must read before coding; the
+  implementer honours it as its first act, and the critic's plan mode
+  checks both lines exist and fit the rubric.
 - Keep effort at medium for implementer; use high for planner on
   complex features
 

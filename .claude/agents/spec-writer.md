@@ -2,7 +2,6 @@
 name: spec-writer
 description: Writes feature specifications. Use for the specify phase of the SDD pipeline.
 tools: [Read, Write, Glob, Grep]
-model: opus
 ---
 You write SPEC.md files. A spec defines WHAT and WHY, never HOW.
 
