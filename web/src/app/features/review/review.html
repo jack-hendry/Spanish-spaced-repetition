@@ -1,19 +1,8 @@
-<section class="review">
-  <header class="review__topbar">
-    <a routerLink="/" class="back">← Decks</a>
-    <div class="session-info">
-      <span class="session-info__label">{{ deckName() }} — {{ sessionN() }} of {{ sessionTotal() }}</span>
-      <div class="progress-bar">
-        <div class="progress-bar__fill" [style.width.%]="progressPct()"></div>
-      </div>
-    </div>
-    @if (state()) {
-      <button class="suspend" [disabled]="busy()" (click)="suspend()" title="Suspend card (-)">
-        Suspend
-      </button>
-    }
-  </header>
+<div class="progress-bar">
+  <div class="progress-bar__fill" [style.width.%]="progressPct()"></div>
+</div>
 
+<section class="review">
   @if (loading()) {
     <p class="status">Loading…</p>
   } @else if (finished()) {
@@ -23,16 +12,37 @@
       <a routerLink="/" class="btn">Back to decks</a>
     </div>
   } @else if (state(); as s) {
+    <header class="review__topbar">
+      <a routerLink="/" class="back">← Decks</a>
+      <span class="session-info__label">{{ deckName() }} — {{ sessionN() }} of {{ sessionTotal() }}</span>
+      <button class="suspend" [disabled]="busy()" (click)="suspend()" title="Suspend card (-)">
+        Suspend
+      </button>
+    </header>
+
+    <ul class="legend">
+      <li class="legend__item legend__item--new">
+        <span class="legend__dot"></span>
+        New {{ counts().new }}
+      </li>
+      <li class="legend__item legend__item--learning">
+        <span class="legend__dot"></span>
+        Learning {{ counts().learning }}
+      </li>
+      <li class="legend__item legend__item--review">
+        <span class="legend__dot"></span>
+        Review {{ counts().review }}
+      </li>
+    </ul>
+
     <article class="card-panel">
-      <div class="breadcrumb">
-        <span class="breadcrumb__deck">{{ deckName() }}</span>
-        @if (s.tags.length) {
-          <span class="breadcrumb__tag">· {{ s.tags.join(', ') }}</span>
-        }
+      <div class="card-panel__meta">
+        <span class="breadcrumb">{{ s.deckPath.join(' · ') }}</span>
+        <span class="chip">{{ s.noteTypeKind }}</span>
       </div>
 
       @if (revealed()) {
-        <div class="rendered" [innerHTML]="s.answer"></div>
+        <div class="rendered rendered--answer" [innerHTML]="s.answer"></div>
       } @else {
         <div class="rendered" [innerHTML]="s.question"></div>
         @if (s.isTypeIn) {
@@ -53,24 +63,31 @@
     </article>
 
     <footer class="controls">
-      @if (!revealed()) {
-        <button class="btn btn--show" (click)="reveal()">Show Answer</button>
-      } @else {
-        <div class="ratings">
-          @for (rating of ratings; track rating; let i = $index) {
-            <button
-              class="rate rate--{{ rating }}"
-              [disabled]="busy()"
-              (click)="rate(rating)"
-            >
-              <span class="rate__label">{{ rating }}</span>
-              <span class="rate__ivl">{{ buttonLabel(rating) }}</span>
-              <span class="rate__key">{{ i + 1 }}</span>
-            </button>
-          }
-        </div>
-      }
-      <p class="helper">space to flip · 1–4 to grade · − suspend</p>
+      <button
+        class="btn btn--show"
+        [class.btn--hidden]="revealed()"
+        [disabled]="revealed()"
+        (click)="reveal()"
+      >
+        Show answer
+        <span class="key-chip">space</span>
+      </button>
+
+      <div class="ratings">
+        @for (rating of ratings; track rating; let i = $index) {
+          <button
+            class="rate rate--{{ rating }}"
+            [disabled]="!revealed() || busy()"
+            (click)="rate(rating)"
+          >
+            <span class="rate__label">{{ rating }}</span>
+            <span class="rate__ivl">{{ buttonLabel(rating) }}</span>
+            <span class="rate__key">{{ i + 1 }}</span>
+          </button>
+        }
+      </div>
+
+      <p class="helper">space to flip · 1–4 to grade · esc to exit · − suspend</p>
     </footer>
   }
 </section>

@@ -5,7 +5,7 @@ import {
   signal,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import { map } from 'rxjs';
 
@@ -36,8 +36,10 @@ interface RenderState {
   afmt: string;
   fields: Record<string, string>;
   css: string;
-  /** The note's tags, used for the breadcrumb sub-topic. */
-  tags: string[];
+  /** Full ::-split path of the card's own deck */
+  deckPath: string[];
+  /** Note type kind: 'standard' or 'cloze' */
+  noteTypeKind: 'standard' | 'cloze';
 }
 
 const TYPE_FILTER = /\{\{\s*type:/;
@@ -55,6 +57,7 @@ export class Review {
   private readonly api = inject(ApiService);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   readonly ratings = RATINGS;
 
@@ -162,7 +165,8 @@ export class Review {
       afmt: template.afmt,
       fields: note.fields,
       css: noteType.css,
-      tags: note.tags,
+      deckPath: this.store.deckById(card.deckId)?.name.split('::') ?? [this.deckName()],
+      noteTypeKind: noteType.kind,
     });
   }
 
@@ -235,6 +239,11 @@ export class Review {
 
   onKey(e: KeyboardEvent): void {
     if (this.finished() || this.loading()) return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      void this.router.navigateByUrl('/');
+      return;
+    }
     if (e.key === '-') {
       e.preventDefault();
       void this.suspend();
