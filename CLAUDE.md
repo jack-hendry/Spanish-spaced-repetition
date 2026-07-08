@@ -78,7 +78,11 @@ The review loop: the SPA loads the collection + cards, the user rates a card, th
 **Pipeline:** every feature moves through specify → plan → implement → done.
 No phase is skipped, and no phase writes files outside its role
 (specify/plan never touch source code; implement never touches
-SPEC.md/PLAN.md except to read them).
+SPEC.md/PLAN.md except to read them). The critic agent reviews
+SPEC.md and PLAN.md before each human gate, and runs a drift audit
+when the last task completes; it writes only specs/{feature}/CRITIQUE.md
+and its REVISE verdict informs the human — it never auto-loops a
+phase or replaces the gate.
 
 **State is the source of truth.** Conversation context is disposable;
 specs/{feature}/STATE.md is not. Any phase that changes the state of
@@ -98,8 +102,8 @@ and checks in with the user before starting the next.
   where it left off; use this after every /clear or new session
 
 **Model routing for this pipeline:**
-- spec-writer, planner: inherit the main-session model (no `model:` in their
-  frontmatter — run the main session on Fable/Opus for these phases)
+- spec-writer, planner, critic: inherit the main-session model (no `model:`
+  in their frontmatter — run the main session on Fable/Opus for these phases)
 - implementer: sonnet (enforced via `model: sonnet` in its agent frontmatter)
 - Keep effort at medium for implementer; use high for planner on
   complex features
