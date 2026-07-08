@@ -36,8 +36,6 @@ interface RenderState {
   afmt: string;
   fields: Record<string, string>;
   css: string;
-  /** The note's tags, used for the breadcrumb sub-topic. */
-  tags: string[];
   /** Full ::-split path of the card's own deck */
   deckPath: string[];
   /** Note type kind: 'standard' or 'cloze' */
@@ -167,7 +165,6 @@ export class Review {
       afmt: template.afmt,
       fields: note.fields,
       css: noteType.css,
-      tags: note.tags,
       deckPath: this.store.deckById(card.deckId)?.name.split('::') ?? [this.deckName()],
       noteTypeKind: noteType.kind,
     });
