@@ -24,11 +24,11 @@ certainly wrong unless the on-disk shape itself changes
 | queue      | `due` means                          |
 |------------|--------------------------------------|
 | `new`      | position in the new-card ordering    |
-| `learning` | **epoch seconds** the step comes due |
+| `learning` | **epoch milliseconds** the step comes due |
 | `review`   | **day number** it comes due          |
 
 Never compare `due` values across queues, and never compare learning `due`
-(seconds) against `ctx.today` (a day number) or review `due` against `ctx.now`
+(epoch ms) against `ctx.today` (a day number) or review `due` against `ctx.now`
 (epoch ms). The study queue does it correctly in
 `web/src/app/core/study-queue.service.ts` `next()`: learning uses
 `c.due <= ctx.now`, review uses `c.due <= ctx.today`.
@@ -48,7 +48,7 @@ through `todayNumber`, never through calendar dates.
 - `card.interval` is whole **days**; learning steps in `DeckOptions` are **minutes**.
 - `SchedulingResult.intervalDays` may be fractional (sub-day learning steps).
 - Timestamps (`created`, `modified`, `lastReviewed`, `ReviewContext.now`) are epoch **ms**;
-  learning-queue `due` is epoch **seconds**.
+  learning-queue `due` is also epoch **ms** (same unit, do not divide/multiply by 1000).
 
 ## Dual scheduler state
 
