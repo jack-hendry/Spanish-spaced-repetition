@@ -12,6 +12,7 @@ function collection(over: Partial<Collection> = {}): Collection {
     dayCutoffHour: 4,
     defaultDeckOptionsId: 'do1',
     tags: [],
+    pausedAt: null,
     ...over,
   };
 }

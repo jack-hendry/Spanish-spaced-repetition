@@ -86,6 +86,9 @@ export class Review {
     return deck ? deck.name.split('::').pop()! : 'Study';
   });
 
+  /** True when scheduling is paused. */
+  readonly paused = computed(() => this.store.collection()?.pausedAt != null);
+
   /** 1-indexed position of the current card within the session. */
   readonly sessionN = computed(() =>
     Math.min(this.answeredCount() + 1, Math.max(this.sessionTotal(), 1)),

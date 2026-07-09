@@ -1,4 +1,16 @@
 <div class="dashboard">
+  <header class="dashboard__header">
+    <button
+      type="button"
+      class="pause-toggle"
+      [class.pause-toggle--active]="collection()?.pausedAt != null"
+      [disabled]="busy()"
+      (click)="togglePause()"
+    >
+      {{ collection()?.pausedAt == null ? 'Pause scheduling' : 'Resume scheduling' }}
+    </button>
+  </header>
+
   <section class="dashboard__stats">
     @if (statsLoading()) {
       <p class="status">Loading stats…</p>

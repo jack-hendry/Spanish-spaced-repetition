@@ -371,4 +371,43 @@ describe('Review', () => {
       );
     });
   });
+
+  // --- Paused empty state (R17) ------------------------------------------------
+
+  describe('paused empty state', () => {
+    it('renders "All done" message when finished and not paused', async () => {
+      // Unpaused finished session: collection.pausedAt is null
+      queueFake.next.mockReturnValue(null);
+      (storeFake.collection as any) = () => ({
+        dayCutoffHour: 4,
+        created: Date.now() - 30 * 86_400_000,
+        pausedAt: null,
+      });
+
+      const fixture = await createReview();
+      const el = fixture.nativeElement as HTMLElement;
+      const doneBlock = el.querySelector('.done');
+      expect(doneBlock).toBeTruthy();
+      expect(doneBlock?.querySelector('h2')?.textContent?.trim()).toBe('All done');
+      expect(doneBlock?.querySelector('p')?.textContent?.trim()).toBe(
+        'No more cards due in this deck right now.',
+      );
+    });
+
+    it('renders "Scheduling is paused" message when finished and paused', async () => {
+      // Paused finished session: collection.pausedAt is set
+      queueFake.next.mockReturnValue(null);
+      (storeFake.collection as any) = () => ({
+        dayCutoffHour: 4,
+        created: Date.now() - 30 * 86_400_000,
+        pausedAt: Date.now(),
+      });
+
+      const fixture = await createReview();
+      const el = fixture.nativeElement as HTMLElement;
+      const pausedBlock = el.querySelector('.paused');
+      expect(pausedBlock).toBeTruthy();
+      expect(pausedBlock?.textContent?.trim()).toContain('Scheduling is paused');
+    });
+  });
 });

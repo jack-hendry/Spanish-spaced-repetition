@@ -92,6 +92,7 @@ export class StudyQueueService {
 
   /** The next card to present, or null when the session is finished. */
   next(ctx: ReviewContext): Card | null {
+    if (this.store.collection()?.pausedAt != null) return null;
     const s = this.session;
     if (!s) return null;
     const cards = this.store.cards().filter((c) => this.inScope(c));
@@ -139,6 +140,7 @@ export class StudyQueueService {
 
   /** Counts shown in the review header (respecting remaining daily limits). */
   counts(ctx: ReviewContext): QueueCounts {
+    if (this.store.collection()?.pausedAt != null) return { new: 0, learning: 0, review: 0 };
     const s = this.session;
     if (!s) return { new: 0, learning: 0, review: 0 };
     const cards = this.store.cards().filter((c) => this.inScope(c));

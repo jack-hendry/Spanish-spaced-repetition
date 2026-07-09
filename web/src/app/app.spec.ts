@@ -1,10 +1,12 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
+import { vi } from 'vitest';
 
 import { App } from './app';
 import { CollectionStore } from './core/collection.store';
 import type { Card, Collection, Deck } from './core/models';
+import { PauseService } from './core/pause.service';
 
 /** Trivial stand-ins for the lazy-loaded route components (routerLinkActive
  * only needs matching paths to resolve against Router.url; the real feature
@@ -20,6 +22,7 @@ describe('App', () => {
     dayCutoffHour: 4,
     defaultDeckOptionsId: 'opt1',
     tags: [],
+    pausedAt: null,
   };
 
   const decks: Deck[] = [
@@ -64,7 +67,10 @@ describe('App', () => {
     return store;
   }
 
+  let recoverOnLoad: ReturnType<typeof vi.fn>;
+
   beforeEach(async () => {
+    recoverOnLoad = vi.fn().mockResolvedValue(undefined);
     await TestBed.configureTestingModule({
       imports: [App],
       providers: [
@@ -73,6 +79,7 @@ describe('App', () => {
           { path: 'browse', component: Stub },
           { path: 'stats', component: Stub },
         ]),
+        { provide: PauseService, useValue: { recoverOnLoad } },
       ],
     }).compileComponents();
   });
@@ -136,5 +143,32 @@ describe('App', () => {
     const browseTab = compiled.querySelector('.tab[href="/browse"]');
     expect(browseTab?.classList.contains('tab--active')).toBe(true);
     expect(decksTab?.classList.contains('tab--active')).toBe(false);
+  });
+
+  it('renders the paused banner when pausedAt is set', () => {
+    const store = seedStore();
+    store.collection.set({ ...collection, pausedAt: Date.now() });
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    expect(compiled.querySelector('.pause-banner')?.textContent).toContain('Scheduling paused');
+  });
+
+  it('omits the paused banner when pausedAt is null', () => {
+    seedStore();
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    expect(compiled.querySelector('.pause-banner')).toBeNull();
+  });
+
+  it('calls PauseService.recoverOnLoad() exactly once after the collection loads', () => {
+    seedStore();
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+
+    expect(recoverOnLoad).toHaveBeenCalledTimes(1);
   });
 });

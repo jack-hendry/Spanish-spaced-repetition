@@ -47,6 +47,7 @@ export function buildSeedCollection(now: number): Collection {
     dayCutoffHour: 4,
     defaultDeckOptionsId: DEFAULT_DECK_OPTIONS_ID,
     tags: [],
+    pausedAt: null,
   };
 }
 

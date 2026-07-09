@@ -185,6 +185,19 @@ export class FileStore {
   saveCardsSoon(): void {
     this.scheduleFlush('cards');
   }
+  /**
+   * Persist cards immediately (awaited) — used by ordered writes such as the
+   * resume endpoint, where the card write must be guaranteed committed to disk
+   * before a subsequent collection write. Cancels any pending debounced write.
+   */
+  async saveCards(): Promise<void> {
+    const existing = this.pending.get('cards');
+    if (existing) {
+      clearTimeout(existing);
+      this.pending.delete('cards');
+    }
+    await this.flush('cards');
+  }
 
   /** Replace the entire collection content (used by the importer). */
   async replaceAll(next: Partial<StoreData>): Promise<void> {

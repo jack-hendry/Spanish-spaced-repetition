@@ -45,6 +45,47 @@ export function buildRouter(store: FileStore): Router {
     res.json(coll);
   });
 
+  // Resume scheduling: apply the client-computed absolute `due` targets, then
+  // clear the global pause. The server performs NO date arithmetic — it writes
+  // exactly the `due` values it is handed. The write order is mandatory and
+  // non-negotiable: (a) cards to disk (awaited), THEN (b) clear pausedAt and
+  // persist the collection. A crash between (a) and (b) leaves cards shifted
+  // with pausedAt still set, so recovery re-sends the identical absolute
+  // payload and converges (no double-shift). `expectedPausedAt` guards against
+  // a stale payload applying to a later, unrelated pause episode.
+  r.post('/collection/resume', async (req, res) => {
+    const { expectedPausedAt, cardUpdates } = req.body as {
+      expectedPausedAt: number;
+      cardUpdates: { id: string; due: number }[];
+    };
+    const coll = store.getCollection();
+
+    // No-op guard (R11b): the pause episode we were computed against is no
+    // longer the live one (already resumed, or never paused). Return success
+    // without touching cards or the collection.
+    if (coll.pausedAt == null || coll.pausedAt !== expectedPausedAt) {
+      return res.json({ applied: false });
+    }
+
+    // (a) Apply absolute `due` by id, leaving every other card field untouched;
+    // silently skip unknown ids. Then persist cards to disk, awaited.
+    const cards = store.getCards();
+    const indexById = new Map(cards.map((c, i) => [c.id, i]));
+    for (const update of cardUpdates ?? []) {
+      const idx = indexById.get(update.id);
+      if (idx === undefined) continue;
+      cards[idx].due = update.due;
+    }
+    await store.saveCards();
+
+    // (b) Only after the card write has fully committed: clear the pause and
+    // persist the collection.
+    coll.pausedAt = null;
+    await store.saveCollection();
+
+    res.json({ applied: true });
+  });
+
   // ---- cards ---------------------------------------------------------------
   r.get('/cards', (req, res) => {
     const deckId = req.query.deckId as string | undefined;

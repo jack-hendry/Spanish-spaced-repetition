@@ -70,6 +70,14 @@ export class ApiService {
     return this.http.patch<Collection>(`${this.base}/collection`, patch);
   }
 
+  /** Apply the pre-computed absolute `due` values and clear the pause, server-side. */
+  resume(payload: {
+    expectedPausedAt: number;
+    cardUpdates: { id: string; due: number }[];
+  }): Observable<{ applied: boolean }> {
+    return this.http.post<{ applied: boolean }>(`${this.base}/collection/resume`, payload);
+  }
+
   patchDeck(id: string, patch: Partial<Deck>): Observable<Deck> {
     return this.http.patch<Deck>(`${this.base}/decks/${id}`, patch);
   }

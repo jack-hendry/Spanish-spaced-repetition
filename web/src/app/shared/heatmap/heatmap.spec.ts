@@ -11,6 +11,7 @@ describe('Heatmap', () => {
     dayCutoffHour: 4,
     defaultDeckOptionsId: '1',
     tags: [],
+    pausedAt: null,
   };
 
   function render(reviewDays: number[], coll: Collection | null, year: number) {

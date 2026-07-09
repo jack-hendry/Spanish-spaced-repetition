@@ -6,11 +6,19 @@
   @if (loading()) {
     <p class="status">Loading…</p>
   } @else if (finished()) {
-    <div class="done">
-      <h2>All done</h2>
-      <p>No more cards due in this deck right now.</p>
-      <a routerLink="/" class="btn">Back to decks</a>
-    </div>
+    @if (paused()) {
+      <div class="paused">
+        <h2>Scheduling is paused</h2>
+        <p>Resume scheduling to continue studying.</p>
+        <a routerLink="/" class="btn">Back to decks</a>
+      </div>
+    } @else {
+      <div class="done">
+        <h2>All done</h2>
+        <p>No more cards due in this deck right now.</p>
+        <a routerLink="/" class="btn">Back to decks</a>
+      </div>
+    }
   } @else if (state(); as s) {
     <header class="review__topbar">
       <a routerLink="/" class="back">← Decks</a>

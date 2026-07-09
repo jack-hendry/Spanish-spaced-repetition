@@ -54,6 +54,40 @@
   font-size: 0.9rem;
 }
 
+// ---- header / pause toggle ---------------------------------------------------
+
+.dashboard__header {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+.pause-toggle {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--color-surface-alt);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  &--active {
+    color: var(--color-accent-amber);
+    border-color: var(--color-accent-amber);
+    background: color-mix(in srgb, var(--color-accent-amber) 16%, transparent);
+  }
+}
+
 // ---- stats -------------------------------------------------------------------
 
 .dashboard__stats {

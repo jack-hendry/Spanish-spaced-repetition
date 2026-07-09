@@ -17,6 +17,8 @@ export interface Collection {
   tags: string[];
   /** Day number through which buried cards have already been unburied. */
   lastUnburyDay?: number;
+  /** Epoch-ms the current global pause began; null when scheduling is running. */
+  pausedAt: number | null;
 }
 
 // ---- Note types ----------------------------------------------------------

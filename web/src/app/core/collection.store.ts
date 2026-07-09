@@ -60,6 +60,12 @@ export class CollectionStore {
     const coll = this.collection();
     const map = new Map<string, DeckCounts>();
     if (!coll) return map;
+    if (coll.pausedAt != null) {
+      for (const deck of this.decks()) {
+        map.set(deck.id, { new: 0, learning: 0, review: 0 });
+      }
+      return map;
+    }
     const today = todayNumber(coll);
     for (const c of this.cards()) {
       let m = map.get(c.deckId);

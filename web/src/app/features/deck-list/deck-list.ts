@@ -4,6 +4,7 @@ import { lastValueFrom } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { CollectionStore, todayNumber } from '../../core/collection.store';
 import type { RevlogEntry } from '../../core/models';
+import { PauseService } from '../../core/pause.service';
 import { buttonCounts, dayStreak, pace, studiedToday, timeToday, type DayTime } from '../../core/stats';
 import { Heatmap } from '../../shared/heatmap/heatmap';
 
@@ -23,10 +24,14 @@ interface ForecastSegment {
 export class DeckList {
   private readonly store = inject(CollectionStore);
   private readonly api = inject(ApiService);
+  private readonly pauseService = inject(PauseService);
 
   readonly loading = this.store.loading;
   readonly error = this.store.error;
   readonly collection = this.store.collection;
+
+  /** True while a resume() request is in flight; disables the toggle button. */
+  readonly busy = signal(false);
 
   /** True until both the collection and the review log have loaded once. */
   readonly statsLoading = signal(true);
@@ -166,6 +171,20 @@ export class DeckList {
     const ms = this.estTimeMs();
     if (ms === null) return `${due} due`;
     return `${due} due · ~${this.formatDuration(ms)} at your usual pace`;
+  }
+
+  /** The only control in the app that mutates pause state. */
+  async togglePause(): Promise<void> {
+    if (this.collection()?.pausedAt == null) {
+      await this.pauseService.pause();
+      return;
+    }
+    this.busy.set(true);
+    try {
+      await this.pauseService.resume();
+    } finally {
+      this.busy.set(false);
+    }
   }
 
   constructor() {

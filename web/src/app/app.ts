@@ -3,6 +3,7 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 
 import { CollectionStore, type DeckNode } from './core/collection.store';
 import { deckColor } from './core/deck-color';
+import { PauseService } from './core/pause.service';
 
 @Component({
   selector: 'app-root',
@@ -15,9 +16,14 @@ export class App {
 
   private readonly store = inject(CollectionStore);
   private readonly router = inject(Router);
+  private readonly pauseService = inject(PauseService);
 
   readonly loading = this.store.loading;
   readonly error = this.store.error;
+
+  /** Read-only shell banner (R16); the deck-list header button is the only
+   * control that toggles pause state. */
+  readonly paused = computed(() => this.store.collection()?.pausedAt != null);
 
   /** Names of decks whose children are expanded. Top level shown by default. */
   private readonly expanded = signal<Set<string>>(new Set());
@@ -42,7 +48,9 @@ export class App {
 
   constructor() {
     if (this.store.collection() === null) {
-      void this.store.load();
+      void this.store.load().then(() => this.pauseService.recoverOnLoad());
+    } else {
+      void this.pauseService.recoverOnLoad();
     }
   }
 

@@ -148,6 +148,12 @@ describe('dayStreak', () => {
     // today (10) and yesterday (9) reviewed, but day 8 skipped, day 7 reviewed.
     expect(dayStreak([10, 9, 7], 10)).toBe(2);
   });
+
+  it('breaks the streak across a gap of more than 1 day', () => {
+    // Reviews on days 10 and 11, then a pause/gap of many days, then resume reviewing on day 20.
+    // Streak should count only the current consecutive run: just day 20 = streak of 1.
+    expect(dayStreak([10, 11, 20], 20)).toBe(1);
+  });
 });
 
 describe('yearlyHeat', () => {
