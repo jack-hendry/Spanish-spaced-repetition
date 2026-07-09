@@ -4,6 +4,11 @@
     "name": "10000 Spanish Vocabulary (Part 1 of 3)",
     "parentId": null,
     "optionsId": "opts-default",
-    "collapsed": false
+    "collapsed": false,
+    "daily": {
+      "day": 15,
+      "newStudied": 20,
+      "reviewStudied": 50
+    }
   }
 ]
