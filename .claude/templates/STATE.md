@@ -22,6 +22,9 @@
 ## Discovered
 (empty)
 
+## Pitfalls
+(empty)
+
 ## Next action
 {One sentence a fresh session can act on immediately}
 

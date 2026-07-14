@@ -123,5 +123,14 @@ and checks in with the user before starting the next.
 them under a "Discovered" section in STATE.md — do not fix them
 inline. Drift is the main failure mode this harness exists to prevent.
 
+**Lessons capture:** while implementing, log durable gotchas in the
+feature's STATE.md under `## Pitfalls`, alongside `## Discovered`.
+Litmus: Discovered = "someone should fix this later" (out-of-scope
+work); Pitfall = "future me will trip on this again" (durable
+knowledge). The critic's end-of-feature drift audit append-promotes
+durable Pitfalls into the matching skill's `## Lessons (auto-appended)`
+section (dated, append-only, duplicates skipped); pruning and merging
+Lessons is human-only.
+
 **When context is getting long:** update STATE.md fully, tell the user
 it's safe to /clear, and that /resume will pick up correctly.

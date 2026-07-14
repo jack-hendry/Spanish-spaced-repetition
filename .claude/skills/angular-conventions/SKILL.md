@@ -65,3 +65,11 @@ without TestBed or a browser (e.g. `core/daily-limits.ts` +
   [[scheduling-domain]] skill first (due overloading, day numbers, dual
   SM-2/FSRS state).
 - Where and how to test: see the [[testing-playbook]] skill.
+
+## Lessons (auto-appended)
+
+Dated entries promoted from feature STATE.md Pitfalls by the critic's drift
+audit. Append-only; humans prune. If a lesson contradicts the body above,
+trust the code, then fix both.
+
+_None yet._

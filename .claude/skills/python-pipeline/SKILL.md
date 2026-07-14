@@ -81,3 +81,11 @@ run directly, no package structure.
 3. The importer's own logic is covered by `server/src/import/transform.test.ts`
    — extend that (see [[testing-playbook]]) when changing the contract, and
    keep this file plus both Python emitters in sync with it.
+
+## Lessons (auto-appended)
+
+Dated entries promoted from feature STATE.md Pitfalls by the critic's drift
+audit. Append-only; humans prune. If a lesson contradicts the body above,
+trust the code, then fix both.
+
+_None yet._

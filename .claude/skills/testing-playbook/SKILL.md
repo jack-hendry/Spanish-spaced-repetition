@@ -79,3 +79,11 @@ Never point a test at the live `data/spanish/`. Two mechanisms:
 - Scheduling changes: extend the colocated core specs (`sm2.spec.ts`,
   `fsrs.spec.ts`, `lifecycle.spec.ts`, …) — read [[scheduling-domain]] first
   for the unit traps (`due` overloading, permille ease, day numbers).
+
+## Lessons (auto-appended)
+
+Dated entries promoted from feature STATE.md Pitfalls by the critic's drift
+audit. Append-only; humans prune. If a lesson contradicts the body above,
+trust the code, then fix both.
+
+_None yet._

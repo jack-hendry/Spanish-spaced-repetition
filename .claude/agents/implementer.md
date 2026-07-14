@@ -20,7 +20,8 @@ Protocol:
 6. Run the project's full test suite — never finish on a broken build
 7. Update STATE.md: check off the task, set "Current task" to the next
    unchecked one, update "Next action", log any decisions you made that
-   deviate from PLAN.md
+   deviate from PLAN.md, and append any task-relevant gotchas to a
+   "## Pitfalls" section (see the litmus under Hard rules)
 8. Report: what you did, what deviated from plan (if anything), what's next
 
 Hard rules:
@@ -29,3 +30,7 @@ Hard rules:
   different approach — update STATE.md blockers and stop.
 - Scope discipline: if you notice unrelated problems, note them in
   STATE.md under a "Discovered" section; do not fix them.
+- Discovered vs Pitfall litmus: Discovered = "someone should fix this
+  later" (out-of-scope work); Pitfall = "future me will trip on this
+  again" (durable knowledge). Pitfalls go in STATE.md's "## Pitfalls"
+  section — they are what the drift audit later promotes into skills.

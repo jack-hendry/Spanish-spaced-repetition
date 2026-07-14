@@ -156,3 +156,11 @@ and `server/src/import/transform.test.ts` for the concrete test shapes.
 Pure logic has colocated `*.spec.ts` (e.g. `scheduling/sm2.spec.ts`,
 `scheduling/fsrs.spec.ts`, `core/daily-limits.spec.ts`, `core/lifecycle.spec.ts`).
 Scheduling changes should extend these — they run without a browser or server.
+
+## Lessons (auto-appended)
+
+Dated entries promoted from feature STATE.md Pitfalls by the critic's drift
+audit. Append-only; humans prune. If a lesson contradicts the body above,
+trust the code, then fix both.
+
+_None yet._
