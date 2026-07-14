@@ -83,6 +83,63 @@ create/edit:
   `c{note.guid||note.id}-{ord}` — this is what makes re-import preserve
   scheduling.
 
+## Recipe: deck-pinned templates & reaching live installs
+
+Pattern from feature 008 (Listening cards): adding a new card **template** to
+an existing note type, where the new card must live in its own dedicated deck
+instead of the note's own deck (e.g. "give every note in deck X a second,
+audio-only card that lives in a separate top-level deck Y"). Reuse this shape
+rather than re-deriving it — several of these steps are easy to skip and only
+fail on a *live* store, not a fresh one.
+
+**The mechanism:** `CardTemplate` has an optional `deckId?: string`
+(`server/src/models/index.ts`, mirrored in `web/src/app/core/models/`) meaning
+"cards generated from this template always live in this fixed deck, regardless
+of the note's own deck." Every producer of cards resolves the effective deck
+as `template.deckId ?? primaryDeckId` — keep the special-case in this one
+place, not scattered `ord === N` checks.
+
+**Four traps, in the order they bite:**
+
+1. **`notetypes.json` seeds only when the whole file is absent**
+   (`FileStore.init`, `server/src/store/file-store.ts`). Editing
+   `buildSeedNoteTypes()` in `seed.ts` only reaches *fresh* installs. Any live
+   store needs a **startup migration** (`server/src/store/migrations.ts`
+   pattern: `migrateAdd*Template`) that (a) appends the template if the note
+   type lacks it, (b) creates the dedicated deck if missing, (c) relocates any
+   card of the new ord that was already created in the *wrong* deck (e.g. from
+   before the dedicated-deck decision existed), and (d) calls
+   `reconcileNoteCards` per note to backfill the new card. Gate every step on
+   "is this already true?" so re-running is a no-op — `FileStore.init` runs it
+   on every boot.
+
+2. **New-card queue positions must not collide.** Compute
+   `basePosition = max(due where queue === 'new') + 1` once, then advance it
+   past each card the migration creates — don't call `reconcileNoteCards` per
+   note with a stale `basePosition`.
+
+3. **`reconcileNoteCards` must re-apply the pinned deck on every call**, not
+   just at creation, so a card that ever drifted to the wrong deck self-heals
+   on the next edit/migration. Never zero out or skip scheduling fields when
+   correcting `deckId` — only `deckId`/`modified` change.
+
+4. **The importer (`server/src/import/transform.ts`) replaces `decks.json`
+   wholesale** (`transformBooks` returns the full deck set, `store.replaceAll`
+   consumes it). A dedicated deck that isn't derived from any book's menu tree
+   is invisible to that logic and gets **silently dropped on the next
+   `npm run import`** unless explicitly carried through from `existing.decks`.
+   Same wholesale-replace trap applies to any per-ord deck resolution in the
+   importer's card-building loop — it must resolve `template.deckId ??
+   bookDeckId` too, or re-import resets the pinned deck back to the book deck.
+
+**Done-when checklist:** fresh install seeds correctly; migration on a
+pre-existing store adds the template + deck + backfills cards without
+touching surviving cards' scheduling; migration is idempotent (second run
+changes nothing); re-running `npm run import` does not move the pinned deck's
+cards back or drop the deck. See `server/src/store/migrations.test.ts`,
+`server/src/store/file-store.migration.test.ts`, `server/src/cards/generate.test.ts`,
+and `server/src/import/transform.test.ts` for the concrete test shapes.
+
 ## Persistence quirks
 
 (`server/src/store/file-store.ts`)
