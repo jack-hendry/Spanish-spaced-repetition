@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { todayNumber } from './collection.store';
-import { buildHeatGrid } from './heatmap';
+import { buildHeatGrid, heatDateKey } from './heatmap';
 import type { Collection } from './models';
 
 function collection(over: Partial<Collection> = {}): Collection {
@@ -65,29 +64,26 @@ describe('buildHeatGrid', () => {
 
   it('maps review days into cell counts and heat levels', () => {
     const coll = collection();
-    // Anchor a review on the grid's first in-year day (Jan 1, 2024) via its
-    // computed study-day number, derived the same way real reviews are
-    // stamped: todayNumber() called with an actual in-day timestamp (noon),
-    // not midnight, mirroring how callers derive reviewDays.
-    const jan1Noon = new Date(2024, 0, 1, 12).getTime();
-    const day = todayNumber(coll, jan1Noon);
-    const reviewDays = Array(12).fill(day); // 12 reviews -> level 2 (10-19)
+    // 12 reviews on Jan 1, 2024 (noon) -> level 2 (10-19).
+    const reviewTimestamps = Array(12).fill(new Date(2024, 0, 1, 12).getTime());
 
-    const grid = buildHeatGrid(reviewDays, coll, 2024);
+    const grid = buildHeatGrid(reviewTimestamps, coll, 2024);
     const jan1Cell = grid.weeks.flat().find((c) => c.inYear && c.date.getMonth() === 0 && c.date.getDate() === 1);
     expect(jan1Cell?.count).toBe(12);
     expect(jan1Cell?.level).toBe(2);
   });
 
-  it('places a review in the cell for the calendar day it was made on, not the next day (regression)', () => {
-    // Non-zero dayCutoffHour (the seeded default is 4am) is what exposed the
-    // bug: cells were built from local midnight, which floors into the
-    // *previous* study-day whenever the cutoff hour hasn't passed yet.
-    const coll = collection({ dayCutoffHour: 4 });
+  it('places a review in the cell for the calendar day it was made on, regardless of created time-of-day (regression)', () => {
+    // created's time-of-day (10:20) used to anchor todayNumber's rollover,
+    // pushing a same-day review into the next calendar cell. Calendar-date
+    // keying must not depend on `created` at all.
+    const coll = collection({
+      created: new Date(2026, 5, 24, 10, 20).getTime(),
+      dayCutoffHour: 4,
+    });
     const afternoon = new Date(2024, 6, 8, 15).getTime(); // Jul 8, 2024, 3pm
-    const reviewDay = todayNumber(coll, afternoon);
 
-    const grid = buildHeatGrid([reviewDay], coll, 2024);
+    const grid = buildHeatGrid([afternoon], coll, 2024);
     const jul8Cell = grid.weeks
       .flat()
       .find((c) => c.inYear && c.date.getMonth() === 6 && c.date.getDate() === 8);
@@ -97,6 +93,22 @@ describe('buildHeatGrid', () => {
 
     expect(jul8Cell?.count).toBe(1);
     expect(jul9Cell?.count).toBe(0);
+  });
+
+  it('rolls a pre-cutoff review back to the previous calendar day (regression)', () => {
+    const coll = collection({ dayCutoffHour: 4 });
+    const preCutoff = new Date(2024, 6, 8, 3, 30).getTime(); // Jul 8, 2024, 3:30am
+
+    const grid = buildHeatGrid([preCutoff], coll, 2024);
+    const jul7Cell = grid.weeks
+      .flat()
+      .find((c) => c.inYear && c.date.getMonth() === 6 && c.date.getDate() === 7);
+    const jul8Cell = grid.weeks
+      .flat()
+      .find((c) => c.inYear && c.date.getMonth() === 6 && c.date.getDate() === 8);
+
+    expect(jul7Cell?.count).toBe(1);
+    expect(jul8Cell?.count).toBe(0);
   });
 
   it('returns exactly 12 months with strictly ascending weekIndex', () => {
@@ -111,5 +123,27 @@ describe('buildHeatGrid', () => {
     }
     // January always starts at the first (possibly padded) week.
     expect(grid.months[0].weekIndex).toBe(0);
+  });
+});
+
+describe('heatDateKey', () => {
+  it('returns the local calendar date as YYYY-MM-DD for a mid-afternoon review', () => {
+    const ms = new Date(2024, 6, 13, 16, 2).getTime();
+    expect(heatDateKey(ms, 4)).toBe('2024-07-13');
+  });
+
+  it('shifts a pre-cutoff review to the previous calendar day', () => {
+    const ms = new Date(2024, 6, 13, 3, 30).getTime();
+    expect(heatDateKey(ms, 4)).toBe('2024-07-12');
+  });
+
+  it('returns the same date for a review exactly at the cutoff hour', () => {
+    const ms = new Date(2024, 6, 13, 4, 0).getTime();
+    expect(heatDateKey(ms, 4)).toBe('2024-07-13');
+  });
+
+  it('bucketing with dayCutoffHour: 0 equals the plain local calendar date', () => {
+    const ms = new Date(2024, 6, 13, 16, 2).getTime();
+    expect(heatDateKey(ms, 0)).toBe('2024-07-13');
   });
 });

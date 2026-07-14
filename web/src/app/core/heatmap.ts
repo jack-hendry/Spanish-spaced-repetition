@@ -1,6 +1,5 @@
-import { todayNumber } from './collection.store';
 import type { Collection } from './models';
-import { heatLevel, yearlyHeat } from './stats';
+import { heatLevel } from './stats';
 
 /** One day cell in the activity heatmap grid. */
 export interface HeatCell {
@@ -29,6 +28,19 @@ const MONTH_NAMES = [
 ];
 
 /**
+ * Returns the local calendar date of a review timestamp, shifted by the
+ * dayCutoffHour, formatted as YYYY-MM-DD with zero-padded month and day.
+ * A review before the cutoff hour shifts to the previous calendar day.
+ */
+export function heatDateKey(ms: number, dayCutoffHour: number): string {
+  const adjusted = new Date(ms - dayCutoffHour * 3600_000);
+  const year = adjusted.getFullYear();
+  const month = String(adjusted.getMonth() + 1).padStart(2, '0');
+  const date = String(adjusted.getDate()).padStart(2, '0');
+  return `${year}-${month}-${date}`;
+}
+
+/**
  * Builds the Sun-anchored 7-row-week grid of day cells covering `year`
  * (padded at both ends to whole weeks, with `inYear: false` marking the
  * padding), plus, for each month present in the grid, the column (week)
@@ -36,7 +48,7 @@ const MONTH_NAMES = [
  * month labels and month gaps.
  */
 export function buildHeatGrid(
-  reviewDays: number[],
+  reviewTimestamps: number[],
   collection: Collection | null,
   year: number,
 ): HeatGrid {
@@ -49,21 +61,21 @@ export function buildHeatGrid(
   const gridEnd = new Date(dec31);
   gridEnd.setDate(dec31.getDate() + (6 - dec31.getDay()));
 
-  // Cells are built from local midnight, but todayNumber's cutoff-hour
-  // subtraction means midnight falls before that calendar day's study-day
-  // boundary (whenever dayCutoffHour > 0), which floors it into the
-  // *previous* day-number. Nudge past the cutoff so each cell's day-number
-  // matches what a real review made that calendar day would get.
-  const cutoffMs = collection.dayCutoffHour * 3600_000;
-  const startDay = todayNumber(collection, gridStart.getTime() + cutoffMs);
-  const endDay = todayNumber(collection, gridEnd.getTime() + cutoffMs);
-  const heat = yearlyHeat(reviewDays, startDay, endDay);
-  const byDay = new Map(heat.map((h) => [h.day, h.count]));
+  const counts = new Map<string, number>();
+  for (const t of reviewTimestamps) {
+    const key = heatDateKey(t, collection.dayCutoffHour);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
 
   const cells: HeatCell[] = [];
   const cursor = new Date(gridStart);
-  for (let day = startDay; day <= endDay; day++) {
-    const count = byDay.get(day) ?? 0;
+  while (cursor <= gridEnd) {
+    // Local noon avoids DST-transition edge cases shifting the date.
+    const key = heatDateKey(
+      new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate(), 12).getTime(),
+      collection.dayCutoffHour,
+    );
+    const count = counts.get(key) ?? 0;
     cells.push({
       date: new Date(cursor),
       count,

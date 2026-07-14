@@ -81,12 +81,14 @@ export class DeckList {
     return coll ? todayNumber(coll) : 0;
   });
 
-  /** Public: fed directly into `<app-heatmap [reviewDays]>`. */
+  /** Public: feeds streaks/studiedToday/pace. See `heatTimestamps` for the heatmap's own signal. */
   readonly reviewDays = computed<number[]>(() => {
     const coll = this.store.collection();
     if (!coll) return [];
     return this.revlog().map((e) => todayNumber(coll, e.reviewedAt));
   });
+
+  readonly heatTimestamps = computed<number[]>(() => this.revlog().map((e) => e.reviewedAt));
 
   private readonly dayTimes = computed<DayTime[]>(() => {
     const coll = this.store.collection();

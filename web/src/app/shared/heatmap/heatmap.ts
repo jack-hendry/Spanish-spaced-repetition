@@ -30,7 +30,7 @@ interface PositionedMonthLabel {
   styleUrl: './heatmap.scss',
 })
 export class Heatmap {
-  readonly reviewDays = input.required<number[]>();
+  readonly reviewTimestamps = input.required<number[]>();
   readonly collection = input.required<Collection | null>();
   readonly year = input.required<number>();
 
@@ -38,7 +38,7 @@ export class Heatmap {
   readonly displayRows = DISPLAY_ROWS;
 
   readonly grid = computed<HeatGrid>(() =>
-    buildHeatGrid(this.reviewDays(), this.collection(), this.year()),
+    buildHeatGrid(this.reviewTimestamps(), this.collection(), this.year()),
   );
 
   /**

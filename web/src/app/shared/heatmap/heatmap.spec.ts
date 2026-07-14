@@ -14,9 +14,9 @@ describe('Heatmap', () => {
     pausedAt: null,
   };
 
-  function render(reviewDays: number[], coll: Collection | null, year: number) {
+  function render(reviewTimestamps: number[], coll: Collection | null, year: number) {
     const fixture = TestBed.createComponent(Heatmap);
-    fixture.componentRef.setInput('reviewDays', reviewDays);
+    fixture.componentRef.setInput('reviewTimestamps', reviewTimestamps);
     fixture.componentRef.setInput('collection', coll);
     fixture.componentRef.setInput('year', year);
     fixture.detectChanges();

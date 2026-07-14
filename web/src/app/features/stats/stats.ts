@@ -94,6 +94,8 @@ export class Stats {
     return this.revlog().map((e) => todayNumber(coll, e.reviewedAt));
   });
 
+  readonly heatTimestamps = computed<number[]>(() => this.revlog().map((e) => e.reviewedAt));
+
   private readonly dayTimes = computed<DayTime[]>(() => {
     const coll = this.store.collection();
     if (!coll) return [];
