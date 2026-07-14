@@ -28,6 +28,11 @@ export interface CardTemplate {
   ord: number;
   qfmt: string;
   afmt: string;
+  /**
+   * When set, cards generated from this template always live in this fixed
+   * deck, regardless of the note's own deck.
+   */
+  deckId?: string;
 }
 
 export interface NoteType {

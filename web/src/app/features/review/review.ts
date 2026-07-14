@@ -1,8 +1,11 @@
 import {
+  afterRenderEffect,
   Component,
   computed,
+  ElementRef,
   inject,
   signal,
+  viewChild,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -40,6 +43,8 @@ interface RenderState {
   deckPath: string[];
   /** Note type kind: 'standard' or 'cloze' */
   noteTypeKind: 'standard' | 'cloze';
+  /** True when this is the audio-only front of an `nt-spanish-2sided` Listening card. */
+  isListeningFront: boolean;
 }
 
 const TYPE_FILTER = /\{\{\s*type:/;
@@ -101,10 +106,60 @@ export class Review {
     return Math.min(100, Math.round((this.answeredCount() / total) * 100));
   });
 
+  /** Host element wrapping the question `[innerHTML]` (non-revealed branch only). */
+  readonly questionHost = viewChild<ElementRef<HTMLElement>>('questionHost');
+
   private answerStart = 0;
 
   constructor() {
     void this.init();
+
+    // Sequential autoplay for a Listening card's audio-only front. Scoped to
+    // this component only (req 13): other card types never set
+    // `isListeningFront`, so `<audio controls>` stays the sole, manual
+    // playback path for them, and `transformMedia` is untouched.
+    afterRenderEffect((onCleanup) => {
+      const s = this.state();
+      const isRevealed = this.revealed();
+      const host = this.questionHost()?.nativeElement;
+
+      if (!s?.isListeningFront || isRevealed || !host) {
+        return;
+      }
+
+      const audios = Array.from(host.querySelectorAll('audio'));
+      if (audios.length === 0) return;
+
+      const detachers: Array<() => void> = [];
+      const playAt = (i: number): void => {
+        const el = audios[i];
+        if (!el) return;
+        // Autoplay may be blocked by the browser; the visible `controls` stay
+        // as the fallback, so a rejection here is expected and silent.
+        el.play().catch(() => {});
+      };
+      audios.forEach((el, i) => {
+        if (i === audios.length - 1) return; // nothing to chain after the last clip
+        const onEnded = () => playAt(i + 1);
+        el.addEventListener('ended', onEnded);
+        detachers.push(() => el.removeEventListener('ended', onEnded));
+      });
+      playAt(0);
+
+      // Torn down before the next re-render of this effect (card change,
+      // reveal) and on component destroy, so listeners never leak across
+      // cards and a still-playing clip doesn't keep running past its card.
+      onCleanup(() => {
+        for (const detach of detachers) detach();
+        for (const el of audios) {
+          try {
+            el.pause();
+          } catch {
+            /* jsdom / already-detached media element — nothing to do */
+          }
+        }
+      });
+    });
   }
 
   private ctx(): ReviewContext {
@@ -148,6 +203,7 @@ export class Review {
         ? noteType.templates[0]
         : noteType.templates[card.ord] ?? noteType.templates[0];
     const isTypeIn = TYPE_FILTER.test(template.qfmt);
+    const isListeningFront = noteType.id === 'nt-spanish-2sided' && template.name === 'Listening';
     const { front, back } = renderCard(template.qfmt, template.afmt, note.fields, {
       ord: card.ord,
     });
@@ -170,6 +226,7 @@ export class Review {
       css: noteType.css,
       deckPath: this.store.deckById(card.deckId)?.name.split('::') ?? [this.deckName()],
       noteTypeKind: noteType.kind,
+      isListeningFront,
     });
   }
 

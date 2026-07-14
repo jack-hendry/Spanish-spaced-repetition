@@ -52,7 +52,7 @@
       @if (revealed()) {
         <div class="rendered rendered--answer" [innerHTML]="s.answer"></div>
       } @else {
-        <div class="rendered" [innerHTML]="s.question"></div>
+        <div #questionHost class="rendered" [innerHTML]="s.question"></div>
         @if (s.isTypeIn) {
           <input
             #typeInput

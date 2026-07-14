@@ -137,6 +137,12 @@
         "ord": 0,
         "qfmt": "{{SideA}}{{SideAImage}}{{SideAAudio}}",
         "afmt": "{{FrontSide}}\n<hr id=\"answer\">\n{{SideB}}{{SideBImage}}{{SideBAudio}}"
+      },
+      {
+        "name": "Listening",
+        "ord": 1,
+        "qfmt": "{{SideAAudio}}{{SideBAudio}}",
+        "afmt": "{{SideA}}{{SideAImage}}{{SideAAudio}}\n<hr id=\"answer\">\n{{SideB}}{{SideBImage}}{{SideBAudio}}"
       }
     ],
     "css": ".card {\n  font-family: -apple-system, system-ui, sans-serif;\n  font-size: 22px;\n  text-align: center;\n  color: #1a1a1a;\n  background: #ffffff;\n}\n.card img { max-width: 100%; height: auto; }\nhr#answer { margin: 1em 0; border: none; border-top: 1px solid #ddd; }\n.type-result { margin: 0.5em 0; }\n.type-given, .type-expected {\n  display: block;\n  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;\n  font-size: 1.1em;\n}\n.type-expected { margin-top: 0.3em; color: #6b7280; }\n.type-result--ok .type-given { color: #16a34a; }\n.type-good { color: #16a34a; }\n.type-bad { color: #dc2626; text-decoration: underline; }\n.type-have { color: #16a34a; }\n.type-missing { color: #dc2626; background: #fee2e2; }"

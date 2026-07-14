@@ -1,7 +1,9 @@
 // Initial seed content written when data/spanish is first initialised.
 
 import type {
+  CardTemplate,
   Collection,
+  Deck,
   DeckOptions,
   NoteType,
 } from '../models/index.js';
@@ -9,6 +11,9 @@ import type {
 export const SCHEMA_VERSION = 1;
 
 export const DEFAULT_DECK_OPTIONS_ID = 'opts-default';
+
+/** Stable id for the dedicated deck that holds all Listening cards. */
+export const LISTENING_DECK_ID = 'dec-listening';
 
 // FSRS-5 default parameters (19 weights).
 export const FSRS5_DEFAULT_WEIGHTS = [
@@ -38,6 +43,26 @@ hr#answer { margin: 1em 0; border: none; border-top: 1px solid #ddd; }
 .type-bad { color: #dc2626; text-decoration: underline; }
 .type-have { color: #16a34a; }
 .type-missing { color: #dc2626; background: #fee2e2; }`;
+
+export const LISTENING_TEMPLATE: CardTemplate = {
+  name: 'Listening',
+  ord: 1,
+  qfmt: '{{SideAAudio}}{{SideBAudio}}',
+  afmt: '{{SideA}}{{SideAImage}}{{SideAAudio}}\n<hr id="answer">\n{{SideB}}{{SideBImage}}{{SideBAudio}}',
+  // Every Listening card lives in a dedicated deck, not the note's own deck.
+  deckId: LISTENING_DECK_ID,
+};
+
+/** The single dedicated deck that holds every note's Listening card. */
+export function buildListeningDeck(): Deck {
+  return {
+    id: LISTENING_DECK_ID,
+    name: 'Listening',
+    parentId: null,
+    optionsId: DEFAULT_DECK_OPTIONS_ID,
+    collapsed: false,
+  };
+}
 
 export function buildSeedCollection(now: number): Collection {
   return {
@@ -208,6 +233,7 @@ export function buildSeedNoteTypes(): NoteType[] {
           qfmt: '{{SideA}}{{SideAImage}}{{SideAAudio}}',
           afmt: '{{FrontSide}}\n<hr id="answer">\n{{SideB}}{{SideBImage}}{{SideBAudio}}',
         },
+        LISTENING_TEMPLATE,
       ],
       css: BASIC_CSS,
     },

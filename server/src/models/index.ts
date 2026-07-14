@@ -37,6 +37,12 @@ export interface CardTemplate {
   qfmt: string;
   /** Answer-side template. */
   afmt: string;
+  /**
+   * When set, cards generated from this template always live in this fixed
+   * deck, regardless of the note's own deck (e.g. the Listening template's
+   * cards go into a dedicated "Listening" deck, not the note's book deck).
+   */
+  deckId?: string;
 }
 
 export interface NoteType {

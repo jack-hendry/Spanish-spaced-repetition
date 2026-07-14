@@ -10,5 +10,17 @@
       "newStudied": 20,
       "reviewStudied": 76
     }
+  },
+  {
+    "id": "dec-listening",
+    "name": "Listening",
+    "parentId": null,
+    "optionsId": "opts-default",
+    "collapsed": false,
+    "daily": {
+      "day": 19,
+      "newStudied": 20,
+      "reviewStudied": 0
+    }
   }
 ]

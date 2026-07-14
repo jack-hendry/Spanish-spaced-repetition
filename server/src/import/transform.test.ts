@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { Card } from '../models/index.js';
 import { transformBooks, type SourceBook } from './transform.js';
+import { LISTENING_DECK_ID, buildListeningDeck } from '../store/seed.js';
 
 const book: SourceBook = {
   slug: 'demo',
@@ -55,10 +56,10 @@ describe('transformBooks', () => {
     expect(ch1.parentId).toBe(root.id);
   });
 
-  it('maps a scraped card to one note + one new card with media filtered', () => {
+  it('maps a scraped card to one note + two new cards (A→B and Listening) with media filtered', () => {
     const { notes, cards } = transformBooks([book], empty, 1000);
     expect(notes).toHaveLength(1);
-    expect(cards).toHaveLength(1);
+    expect(cards).toHaveLength(2);
     const n = notes[0];
     expect(n.fields.SideA).toBe('aunt');
     expect(n.fields.SideB).toBe('la tía');
@@ -66,8 +67,13 @@ describe('transformBooks', () => {
     expect(n.fields.SideAAudio).toBe('[sound:https://x.s3.amazonaws.com/a.mp3]');
     // junk image url (spaces / no extension) -> dropped
     expect(n.fields.SideBImage).toBe('');
+    // Both cards should be new
     expect(cards[0].type).toBe('new');
     expect(cards[0].queue).toBe('new');
+    expect(cards[1].type).toBe('new');
+    expect(cards[1].queue).toBe('new');
+    // ords should be 0 and 1
+    expect(cards.map((c) => c.ord).sort()).toEqual([0, 1]);
   });
 
   it('accepts site-relative local audio and generates both directions for spanish2both', () => {
@@ -109,7 +115,7 @@ describe('transformBooks', () => {
 
   it('is idempotent and preserves scheduling on re-import', () => {
     const first = transformBooks([book], empty, 1000);
-    // Simulate the card having been reviewed.
+    // Simulate the ord-0 card having been reviewed.
     const reviewed: Card = {
       ...first.cards[0],
       type: 'review',
@@ -124,14 +130,47 @@ describe('transformBooks', () => {
       { decks: first.decks, notes: first.notes, cards: [reviewed] },
       2000,
     );
-    expect(second.cards).toHaveLength(1);
-    expect(second.cards[0].id).toBe(first.cards[0].id);
-    expect(second.cards[0].type).toBe('review');
+    expect(second.cards).toHaveLength(2);
+    // ord-0 card should be preserved with its review state
+    expect(second.cards.find((c) => c.ord === 0)?.id).toBe(first.cards[0].id);
+    expect(second.cards.find((c) => c.ord === 0)?.type).toBe('review');
+    // ord-1 card (Listening) should be new
+    expect(second.cards.find((c) => c.ord === 1)?.type).toBe('new');
     expect(second.cards[0].interval).toBe(15);
     expect(second.cards[0].reps).toBe(3);
     // deck ids stable too
     expect(second.decks.map((d) => d.id).sort()).toEqual(
       first.decks.map((d) => d.id).sort(),
     );
+  });
+
+  it('imports the ord-1 Listening card into the dedicated Listening deck', () => {
+    const { cards } = transformBooks([book], empty, 1000);
+    const ord1 = cards.find((c) => c.ord === 1)!;
+    expect(ord1.deckId).toBe(LISTENING_DECK_ID);
+    // ord-0 stays in the book's own deck.
+    expect(cards.find((c) => c.ord === 0)!.deckId).not.toBe(LISTENING_DECK_ID);
+  });
+
+  it('keeps a re-imported Listening card in the Listening deck and carries the deck through', () => {
+    const first = transformBooks([book], empty, 1000);
+    // Simulate a Listening card that had drifted into the book deck, and an
+    // existing Listening deck (created by the startup migration).
+    const drifted: Card = {
+      ...first.cards.find((c) => c.ord === 1)!,
+      deckId: 'some-book-deck',
+    };
+    const existing = {
+      decks: [...first.decks.filter((d) => d.id !== LISTENING_DECK_ID), buildListeningDeck()],
+      notes: first.notes,
+      cards: [first.cards.find((c) => c.ord === 0)!, drifted],
+    };
+
+    const second = transformBooks([book], existing, 2000);
+
+    // The re-imported ord-1 card is pinned back to the Listening deck.
+    expect(second.cards.find((c) => c.ord === 1)!.deckId).toBe(LISTENING_DECK_ID);
+    // The Listening deck survives the full decks.json replacement.
+    expect(second.decks.some((d) => d.id === LISTENING_DECK_ID)).toBe(true);
   });
 });

@@ -26,6 +26,7 @@ import {
   buildSeedDeckOptions,
   buildSeedNoteTypes,
 } from './seed.js';
+import { migrateAddListeningTemplate } from './migrations.js';
 
 interface FileNames {
   collection: string;
@@ -110,6 +111,15 @@ export class FileStore {
     if (!existsSync(this.path('decks'))) await this.flush('decks');
     if (!existsSync(this.path('notes'))) await this.flush('notes');
     if (!existsSync(this.path('cards'))) await this.flush('cards');
+
+    // Startup migration: reach live stores whose notetypes.json predates a
+    // newly-added built-in template (e.g. the Listening card). Pure/idempotent
+    // over this.data; persist notetypes before cards so a crash mid-migration
+    // never leaves cards referencing an ord the note type doesn't have yet.
+    const migration = migrateAddListeningTemplate(this.data, now);
+    if (migration.changedNoteTypes) await this.flush('notetypes');
+    if (migration.changedDecks) await this.flush('decks');
+    if (migration.changedCards) await this.flush('cards');
   }
 
   // ---- accessors (return live references; callers must persist via save*) --

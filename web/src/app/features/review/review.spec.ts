@@ -372,6 +372,118 @@ describe('Review', () => {
     });
   });
 
+  // --- Listening card autoplay (req 9, 10, 13) --------------------------------
+
+  describe('listening card autoplay', () => {
+    // Mirrors server/src/store/seed.ts's real nt-spanish-2sided templates:
+    // ord 0 "A → B" (text + audio) and ord 1 "Listening" (audio-only front).
+    const spanishNoteType: NoteType = {
+      id: 'nt-spanish-2sided',
+      name: 'Spanish 2-sided',
+      kind: 'standard',
+      fields: [
+        { name: 'SideA', ord: 0 },
+        { name: 'SideB', ord: 1 },
+        { name: 'SideAAudio', ord: 2 },
+        { name: 'SideBAudio', ord: 3 },
+      ],
+      templates: [
+        {
+          name: 'A → B',
+          ord: 0,
+          qfmt: '{{SideA}}{{SideAAudio}}',
+          afmt: '{{FrontSide}}\n<hr id="answer">\n{{SideB}}{{SideBAudio}}',
+        },
+        {
+          name: 'Listening',
+          ord: 1,
+          qfmt: '{{SideAAudio}}{{SideBAudio}}',
+          afmt: '{{SideA}}{{SideAAudio}}\n<hr id="answer">\n{{SideB}}{{SideBAudio}}',
+        },
+      ],
+      css: '',
+    };
+
+    const spanishNote: Note = {
+      id: 'n-spanish',
+      noteTypeId: 'nt-spanish-2sided',
+      fields: {
+        SideA: 'perro',
+        SideB: 'El perro corre.',
+        SideAAudio: '[sound:word.mp3]',
+        SideBAudio: '[sound:sentence.mp3]',
+      },
+      tags: [],
+      created: 0,
+      modified: 0,
+      guid: 'g-spanish',
+    };
+
+    let playSpy: ReturnType<typeof vi.fn<() => Promise<void>>>;
+
+    beforeEach(() => {
+      playSpy = vi.fn(() => Promise.resolve());
+      vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(playSpy);
+      vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+
+      storeFake.getNote = vi.fn(async (id: string) => (id === 'n-spanish' ? spanishNote : note));
+      storeFake.noteTypeById = vi.fn((id: string) =>
+        id === 'nt-spanish-2sided' ? spanishNoteType : noteType,
+      );
+    });
+
+    it('plays the first clip automatically on a Listening (ord 1) front', async () => {
+      seedQueueOneCard(card({ id: 'c-listen', noteId: 'n-spanish', ord: 1 }));
+
+      const fixture = await createReview();
+      const el = fixture.nativeElement as HTMLElement;
+      const audios = Array.from(el.querySelectorAll<HTMLAudioElement>('.rendered audio'));
+
+      expect(audios.length).toBe(2);
+      expect(playSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('chains to the second clip when the first fires "ended"', async () => {
+      seedQueueOneCard(card({ id: 'c-listen', noteId: 'n-spanish', ord: 1 }));
+
+      const fixture = await createReview();
+      const el = fixture.nativeElement as HTMLElement;
+      const audios = Array.from(el.querySelectorAll<HTMLAudioElement>('.rendered audio'));
+      expect(playSpy).toHaveBeenCalledTimes(1);
+
+      audios[0].dispatchEvent(new Event('ended'));
+      fixture.detectChanges();
+      await flushMicrotasks();
+
+      expect(playSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not autoplay for a plain A → B (ord 0) card of the same note type', async () => {
+      seedQueueOneCard(card({ id: 'c-ab', noteId: 'n-spanish', ord: 0 }));
+
+      const fixture = await createReview();
+      const el = fixture.nativeElement as HTMLElement;
+      // The A → B front also carries an <audio> element — proves the gate is
+      // "is this the Listening template", not merely "audio is present".
+      expect(el.querySelectorAll('.rendered audio').length).toBe(1);
+      expect(playSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not autoplay for a cloze card', async () => {
+      // The default beforeEach queue serves the module-level cloze `note`/`noteType`.
+      await createReview();
+      expect(playSpy).not.toHaveBeenCalled();
+    });
+
+    it('has no type-in input on a Listening front (req 12)', async () => {
+      seedQueueOneCard(card({ id: 'c-listen', noteId: 'n-spanish', ord: 1 }));
+
+      const fixture = await createReview();
+      const el = fixture.nativeElement as HTMLElement;
+      expect(el.querySelector('.type-input')).toBeNull();
+    });
+  });
+
   // --- Paused empty state (R17) ------------------------------------------------
 
   describe('paused empty state', () => {

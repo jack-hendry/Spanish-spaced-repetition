@@ -85,15 +85,22 @@ export function reconcileNoteCards(
   const want = desiredOrds(note, noteType);
   const wantSet = new Set(want);
   const byOrd = new Map(existing.map((c) => [c.ord, c]));
+  const templateByOrd = new Map(noteType.templates.map((t) => [t.ord, t]));
 
   const removedIds = existing.filter((c) => !wantSet.has(c.ord)).map((c) => c.id);
 
   let position = basePosition;
   const cards = want
     .map((ord) => {
+      // A template can pin its cards to a fixed deck (e.g. Listening),
+      // overriding the note's own deck. Re-applied on every reconcile so a
+      // card that drifted to the wrong deck self-heals.
+      const effectiveDeckId = templateByOrd.get(ord)?.deckId ?? deckId;
       const prior = byOrd.get(ord);
-      if (prior) return { ...prior, noteId: note.id, modified: now };
-      return buildNewCard(note, ord, deckId, position++, now);
+      if (prior) {
+        return { ...prior, noteId: note.id, deckId: effectiveDeckId, modified: now };
+      }
+      return buildNewCard(note, ord, effectiveDeckId, position++, now);
     })
     .sort((a, b) => a.ord - b.ord);
 

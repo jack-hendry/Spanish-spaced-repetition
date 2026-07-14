@@ -114,4 +114,71 @@ describe('reconcileNoteCards', () => {
     expect(cards.map((c) => c.ord)).toEqual([0]);
     expect(removedIds).toEqual([first[1].id]);
   });
+
+  // A template can pin its cards to a fixed deck (e.g. the Listening template),
+  // overriding the note's own deck passed as `deckId`.
+  const pinnedListening: NoteType = {
+    id: 'nt-spanish-2sided',
+    name: 'Spanish 2-sided',
+    kind: 'standard',
+    fields: [
+      { name: 'SideA', ord: 0 },
+      { name: 'SideB', ord: 3 },
+    ],
+    templates: [
+      { name: 'A → B', ord: 0, qfmt: '{{SideA}}', afmt: '{{SideB}}' },
+      { name: 'Listening', ord: 1, qfmt: '{{SideAAudio}}', afmt: '{{SideA}}', deckId: 'dec-x' },
+    ],
+    css: '',
+  };
+
+  it('pins a template with deckId to that deck for a freshly created card', () => {
+    const { cards } = reconcileNoteCards(
+      note({ SideA: 'a', SideB: 'b' }),
+      pinnedListening,
+      [],
+      'd1',
+      0,
+      1,
+    );
+    // ord-0 follows the note's own deck; ord-1 is pinned to the template deck.
+    expect(cards.find((c) => c.ord === 0)!.deckId).toBe('d1');
+    expect(cards.find((c) => c.ord === 1)!.deckId).toBe('dec-x');
+  });
+
+  it('corrects a surviving ord-1 card that drifted to the wrong deck', () => {
+    const drifted: Card = {
+      id: 'cn1-1',
+      noteId: 'n1',
+      deckId: 'd1', // wrong — should be the pinned 'dec-x'
+      ord: 1,
+      type: 'review',
+      queue: 'review',
+      due: 99,
+      reps: 4,
+      lapses: 0,
+      left: 0,
+      lastReviewed: 123,
+      created: 0,
+      modified: 0,
+      ease: 2500,
+      interval: 12,
+      stability: null,
+      difficulty: null,
+    };
+    const { cards } = reconcileNoteCards(
+      note({ SideA: 'a', SideB: 'b' }),
+      pinnedListening,
+      [drifted],
+      'd1',
+      0,
+      2,
+    );
+    const ord1 = cards.find((c) => c.ord === 1)!;
+    // Deck corrected to the pinned deck, scheduling state preserved.
+    expect(ord1.deckId).toBe('dec-x');
+    expect(ord1.reps).toBe(4);
+    expect(ord1.interval).toBe(12);
+    expect(ord1.type).toBe('review');
+  });
 });

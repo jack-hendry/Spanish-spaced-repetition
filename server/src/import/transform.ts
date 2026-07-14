@@ -16,7 +16,7 @@
 import { createHash } from 'node:crypto';
 
 import type { Card, Deck, Note, NoteType } from '../models/index.js';
-import { NOTE_TYPE_IDS, buildSeedNoteTypes } from '../store/seed.js';
+import { LISTENING_DECK_ID, NOTE_TYPE_IDS, buildSeedNoteTypes } from '../store/seed.js';
 
 /** Note types keyed by id, so a book can select one and we can read its templates. */
 const NOTE_TYPES_BY_ID = new Map(buildSeedNoteTypes().map((nt) => [nt.id, nt]));
@@ -151,6 +151,10 @@ export function transformBooks(
     const rootTitle = book.root.MenuTitle;
     const noteType = resolveNoteType(book.root.noteType);
     const ords = noteType.templates.map((t) => t.ord);
+    // A template can pin its cards to a fixed deck (e.g. Listening),
+    // overriding the book's ancestor-path deck; re-applied on every import so
+    // a card stays put even if it was ever created before this rule existed.
+    const templateByOrd = new Map(noteType.templates.map((t) => [t.ord, t]));
 
     const walk = (node: ScrapedNode, ancestorPath: string[]): void => {
       const carriesCards = Array.isArray(node.cards) && node.cards.length > 0;
@@ -187,12 +191,13 @@ export function transformBooks(
           for (const ord of ords) {
             const cardId = 'c' + guid + '-' + ord;
             const priorCard = existingCardsById.get(cardId);
+            const cardDeckId = templateByOrd.get(ord)?.deckId ?? deckId;
             if (priorCard) {
               // Preserve scheduling state; only refresh placement.
               cards.push({
                 ...priorCard,
                 noteId,
-                deckId,
+                deckId: cardDeckId,
                 ord,
                 modified: now,
               });
@@ -200,7 +205,7 @@ export function transformBooks(
               cards.push({
                 id: cardId,
                 noteId,
-                deckId,
+                deckId: cardDeckId,
                 ord,
                 type: 'new',
                 queue: 'new',
@@ -232,5 +237,11 @@ export function transformBooks(
   }
 
   const decks = reg.order.map((name) => reg.byName.get(name)!);
+  // The Listening deck is never an ancestor-path deck (it's not derived from
+  // any book's menu tree), so it would otherwise be silently dropped here —
+  // decks.json is fully replaced by this function's output. Carry it through
+  // unchanged if it already exists (created by the startup migration).
+  const listeningDeck = existing.decks.find((d) => d.id === LISTENING_DECK_ID);
+  if (listeningDeck) decks.push(listeningDeck);
   return { decks, notes, cards };
 }

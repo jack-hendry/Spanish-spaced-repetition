@@ -88,4 +88,42 @@ describe('renderCard', () => {
     expect(back).toContain('aunt<hr id="answer">la tía');
     expect(back).toContain('<audio');
   });
+
+  it('renders Listening template: audio-only front, full back', () => {
+    const { front, back } = renderCard(
+      '{{SideAAudio}}{{SideBAudio}}',
+      '{{SideA}}{{SideAImage}}{{SideAAudio}}\n<hr id="answer">\n{{SideB}}{{SideBImage}}{{SideBAudio}}',
+      {
+        SideA: 'tía',
+        SideAImage: '<img src="tia.jpg" />',
+        SideAAudio: '[sound:word-tia.mp3]',
+        SideB: 'la tía en la familia',
+        SideBImage: '<img src="family.jpg" />',
+        SideBAudio: '[sound:sentence-tia.mp3]',
+      },
+    );
+
+    // Front: audio-only (two audio elements, no text/images)
+    expect(front).toContain('<audio');
+    expect(front).toContain('class="card-audio"');
+    // Should have exactly two audio elements (word and sentence)
+    expect((front.match(/<audio/g) || []).length).toBe(2);
+    // Should NOT contain any text
+    expect(front).not.toContain('tía');
+    expect(front).not.toContain('la tía');
+    // Should NOT contain images
+    expect(front).not.toContain('img');
+    expect(front).not.toContain('tia.jpg');
+    expect(front).not.toContain('family.jpg');
+
+    // Back: full content (text, images, audio)
+    expect(back).toContain('tía');
+    expect(back).toContain('la tía en la familia');
+    expect(back).toContain('tia.jpg');
+    expect(back).toContain('family.jpg');
+    // Should have two audio elements
+    expect((back.match(/<audio/g) || []).length).toBe(2);
+    // Should contain the answer divider
+    expect(back).toContain('<hr id="answer">');
+  });
 });
