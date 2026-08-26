@@ -176,6 +176,28 @@ describe('transformBooks', () => {
     );
   });
 
+  it('seeds new-card positions past the existing new queue instead of restarting at 0 (audit B5)', () => {
+    // A pre-existing new card, unrelated to this book, already sitting at
+    // the back of a long new-card queue.
+    const priorNewCard: Card = {
+      id: 'c-unrelated', noteId: 'n-unrelated', deckId: 'd-other', ord: 0,
+      type: 'new', queue: 'new', due: 4000, reps: 0, lapses: 0, left: 0,
+      lastReviewed: null, created: 0, modified: 0, ease: 2500, interval: 0,
+      stability: null, difficulty: null,
+    };
+    const { cards } = transformBooks(
+      [book],
+      { decks: [], notes: [], cards: [priorNewCard] },
+      1000,
+    );
+    // Freshly-created cards must queue up behind the existing new card, not
+    // jump ahead of it by restarting at position 0.
+    for (const c of cards) {
+      expect(c.due).toBeGreaterThan(priorNewCard.due);
+    }
+    expect(cards.map((c) => c.due).sort((a, b) => a - b)).toEqual([4001, 4002]);
+  });
+
   it('imports the ord-1 Listening card into the dedicated Listening deck', () => {
     const { cards } = transformBooks([book], empty, 1000);
     const ord1 = cards.find((c) => c.ord === 1)!;

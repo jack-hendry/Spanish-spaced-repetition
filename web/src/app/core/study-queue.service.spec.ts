@@ -180,3 +180,40 @@ describe('StudyQueueService — card with a stale left (audit B1)', () => {
     expect(result?.id).toBe('l1');
   });
 });
+
+describe('StudyQueueService — default deck options (audit B6)', () => {
+  function setup(): { store: CollectionStore; queue: StudyQueueService } {
+    TestBed.configureTestingModule({});
+    const store = TestBed.inject(CollectionStore);
+    const queue = TestBed.inject(StudyQueueService);
+    return { store, queue };
+  }
+
+  it('startAll() resolves collection.defaultDeckOptionsId, not array position 0', () => {
+    const { store, queue } = setup();
+    const other = { ...deckOptions, id: 'o-other', name: 'Other' };
+    // "other" sits first in the array; the collection's declared default is "o1".
+    store.deckOptions.set([other, deckOptions]);
+    store.collection.set(collection({ defaultDeckOptionsId: 'o1' }));
+    store.decks.set([deck({ id: 'd1', optionsId: 'o-other' })]);
+    store.cards.set([]);
+
+    queue.startAll();
+
+    expect(queue.options?.id).toBe('o1');
+  });
+
+  it('start() falls back to the default options group, not array position 0, for a deck with no matching group', () => {
+    const { store, queue } = setup();
+    const other = { ...deckOptions, id: 'o-other', name: 'Other' };
+    store.deckOptions.set([other, deckOptions]);
+    store.collection.set(collection({ defaultDeckOptionsId: 'o1' }));
+    // Deck points at an options id that doesn't exist.
+    store.decks.set([deck({ id: 'd1', optionsId: 'o-missing' })]);
+    store.cards.set([]);
+
+    queue.start('d1');
+
+    expect(queue.options?.id).toBe('o1');
+  });
+});

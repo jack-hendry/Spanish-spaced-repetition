@@ -241,8 +241,11 @@ export function countInRange(reviewDays: number[], startDay: number, endDay: num
  * already use for `ReviewContext.now` — see `scheduling/types.ts`).
  */
 export function formatRelativeDue(card: Card, today: number, now: number): string {
-  if (card.queue === 'new') return '—';
-  if (card.queue === 'learning') {
+  // `due`'s unit is set by card.type, not card.queue — a leeched/buried card
+  // can carry queue 'suspended'/'schedBuried'/'userBuried' with type
+  // 'learning'/'relearning', still in epoch ms. See scheduling-domain skill.
+  if (card.type === 'new') return '—';
+  if (card.type === 'learning' || card.type === 'relearning') {
     const diffMs = card.due - now;
     if (diffMs <= 0) return 'today';
     const minutes = Math.max(1, Math.round(diffMs / 60_000));

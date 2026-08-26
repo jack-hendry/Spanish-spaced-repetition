@@ -104,6 +104,18 @@ interface DeckRegistry {
   order: string[];
 }
 
+/**
+ * Next free position in the "new" queue. Mirrors `nextNewPosition` in
+ * routes/index.ts and migrations.ts (kept local — the importer must not
+ * depend on the route module). New-card `due` is a queue position, so the
+ * next free slot is one past the current maximum.
+ */
+function nextNewPosition(cards: Card[]): number {
+  let max = -1;
+  for (const c of cards) if (c.queue === 'new' && c.due > max) max = c.due;
+  return max + 1;
+}
+
 /** Ensure a deck (and all its ancestors) exists; return its id. */
 function ensureDeck(
   reg: DeckRegistry,
@@ -147,7 +159,11 @@ export function transformBooks(
   const reg: DeckRegistry = { byName: new Map(), order: [] };
   const notes: Note[] = [];
   const cards: Card[] = [];
-  let newCardPosition = 0;
+  // Start past every already-existing new card's position so freshly-imported
+  // cards queue up behind them instead of jumping the line (audit B5).
+  // Mirrors `nextNewPosition` in routes/index.ts and migrations.ts (kept
+  // local — the importer must not depend on the route module).
+  let newCardPosition = nextNewPosition(existing.cards);
 
   for (const book of books) {
     const rootTitle = book.root.MenuTitle;
