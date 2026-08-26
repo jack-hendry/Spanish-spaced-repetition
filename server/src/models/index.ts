@@ -89,7 +89,7 @@ export interface Card {
 
   type: CardType;
   queue: CardQueue;
-  /** new: position; learning: epoch seconds; review: day number. */
+  /** new: position; learning/relearning: epoch MILLISECONDS; review: day number. */
   due: number;
 
   // shared scheduling state

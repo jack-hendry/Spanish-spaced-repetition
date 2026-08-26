@@ -201,7 +201,7 @@ export class Review {
     const template =
       noteType.kind === 'cloze'
         ? noteType.templates[0]
-        : noteType.templates[card.ord] ?? noteType.templates[0];
+        : (noteType.templates.find((t) => t.ord === card.ord) ?? noteType.templates[0]);
     const isTypeIn = TYPE_FILTER.test(template.qfmt);
     const isListeningFront = noteType.id === 'nt-spanish-2sided' && template.name === 'Listening';
     const { front, back } = renderCard(template.qfmt, template.afmt, note.fields, {
@@ -299,6 +299,20 @@ export class Review {
 
   onKey(e: KeyboardEvent): void {
     if (this.finished() || this.loading()) return;
+    // While the user is typing an answer, only Enter (submit) and Escape (blur)
+    // are shortcuts — every other key, including '-', is answer text and must
+    // reach the input rather than triggering suspend/navigate.
+    const typingAnswer = (this.state()?.isTypeIn ?? false) && !this.revealed();
+    if (typingAnswer) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.reveal();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        (e.target as HTMLElement | null)?.blur?.();
+      }
+      return;
+    }
     if (e.key === 'Escape') {
       e.preventDefault();
       void this.router.navigateByUrl('/');
@@ -310,10 +324,8 @@ export class Review {
       return;
     }
     if (!this.revealed()) {
-      // On a type-in card, let Space (and everything else) reach the input; only
-      // Enter submits. Other cards reveal on Space or Enter.
-      const typeIn = this.state()?.isTypeIn ?? false;
-      if (e.key === 'Enter' || (!typeIn && e.key === ' ')) {
+      // Non-type-in cards reveal on Space or Enter.
+      if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault();
         this.reveal();
       }

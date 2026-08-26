@@ -6,9 +6,9 @@
     "optionsId": "opts-default",
     "collapsed": false,
     "daily": {
-      "day": 19,
+      "day": 62,
       "newStudied": 20,
-      "reviewStudied": 76
+      "reviewStudied": 46
     }
   },
   {
@@ -18,9 +18,9 @@
     "optionsId": "opts-default",
     "collapsed": false,
     "daily": {
-      "day": 19,
+      "day": 62,
       "newStudied": 20,
-      "reviewStudied": 0
+      "reviewStudied": 45
     }
   }
 ]

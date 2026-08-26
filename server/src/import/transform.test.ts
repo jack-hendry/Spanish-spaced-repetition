@@ -76,6 +76,38 @@ describe('transformBooks', () => {
     expect(cards.map((c) => c.ord).sort()).toEqual([0, 1]);
   });
 
+  it('escapes quote/angle-bracket characters in an image URL (audit C1)', () => {
+    const malicious: SourceBook = {
+      slug: 'demo-xss',
+      root: {
+        Menu_ID: 1,
+        MenuTitle: 'Demo XSS',
+        children: [
+          {
+            Menu_ID: 2,
+            MenuTitle: 'Flashcards: Study Mode',
+            DeckType: 'Flashcards: Study Mode',
+            cards: [
+              {
+                Card_ID: 200,
+                SideA: 'x',
+                SideB: 'y',
+                SideAAudio: null,
+                SideBAudio: null,
+                SideAImage: 'https://x.s3.amazonaws.com/"><script>alert(1)</script>.jpg',
+                SideBImage: null,
+              },
+            ],
+          },
+        ],
+      },
+    };
+    const { notes } = transformBooks([malicious], empty, 1000);
+    const html = notes[0].fields.SideAImage;
+    expect(html).not.toContain('"><script>');
+    expect(html).toContain('&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;');
+  });
+
   it('accepts site-relative local audio and generates both directions for spanish2both', () => {
     const twoWay: SourceBook = {
       slug: 'phrasal',
@@ -142,6 +174,28 @@ describe('transformBooks', () => {
     expect(second.decks.map((d) => d.id).sort()).toEqual(
       first.decks.map((d) => d.id).sort(),
     );
+  });
+
+  it('seeds new-card positions past the existing new queue instead of restarting at 0 (audit B5)', () => {
+    // A pre-existing new card, unrelated to this book, already sitting at
+    // the back of a long new-card queue.
+    const priorNewCard: Card = {
+      id: 'c-unrelated', noteId: 'n-unrelated', deckId: 'd-other', ord: 0,
+      type: 'new', queue: 'new', due: 4000, reps: 0, lapses: 0, left: 0,
+      lastReviewed: null, created: 0, modified: 0, ease: 2500, interval: 0,
+      stability: null, difficulty: null,
+    };
+    const { cards } = transformBooks(
+      [book],
+      { decks: [], notes: [], cards: [priorNewCard] },
+      1000,
+    );
+    // Freshly-created cards must queue up behind the existing new card, not
+    // jump ahead of it by restarting at position 0.
+    for (const c of cards) {
+      expect(c.due).toBeGreaterThan(priorNewCard.due);
+    }
+    expect(cards.map((c) => c.due).sort((a, b) => a - b)).toEqual([4001, 4002]);
   });
 
   it('imports the ord-1 Listening card into the dedicated Listening deck', () => {

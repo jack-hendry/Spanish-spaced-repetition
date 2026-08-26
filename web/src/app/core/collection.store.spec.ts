@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 
 import { CollectionStore } from './collection.store';
-import type { Card, Collection, Deck } from './models';
+import type { Card, Collection, Deck, DeckOptions } from './models';
 
 function collection(over: Partial<Collection> = {}): Collection {
   return {
@@ -24,6 +24,52 @@ function deck(over: Partial<Deck> = {}): Deck {
     parentId: null,
     optionsId: 'o1',
     collapsed: false,
+    ...over,
+  };
+}
+
+function deckOptions(over: Partial<DeckOptions> = {}): DeckOptions {
+  return {
+    id: 'o1',
+    name: 'Default',
+    new: {
+      perDay: 20,
+      steps: [1, 10],
+      graduatingInterval: 1,
+      easyInterval: 4,
+      startingEase: 2500,
+      insertionOrder: 'sequential',
+    },
+    review: {
+      perDay: 200,
+      maxInterval: 36500,
+      easyBonus: 1.3,
+      intervalModifier: 1.0,
+      hardInterval: 1.2,
+    },
+    lapse: {
+      steps: [10],
+      newIntervalPct: 0.0,
+      minInterval: 1,
+      leechThreshold: 8,
+      leechAction: 'suspend',
+    },
+    display: {
+      newGatherOrder: 'deck',
+      newSortOrder: 'orderGathered',
+      reviewOrder: 'dueRandom',
+      buryNewSiblings: true,
+      buryReviewSiblings: true,
+      buryInterdaySiblings: true,
+    },
+    scheduler: 'sm2',
+    fsrs: {
+      desiredRetention: 0.9,
+      weights: [],
+      maxInterval: 36500,
+      learningSteps: [1, 10],
+      relearningSteps: [10],
+    },
     ...over,
   };
 }
@@ -83,5 +129,29 @@ describe('CollectionStore ownCounts pause gate', () => {
     expect(d1Paused.total).toEqual({ new: 0, learning: 0, review: 0 });
     expect(d2Paused.own).toEqual({ new: 0, learning: 0, review: 0 });
     expect(d2Paused.total).toEqual({ new: 0, learning: 0, review: 0 });
+  });
+});
+
+describe('CollectionStore.defaultDeckOptions (audit B6)', () => {
+  function setup(): CollectionStore {
+    TestBed.configureTestingModule({});
+    return TestBed.inject(CollectionStore);
+  }
+
+  it('resolves through collection.defaultDeckOptionsId, not array position 0', () => {
+    const store = setup();
+    // "o2" sits first in the array; the collection's declared default is "o1".
+    store.deckOptions.set([deckOptions({ id: 'o2', name: 'Other' }), deckOptions({ id: 'o1', name: 'Default' })]);
+    store.collection.set(collection({ defaultDeckOptionsId: 'o1' }));
+
+    expect(store.defaultDeckOptions()?.id).toBe('o1');
+  });
+
+  it('falls back to array position 0 when defaultDeckOptionsId does not resolve', () => {
+    const store = setup();
+    store.deckOptions.set([deckOptions({ id: 'o2', name: 'Other' })]);
+    store.collection.set(collection({ defaultDeckOptionsId: 'missing' }));
+
+    expect(store.defaultDeckOptions()?.id).toBe('o2');
   });
 });

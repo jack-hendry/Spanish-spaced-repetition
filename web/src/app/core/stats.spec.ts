@@ -296,4 +296,19 @@ describe('formatRelativeDue', () => {
     const due = now + 8 * 60_000;
     expect(formatRelativeDue(card({ queue: 'learning', type: 'learning', due }), 0, now)).toBe('8 min');
   });
+
+  it('branches on type, not queue, for a suspended leech still in epoch ms (B2)', () => {
+    const now = 1_787_000_000_000;
+    const due = now + 8 * 60_000;
+    expect(
+      formatRelativeDue(card({ queue: 'suspended', type: 'relearning', due }), 100, now),
+    ).toBe('8 min');
+  });
+
+  it('branches on type, not queue, for a buried relearning card', () => {
+    const now = 1_787_000_000_000;
+    expect(
+      formatRelativeDue(card({ queue: 'schedBuried', type: 'relearning', due: now - 1 }), 100, now),
+    ).toBe('today');
+  });
 });

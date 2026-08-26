@@ -45,8 +45,11 @@ export class StudyQueueService {
         .filter((d) => d.id === deck.id || d.name.startsWith(prefix))
         .map((d) => d.id),
     );
-    const opts =
-      this.store.optionsFor(deck) ?? this.store.deckOptions()[0];
+    const opts = this.store.optionsFor(deck) ?? this.store.defaultDeckOptions();
+    if (!opts) {
+      this.session = null;
+      return false;
+    }
     // Seed the day's allowance from what the subtree has already studied today,
     // so limits persist across reloads rather than resetting each session.
     const coll = this.store.collection();
@@ -64,7 +67,7 @@ export class StudyQueueService {
   /** Starts a session spanning every deck, using the default options group. */
   startAll(): boolean {
     const decks = this.store.decks();
-    const opts = this.store.deckOptions()[0];
+    const opts = this.store.defaultDeckOptions();
     if (decks.length === 0 || !opts) {
       this.session = null;
       return false;

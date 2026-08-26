@@ -14,7 +14,7 @@
       "insertionOrder": "sequential"
     },
     "review": {
-      "perDay": 200,
+      "perDay": 278,
       "maxInterval": 36500,
       "easyBonus": 1.3,
       "intervalModifier": 1,

@@ -9,6 +9,7 @@ import {
   nextRecallStability,
 } from './fsrs-math';
 import { formatDays, minutesToDays } from './format';
+import { clampLeft } from './learning-steps';
 import {
   RATING_BUTTON,
   type Rating,
@@ -142,7 +143,7 @@ export class FsrsScheduler implements Scheduler {
   ): Record<Rating, SchedulingResult> {
     const w = this.weights(opts);
     const steps = opts.fsrs.learningSteps.length ? opts.fsrs.learningSteps : [1];
-    const curLeft = card.type === 'new' ? steps.length : card.left || steps.length;
+    const curLeft = clampLeft(card.type === 'new' ? steps.length : card.left, steps.length);
     const stepIndex = Math.max(0, steps.length - curLeft);
 
     const mem = (g: number) => ({
@@ -174,7 +175,7 @@ export class FsrsScheduler implements Scheduler {
     ctx: ReviewContext,
   ): Record<Rating, SchedulingResult> {
     const steps = opts.fsrs.relearningSteps.length ? opts.fsrs.relearningSteps : [10];
-    const curLeft = card.left || steps.length;
+    const curLeft = clampLeft(card.left, steps.length);
     const stepIndex = Math.max(0, steps.length - curLeft);
     const stability = card.stability ?? Math.max(card.interval, 1);
     const difficulty = card.difficulty ?? initDifficulty(this.weights(opts), 3);

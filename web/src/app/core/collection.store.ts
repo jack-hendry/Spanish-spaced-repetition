@@ -205,6 +205,16 @@ export class CollectionStore {
     return this.deckOptions().find((o) => o.id === id);
   }
 
+  /**
+   * The collection-wide fallback options group, resolved through
+   * `collection.defaultDeckOptionsId` (falling back to array position 0 if
+   * that id doesn't resolve — e.g. an empty/mid-migration collection).
+   */
+  defaultDeckOptions(): DeckOptions | undefined {
+    const id = this.collection()?.defaultDeckOptionsId;
+    return (id && this.deckOptionsById(id)) || this.deckOptions()[0];
+  }
+
   /** Replace a deck-options group in the local cache after it's been saved. */
   applyDeckOptions(updated: DeckOptions): void {
     this.deckOptions.update((all) => {
