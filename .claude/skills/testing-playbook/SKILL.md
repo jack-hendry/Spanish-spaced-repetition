@@ -82,8 +82,12 @@ Never point a test at the live `data/spanish/`. Two mechanisms:
 
 ## Lessons (auto-appended)
 
-Dated entries promoted from feature STATE.md Pitfalls by the critic's drift
-audit. Append-only; humans prune. If a lesson contradicts the body above,
+Dated entries for domain gotchas that belong next to the rules above, added
+during the archive ritual in `specs/STATE.md` (step 2) by whoever closes the
+feature. Append-only; humans prune. If a lesson contradicts the body above,
 trust the code, then fix both.
+
+Project and process lessons go to `specs/STATE.md` + `specs/LESSONS.md` as
+`L-NNN` instead -- that pair is what the pre-push gate enforces (AD-009).
 
 _None yet._

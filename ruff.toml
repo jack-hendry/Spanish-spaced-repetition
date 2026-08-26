@@ -1,0 +1,24 @@
+# Lints the Python tooling only. This is a TypeScript monorepo (npm workspaces
+# `web` + `server`) with a small Python content pipeline bolted to the side, so
+# the linter is scoped rather than pretending the repo is a Python project --
+# no pyproject.toml, no effect on npm or the build.
+#
+# SCOPE, and why it is narrow (2026-08-26): the repo has three Python files --
+# `scrape.py` and `tools/convert_apkg.py` (the content pipeline) and
+# `tools/state_rotate.py` (the STATE.md size gate). Only the last one is linted
+# today. The other two carry 15 pre-existing violations (F401, E501, UP032) and
+# would both be reformatted, and they have no test suite -- see
+# `.claude/skills/python-pipeline`, which verifies by re-running the converter
+# and diffing output. Widening `include` therefore means a formatting pass over
+# the content pipeline plus a real re-import verification, which is its own
+# task, not a side effect of adding CI. Doing it the other way round -- landing
+# a lint job that is red from its first run -- teaches everyone to ignore it.
+# See the Quick Tasks row in `specs/STATE.md`.
+target-version = "py39"
+line-length = 100
+include = ["tools/state_rotate.py"]
+
+[lint]
+# E/F: pyflakes + pycodestyle errors. I: import order. B: bugbear (mutable
+# defaults, loop-variable capture). UP: pyupgrade. RUF: ruff's own checks.
+select = ["E", "F", "I", "B", "UP", "RUF"]

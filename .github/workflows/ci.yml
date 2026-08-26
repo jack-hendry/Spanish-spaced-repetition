@@ -1,0 +1,69 @@
+name: CI
+
+# Defense in depth. The clean-table check already runs as a local pre-push hook
+# (.pre-commit-config.yaml), but a local hook can be skipped with
+# `git push --no-verify`. CI runs the same script, and CI cannot be skipped.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      # Root `test` runs both workspaces in order: server (vitest) then web
+      # (@angular/build:unit-test, vitest under the hood). Neither needs a real
+      # browser, so there is no Chrome step here.
+      - run: npm run test
+      # The web workspace's tests build the app first, but the server's tsc
+      # build is not exercised by vitest -- which transpiles test files without
+      # type-checking them. A type error can therefore live in a *.test.ts and
+      # keep the suite green while the build is red (L-003).
+      - run: npm run build
+
+  clean-table-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the script needs git history to compute the diff range
+      - run: bash scripts/clean-table-check.sh
+        env:
+          # github.event.before is only set on push events; the script ignores
+          # it on pull_request and uses GITHUB_BASE_REF instead.
+          BEFORE_SHA: ${{ github.event.before }}
+
+  lint:
+    # Scoped to tools/state_rotate.py -- see the SCOPE comment in ruff.toml for
+    # why the content pipeline (scrape.py, tools/convert_apkg.py) is not linted
+    # yet. The TypeScript in web/ and server/ is not linted here either; adding
+    # that is a separate decision with its own churn.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # Pinned: an unpinned linter turns a new ruff release into a red build on
+      # a commit that changed nothing. Bump it deliberately.
+      - run: pip install ruff==0.16.4
+      - run: ruff check .
+      - run: ruff format --check tools/state_rotate.py
+
+  hooks:
+    # The delegation hook is a regex heuristic over shell command strings. A
+    # tightened pattern that starts blocking `npx ng test` makes every tasks.md
+    # run unusable; a loosened one silently re-opens the gap the hook exists to
+    # close. Neither shows up in any other job.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./.claude/hooks/enforce-haiku-tasks.test.sh

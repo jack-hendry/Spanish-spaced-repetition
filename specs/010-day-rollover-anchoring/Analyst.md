@@ -1,4 +1,16 @@
-# SPEC: Day-rollover anchoring in `todayNumber`
+# Analyst: Day-rollover anchoring in `todayNumber`
+
+> Converted from `SPEC.md` on 2026-08-26 during the harness migration (AD-009).
+> Body unchanged; this header maps the existing sections onto the four
+> questions `specs/TEMPLATE.md` requires an Analyst.md to answer.
+>
+> 1. **What problem are we solving?** → Problem
+> 2. **What is in scope?** → Goals
+> 3. **What is OUT of scope?** → Non-goals
+> 4. **How do we know it is done?** → Requirements R1-R9 + Testing expectations
+>
+> The per-feature `STATE.md` this spec carried is gone; its decisions live in
+> `specs/STATE.md` (AD-009, AD-007) and the run marker in the root `STATE.md`.
 
 ## Problem
 
@@ -183,3 +195,9 @@ and leave the reported bug unfixed.
 3. Should `scheduling-domain` SKILL.md's "Day numbers" section (which documents
    the current formula verbatim) be updated as part of this feature, or left to
    the critic's end-of-feature lesson pass?
+
+## Retrospective
+
+_To be filled in before archiving (see `specs/TEMPLATE.md`):_
+- Did Analyst.md catch anything not thought about up front?
+- Did anything in tasks.md turn out to be wrong during coding? What?
