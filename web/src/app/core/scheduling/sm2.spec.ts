@@ -185,3 +185,96 @@ describe('Sm2Scheduler — answer()', () => {
     expect(next.lastReviewed).toBe(NOW);
   });
 });
+
+describe('Sm2Scheduler — steps shortened mid-learning (audit B1)', () => {
+  function shortSteps(steps: number[]): DeckOptions {
+    return opts({
+      new: {
+        perDay: 20,
+        steps,
+        graduatingInterval: 1,
+        easyInterval: 4,
+        startingEase: 2500,
+        insertionOrder: 'sequential',
+      },
+    });
+  }
+
+  it('never produces a NaN due when left exceeds the shortened steps array', () => {
+    const learning = card({ type: 'learning', queue: 'learning', left: 3 });
+    const opts1 = shortSteps([1]);
+    const p = sched.preview(learning, opts1, ctx);
+
+    for (const rating of ['again', 'hard', 'good', 'easy'] as const) {
+      const r = p[rating];
+      expect(Number.isFinite(r.card.due)).toBe(true);
+      expect(Number.isFinite(r.card.left)).toBe(true);
+      expect(Number.isFinite(r.card.interval)).toBe(true);
+      expect(r.label).not.toContain('NaN');
+    }
+  });
+
+  it('clamps to the only remaining step and graduates on Good', () => {
+    const learning = card({ type: 'learning', queue: 'learning', left: 3 });
+    const opts1 = shortSteps([1]);
+    const p = sched.preview(learning, opts1, ctx);
+
+    expect(p.again.card.due).toBe(NOW + 60_000);
+    expect(p.again.card.left).toBe(1);
+
+    expect(p.hard.card.due).toBe(NOW + 60_000);
+    expect(p.hard.card.left).toBe(1);
+
+    expect(p.good.card.type).toBe('review');
+    expect(p.good.card.interval).toBe(1);
+    expect(p.good.card.due).toBe(ctx.today + 1);
+
+    expect(p.easy.card.interval).toBe(4);
+  });
+
+  it('steps to the last remaining step on Good when more than one remains', () => {
+    const learning = card({ type: 'learning', queue: 'learning', left: 3 });
+    const opts2 = shortSteps([1, 10]);
+    const p = sched.preview(learning, opts2, ctx);
+
+    expect(p.good.card.due).toBe(NOW + 10 * 60_000);
+    expect(p.good.card.left).toBe(1);
+    expect(p.good.label).toBe('10m');
+  });
+
+  it('never produces a NaN due for a relearning card with a stale left', () => {
+    const relearning = card({ type: 'relearning', queue: 'learning', left: 3, interval: 3 });
+    const p = sched.preview(relearning, opts(), ctx);
+
+    for (const rating of ['again', 'hard', 'good', 'easy'] as const) {
+      const r = p[rating];
+      expect(Number.isFinite(r.card.due)).toBe(true);
+      expect(Number.isFinite(r.card.left)).toBe(true);
+      expect(Number.isFinite(r.card.interval)).toBe(true);
+      expect(r.label).not.toContain('NaN');
+    }
+
+    expect(p.good.card.type).toBe('review');
+    expect(p.good.card.interval).toBe(3);
+  });
+
+  it('never returns a card whose left exceeds the current step count (R4)', () => {
+    const learning = card({ type: 'learning', queue: 'learning', left: 3 });
+    const relearning = card({ type: 'relearning', queue: 'learning', left: 3, interval: 3 });
+    const dflt = opts();
+
+    const cases: Array<{ subject: Card; options: DeckOptions; stepCount: number }> = [
+      { subject: learning, options: shortSteps([1]), stepCount: 1 },
+      { subject: learning, options: shortSteps([1, 10]), stepCount: 2 },
+      // relearning indexes lapse.steps, not new.steps
+      { subject: relearning, options: dflt, stepCount: dflt.lapse.steps.length },
+    ];
+
+    for (const { subject, options, stepCount } of cases) {
+      const p = sched.preview(subject, options, ctx);
+      for (const rating of ['again', 'hard', 'good', 'easy'] as const) {
+        expect(p[rating].card.left).toBeLessThanOrEqual(stepCount);
+      }
+    }
+  });
+});

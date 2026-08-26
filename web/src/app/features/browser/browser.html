@@ -63,7 +63,7 @@
             <span class="field__label">{{ f.name }}</span>
             <textarea
               rows="2"
-              [ngModel]="draft()[f.name] ?? ''"
+              [ngModel]="draft()[f.name]"
               (ngModelChange)="setField(f.name, $event)"
             ></textarea>
           </label>

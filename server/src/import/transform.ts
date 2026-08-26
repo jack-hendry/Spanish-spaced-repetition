@@ -90,7 +90,9 @@ function isLocalMedia(v: string | null | undefined): v is string {
 
 function mediaImage(url: string | null): string {
   const ok = (isUrl(url) && IMAGE_RE.test(url)) || (isLocalMedia(url) && IMAGE_RE.test(url));
-  return ok ? `<img src="${url}">` : '';
+  if (!ok || !url) return '';
+  const safe = url.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return `<img src="${safe}">`;
 }
 
 function mediaAudio(url: string | null): string {

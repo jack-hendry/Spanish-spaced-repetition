@@ -126,6 +126,7 @@ describe('Review', () => {
     applyCard: ReturnType<typeof vi.fn>;
     recordStudied: ReturnType<typeof vi.fn>;
     burySiblings: ReturnType<typeof vi.fn>;
+    suspendCard: ReturnType<typeof vi.fn>;
     collection: () => { dayCutoffHour: number; created: number };
   };
   let queueFake: {
@@ -158,6 +159,7 @@ describe('Review', () => {
       applyCard: vi.fn(),
       recordStudied: vi.fn(async () => {}),
       burySiblings: vi.fn(async () => {}),
+      suspendCard: vi.fn(async () => {}),
       collection: () => ({ dayCutoffHour: 4, created: Date.now() - 30 * 86_400_000 }),
     };
 
@@ -481,6 +483,124 @@ describe('Review', () => {
       const fixture = await createReview();
       const el = fixture.nativeElement as HTMLElement;
       expect(el.querySelector('.type-input')).toBeNull();
+    });
+  });
+
+  // --- Template lookup uses ord, not array index (audit B3) ------------------
+
+  describe('template lookup uses ord, not array index', () => {
+    const reorderedNoteType: NoteType = {
+      id: 'nt-reordered',
+      name: 'Reordered',
+      kind: 'standard',
+      fields: [
+        { name: 'SideA', ord: 0 },
+        { name: 'SideB', ord: 1 },
+      ],
+      templates: [
+        // Deliberately out of order: array index 0 holds ord 1, index 1 holds ord 0.
+        { name: 'B', ord: 1, qfmt: '{{SideB}}', afmt: '{{SideB}}' },
+        { name: 'A', ord: 0, qfmt: '{{SideA}}', afmt: '{{SideA}}' },
+      ],
+      css: '',
+    };
+    const reorderedNote: Note = {
+      id: 'n-reordered',
+      noteTypeId: 'nt-reordered',
+      fields: { SideA: 'perro', SideB: 'gato' },
+      tags: [],
+      created: 0,
+      modified: 0,
+      guid: 'g-reordered',
+    };
+
+    it('renders the template whose ord matches card.ord, not templates[card.ord]', async () => {
+      storeFake.getNote = vi.fn(async (id: string) =>
+        id === 'n-reordered' ? reorderedNote : note,
+      );
+      storeFake.noteTypeById = vi.fn((id: string) =>
+        id === 'nt-reordered' ? reorderedNoteType : noteType,
+      );
+      seedQueueOneCard(card({ id: 'c-reordered', noteId: 'n-reordered', ord: 0 }));
+
+      const fixture = await createReview();
+      const el = fixture.nativeElement as HTMLElement;
+      const rendered = el.querySelector('.rendered')?.textContent ?? '';
+      // ord 0 is template 'A' (renders SideA/"perro"); templates[0] is 'B' (SideB/"gato").
+      expect(rendered).toContain('perro');
+      expect(rendered).not.toContain('gato');
+    });
+  });
+
+  // --- Type-in answer keeps keyboard shortcuts from stealing input (audit B4) -
+
+  describe('type-in answer keyboard passthrough', () => {
+    const typeInNoteType: NoteType = {
+      id: 'nt-typein',
+      name: 'Type-in',
+      kind: 'standard',
+      fields: [{ name: 'Answer', ord: 0 }],
+      templates: [{ name: 'Card', ord: 0, qfmt: '{{type:Answer}}', afmt: '{{type:Answer}}' }],
+      css: '',
+    };
+    const typeInNote: Note = {
+      id: 'n-typein',
+      noteTypeId: 'nt-typein',
+      fields: { Answer: 'hola' },
+      tags: [],
+      created: 0,
+      modified: 0,
+      guid: 'g-typein',
+    };
+
+    beforeEach(() => {
+      storeFake.getNote = vi.fn(async (id: string) => (id === 'n-typein' ? typeInNote : note));
+      storeFake.noteTypeById = vi.fn((id: string) =>
+        id === 'nt-typein' ? typeInNoteType : noteType,
+      );
+    });
+
+    it('does not suspend the card when "-" is typed into the answer input', async () => {
+      seedQueueOneCard(card({ id: 'c-typein', noteId: 'n-typein', ord: 0 }));
+      const fixture = await createReview();
+      const el = fixture.nativeElement as HTMLElement;
+      const input = el.querySelector<HTMLInputElement>('.type-input');
+      expect(input).toBeTruthy();
+
+      input!.dispatchEvent(new KeyboardEvent('keydown', { key: '-', bubbles: true }));
+      fixture.detectChanges();
+      await flushMicrotasks();
+
+      expect(storeFake.suspendCard).not.toHaveBeenCalled();
+      expect(fixture.componentInstance.revealed()).toBe(false);
+    });
+
+    it('blurs the input instead of navigating away on Escape while typing an answer', async () => {
+      seedQueueOneCard(card({ id: 'c-typein', noteId: 'n-typein', ord: 0 }));
+      const fixture = await createReview();
+      const router = TestBed.inject(Router);
+      const navSpy = vi.spyOn(router, 'navigateByUrl');
+      const el = fixture.nativeElement as HTMLElement;
+      const input = el.querySelector<HTMLInputElement>('.type-input')!;
+      input.focus();
+
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      fixture.detectChanges();
+
+      expect(navSpy).not.toHaveBeenCalled();
+      expect(document.activeElement).not.toBe(input);
+    });
+
+    it('still reveals on Enter while typing an answer', async () => {
+      seedQueueOneCard(card({ id: 'c-typein', noteId: 'n-typein', ord: 0 }));
+      const fixture = await createReview();
+      const el = fixture.nativeElement as HTMLElement;
+      const input = el.querySelector<HTMLInputElement>('.type-input')!;
+
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.revealed()).toBe(true);
     });
   });
 

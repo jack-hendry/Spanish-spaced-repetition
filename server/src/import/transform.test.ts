@@ -76,6 +76,38 @@ describe('transformBooks', () => {
     expect(cards.map((c) => c.ord).sort()).toEqual([0, 1]);
   });
 
+  it('escapes quote/angle-bracket characters in an image URL (audit C1)', () => {
+    const malicious: SourceBook = {
+      slug: 'demo-xss',
+      root: {
+        Menu_ID: 1,
+        MenuTitle: 'Demo XSS',
+        children: [
+          {
+            Menu_ID: 2,
+            MenuTitle: 'Flashcards: Study Mode',
+            DeckType: 'Flashcards: Study Mode',
+            cards: [
+              {
+                Card_ID: 200,
+                SideA: 'x',
+                SideB: 'y',
+                SideAAudio: null,
+                SideBAudio: null,
+                SideAImage: 'https://x.s3.amazonaws.com/"><script>alert(1)</script>.jpg',
+                SideBImage: null,
+              },
+            ],
+          },
+        ],
+      },
+    };
+    const { notes } = transformBooks([malicious], empty, 1000);
+    const html = notes[0].fields.SideAImage;
+    expect(html).not.toContain('"><script>');
+    expect(html).toContain('&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;');
+  });
+
   it('accepts site-relative local audio and generates both directions for spanish2both', () => {
     const twoWay: SourceBook = {
       slug: 'phrasal',

@@ -167,4 +167,41 @@ trust the code, then fix both.
 Project and process lessons go to `specs/STATE.md` + `specs/LESSONS.md` as
 `L-NNN` instead -- that pair is what the pre-push gate enforces (AD-009).
 
-_None yet._
+### 2026-08-26 — A persisted card field and the currently-configured deck options can disagree, and the gap is silent
+
+(`specs/012-clamp-learning-steps-nan-due`, from audit finding B1)
+
+`card.left` (steps *remaining*) is persisted on the card. The steps array it
+counts against — `opts.new.steps` / `opts.lapse.steps` /
+`opts.fsrs.learningSteps` / `opts.fsrs.relearningSteps` — lives in deck options
+the user can edit at any moment. Shorten a steps array while a card is
+mid-learning and `card.left > steps.length`, which drove `steps[nextStep]` out
+of bounds in the `good` branch of all four `previewLearning` /
+`previewRelearning` functions: `undefined * 60_000` is `NaN`, so `due` came back
+`NaN`. The `hard` branch had always clamped its index (`Math.max(0, …)`); `good`
+never did.
+
+The general rule: **whenever a card field indexes into something owned by deck
+options, treat the two as able to disagree.** The card outlives any particular
+options value. Validate at the point where the persisted field is first read,
+not at each place it is used — `clampLeft(left, stepCount)` in
+`core/scheduling/learning-steps.ts` is that point for `left` (see AD-010), and
+clamping into `[1, stepCount]` is what makes every downstream `steps[...]` index
+valid *by construction*.
+
+Two specifics worth keeping:
+
+- **`clampLeft` requires `stepCount >= 1`.** Every call site already guards the
+  array first (`steps.length ? steps : [1]` / `[10]`), so it is never called
+  with `0` — but `clampLeft(x, 0)` would return `0` and re-open the
+  out-of-bounds read. If you move the helper or add a fifth call site, carry the
+  guard with it.
+- **A `NaN` `due` is not fully invisible to the study queue.** It fails the
+  due-comparison branches in `StudyQueueService.next()` (`c.due <= ctx.now` is
+  always false for `NaN`), but branch 4 — the "learning cards due later today"
+  fallback — filters on `queue === 'learning'` with *no* `due` comparison, so it
+  still hands the card back. The card is therefore not literally unreachable; it
+  is served but can never become *due*, and `JSON.stringify` writes the `NaN` to
+  `cards.json` as `null` on the next debounced save. The audit's "silently
+  disappears from the queue forever" is the right severity for the wrong reason
+  — check the fallback branch before repeating that claim.

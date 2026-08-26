@@ -232,3 +232,63 @@ describe('FsrsScheduler — answer', () => {
     expect(revlog.factorOrStability).toBeCloseTo(next.stability!, 2);
   });
 });
+
+describe('FsrsScheduler — steps shortened mid-learning (audit B1)', () => {
+  it('never produces a NaN due when left exceeds the shortened learning steps', () => {
+    const learning = card({ type: 'learning', queue: 'learning', left: 3 });
+    const o = opts({ learningSteps: [1] });
+    const p = sched.preview(learning, o, ctx);
+
+    for (const rating of ['again', 'hard', 'good', 'easy'] as const) {
+      const r = p[rating];
+      expect(Number.isFinite(r.card.due)).toBe(true);
+      expect(Number.isFinite(r.card.left)).toBe(true);
+      expect(Number.isFinite(r.card.interval)).toBe(true);
+      expect(Number.isFinite(r.card.stability!)).toBe(true);
+      expect(Number.isFinite(r.card.difficulty!)).toBe(true);
+      expect(r.label).not.toContain('NaN');
+    }
+  });
+
+  it('clamps to the only remaining step and graduates on Good', () => {
+    const learning = card({ type: 'learning', queue: 'learning', left: 3 });
+    const o = opts({ learningSteps: [1] });
+    const p = sched.preview(learning, o, ctx);
+
+    expect(p.again.card.due).toBe(NOW + 60_000);
+    expect(p.again.card.left).toBe(1);
+
+    expect(p.hard.card.due).toBe(NOW + 60_000);
+    expect(p.hard.card.left).toBe(1);
+
+    expect(p.good.card.type).toBe('review');
+    expect(p.good.card.interval).toBeGreaterThanOrEqual(1);
+    expect(p.good.card.due).toBe(ctx.today + p.good.card.interval);
+  });
+
+  it('steps to the last remaining step on Good when more than one remains', () => {
+    const learning = card({ type: 'learning', queue: 'learning', left: 3 });
+    const o = opts({ learningSteps: [1, 10] });
+    const p = sched.preview(learning, o, ctx);
+
+    expect(p.good.card.due).toBe(NOW + 10 * 60_000);
+    expect(p.good.card.left).toBe(1);
+  });
+
+  it('never produces a NaN due for a relearning card with a stale left', () => {
+    const relearning = card({ type: 'relearning', queue: 'learning', left: 3, interval: 3, stability: 4, difficulty: 5 });
+    const o = opts({ relearningSteps: [10] });
+    const p = sched.preview(relearning, o, ctx);
+
+    for (const rating of ['again', 'hard', 'good', 'easy'] as const) {
+      const r = p[rating];
+      expect(Number.isFinite(r.card.due)).toBe(true);
+      expect(Number.isFinite(r.card.left)).toBe(true);
+      expect(Number.isFinite(r.card.interval)).toBe(true);
+      expect(Number.isFinite(r.card.stability!)).toBe(true);
+      expect(Number.isFinite(r.card.difficulty!)).toBe(true);
+      expect(r.label).not.toContain('NaN');
+      expect(r.card.left).toBeLessThanOrEqual(1);
+    }
+  });
+});

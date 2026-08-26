@@ -77,3 +77,26 @@ escaped from its own parser, and the parser needs a test that proves it is armed
 before the rest of the matrix means anything —
 `.claude/hooks/enforce-haiku-tasks.test.sh` aborts if the hook is dormant for
 exactly this reason.
+
+**L-006 — A test that goes red when you stash the fix is not proof that every
+case inside it is live.** (`specs/012-clamp-learning-steps-nan-due`, Step 3,
+caught in review before the step was accepted) `tasks.md` requires each
+regression step to prove its tests bite: `git stash push` the source file, watch
+the new tests fail, `git stash pop`, watch them pass. Step 3's R4 test did fail
+red — and was still partly dead. It selected its fixture with
+`const testCard = testOpts === opts() ? relearning : learning;`, but `opts()` is
+a factory that builds a **fresh object every call**, so the reference comparison
+was always `false`: the relearning card was never exercised, and the third case
+silently checked the learning card against the wrong step count
+(`new.steps.length` where the relearning path indexes `lapse.steps`). The two
+*other* cases in the same test failed loudly when stashed, which made the whole
+test look proven.
+
+The red/green stash protocol validates a test **file**, not each assertion in
+it. A dead branch inside a test that fails for other reasons is invisible to it.
+So: still run the protocol — it caught real gaps in Steps 3, 5 and 7 — but read
+the test body too, and be specifically suspicious of any control flow *inside* a
+test that decides which fixture or expectation to use. Prefer an explicit case
+table (`[{ subject, options, stepCount }, …]`) over a conditional; a table
+cannot silently select the same branch three times. Identity comparison against
+a helper's return value is always wrong when that helper is a factory.

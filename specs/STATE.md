@@ -157,6 +157,27 @@ complexity routing, and putting it *in the step* makes an absent one a visible
 defect rather than a silent inherit of the session model. Cost, accepted: the
 nine archived specs keep the old filenames (see Quick Tasks).
 
+**AD-010 — A stale persisted `card.left` is clamped once, at the source, by one
+shared helper — not guarded at each call site.** (2026-08-26,
+`specs/012-clamp-learning-steps-nan-due`, from audit B1) `card.left` is
+persisted; the steps array it indexes comes from deck options the user can edit,
+so shortening that array left `card.left > steps.length` and the `good` branch
+of all four `previewLearning`/`previewRelearning` functions read `steps[-1]` →
+`undefined * 60_000` → `due: NaN`. The fix is `clampLeft(left, stepCount)` in
+`web/src/app/core/scheduling/learning-steps.ts`, called at exactly the four
+points where `curLeft` is first derived from `card.left` (`sm2.ts` ×2,
+`fsrs.ts` ×2). Clamping into `[1, stepCount]` makes every downstream
+`steps[...]` index valid *by construction*, so no second, downstream clamp is
+added and `StudyQueueService` needs no change. **Why one shared helper rather
+than four inline `Math.min`/`Math.max` expressions:** the audit found this bug
+duplicated verbatim across `sm2.ts` and `fsrs.ts` — which is what you get when
+one is written by copying the other. Four inline clamps would have re-created
+exactly the condition that produced the bug. The *why* now lives in one doc
+comment, in one place. Accepted residual risk: nothing forces a future fifth
+`previewX` to call it, and the helper's unstated precondition is
+`stepCount >= 1` (guaranteed today by the `steps.length ? … : [1]` guard at each
+call site). See the `scheduling-domain` skill's 2026-08-26 lesson.
+
 ## Blockers
 
 (none open)
@@ -168,6 +189,7 @@ nine archived specs keep the old filenames (see Quick Tasks).
 - **L-003** — A green `vitest` run does not mean `tsc` passes.
 - **L-004** — A guard-rail keyed to a fuzzy signal fails open *and* closed.
 - **L-005** — An unindented example of a marker line shadows every real one below it.
+- **L-006** — A test that goes red when you stash the fix is not proof that every case inside it is live.
 
 ## Quick Tasks
 
@@ -175,4 +197,7 @@ nine archived specs keep the old filenames (see Quick Tasks).
 |---|---|---|
 | 2026-08-26 | Ported the SDD harness from `habit_tracker` | Large, done without a spec — it is infrastructure, not a feature. Scope: `scripts/clean-table-check.sh`, `tools/state_rotate.py`, three `.claude/hooks/`, `.pre-commit-config.yaml`, `.github/workflows/ci.yml`, `ruff.toml`, `specs/TEMPLATE.md`, this file + `LESSONS.md` + `STATE-ARCHIVE.md`, root `STATE.md`. Specs 002–009 archived under their finish dates with the old `SPEC`/`PLAN`/`STATE`/`CRITIQUE` filenames intact; `004` and `006` STATE.md summarized to clear the 20 KB gate. 010 converted to `Analyst.md` + `CriticReview.md`. Retired `.claude/commands/{feature,resume}.md`, `.claude/agents/{spec-writer,planner,implementer,critic}.md`, `.claude/hooks/check-state-updated.sh`, `.claude/templates/STATE.md`. See AD-008, AD-009. |
 | 2026-08-26 | Fixed the `Card.due` doc-comment at its origin | Small. `server/src/models/index.ts:92` still said "learning: epoch seconds" — 006 T011 fixed only the `scheduling-domain` skill's copy, and `CLAUDE.md` had inherited it too. Both corrected to epoch **milliseconds**. Comment-only, no behaviour change. Closes the last live instance of **L-001**. |
+| 2026-08-26 | `AUDIT-2026-08-26-src.md` T2: turned on `strict` (`web/tsconfig.json`) + `strictTemplates` (`angularCompilerOptions`) | Small — audit already verified 0 errors under plain `tsc --strict`. `ng build` under `strictTemplates` surfaced one real NG8102 warning at `browser.html:66` (`draft()[f.name] ?? ''` — the `??` was dead code since `Record<string,string>` indexing can't type as `undefined`); removed it. `ng build` clean, 183 web + 37 server tests still pass, `git status` clean after. `server/tsconfig.json` already had `strict: true`. |
+| 2026-08-26 | `AUDIT-2026-08-26-src.md` B3 + B4: `review.ts` template-by-ord lookup, keydown stealing input from type-in answers | Small each, same file. B3: `noteType.templates[card.ord]` → `.find(t => t.ord === card.ord)`, matching `templateByOrd` used elsewhere (`generate.ts`, `transform.ts`). B4: `onKey` now early-returns while typing an unrevealed type-in answer, handling only Enter (reveal) and Escape (blur, not navigate) — `-` and everything else reaches the input instead of triggering `suspend()`. Added 4 regression tests to `review.spec.ts`; verified they fail against the pre-fix code via `git stash` on `review.ts` alone (3 failed as expected), then restored the fix. 187 web tests green, `ng build` clean. |
+| 2026-08-26 | `AUDIT-2026-08-26-src.md` C1: escape `"`/`<`/`>` in `mediaImage()`'s `<img src>` | Small. `server/src/import/transform.ts` — mirrors the escaping `transformMedia` (`template-renderer.ts`) already does for audio, closing the attribute-injection hole a `"` in a scraped/`.apkg` image URL opened (combined with `bypassSecurityTrustHtml` at render time — see audit C2, left as an accepted risk, not fixed). Added a regression test in `transform.test.ts` with a `"><script>` payload in the URL. 38 server tests green, `tsc` build clean. |
 | 2026-08-26 | **Open:** widen `ruff` to the content pipeline | `ruff.toml` currently lints `tools/state_rotate.py` only. `scrape.py` and `tools/convert_apkg.py` carry 15 pre-existing violations (F401, E501, UP032) and would both be reformatted. Landing a lint job red from its first run teaches everyone to ignore it, so the widening is its own Small task: apply `ruff check --fix` + `ruff format`, then verify per `.claude/skills/python-pipeline` (re-run the converter and diff the output — there is no Python test suite, and `(slug, Card_ID)` identity is load-bearing, see AD-002). |

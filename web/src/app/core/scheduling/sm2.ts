@@ -1,5 +1,6 @@
 import type { Card, DeckOptions, RevlogEntry } from '../models';
 import { formatDays, minutesToDays } from './format';
+import { clampLeft } from './learning-steps';
 import {
   RATING_BUTTON,
   type Rating,
@@ -128,7 +129,7 @@ export class Sm2Scheduler implements Scheduler {
     ctx: ReviewContext,
   ): Record<Rating, SchedulingResult> {
     const steps = opts.new.steps.length ? opts.new.steps : [1];
-    const curLeft = card.type === 'new' ? steps.length : card.left || steps.length;
+    const curLeft = clampLeft(card.type === 'new' ? steps.length : card.left, steps.length);
     const stepIndex = Math.max(0, steps.length - curLeft);
 
     const again = this.learningStep(card, ctx, steps.length, steps[0], 'learning');
@@ -155,7 +156,7 @@ export class Sm2Scheduler implements Scheduler {
     ctx: ReviewContext,
   ): Record<Rating, SchedulingResult> {
     const steps = opts.lapse.steps.length ? opts.lapse.steps : [10];
-    const curLeft = card.left || steps.length;
+    const curLeft = clampLeft(card.left, steps.length);
     const stepIndex = Math.max(0, steps.length - curLeft);
     // card.interval already holds the reduced interval set when the card lapsed.
     const graduateIvl = Math.max(opts.lapse.minInterval, card.interval || opts.lapse.minInterval);
