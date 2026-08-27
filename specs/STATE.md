@@ -131,43 +131,11 @@ djb2 hash → `hsl(hue, 65%, 55%)` in `web/src/app/core/deck-color.ts`. Adding a
 a server change) for a purely presentational affordance. Deterministic per name
 is enough; the cost is that renaming a deck recolours it.
 
-**AD-007 — `todayNumber` may be changed by 010, and its ≤1-day transition is
-accepted, never migrated.** (2026-08-15, `specs/010-day-rollover-anchoring`)
-007 explicitly deferred the root cause and declared changing `todayNumber`
-a non-goal; 010 reverses that for this one feature. Day numbers exist in two
-populations with different lifetimes — **derived at render time** from epoch-ms
-(streaks, forecasts, heat, optimizer histories; these self-correct) and
-**persisted** (`card.due` for review cards, `deck.daily.day`,
-`collection.lastUnburyDay`; these do not). The correction comes solely from
-moving where the boundaries fall. No step may re-base the persisted set, and no
-artificial origin offset may be added to keep today's integer at 51 — that
-would preserve the stale `deck.daily.day` match and leave the reported bug
-unfixed.
+**AD-007 — `todayNumber` may be changed by 010, and its ≤1-day transition is accepted, never migrated.** → moved to `STATE-ARCHIVE.md`
 
-**AD-008 — `specs/STATE.md` is the project memory; root `STATE.md` is a run
-marker only.** (2026-08-26, migration) Two files named STATE.md is a real cost,
-paid deliberately: the root one exists because
-`.claude/hooks/enforce-haiku-tasks-pretooluse.sh` greps the **repo root** for
-`## Executing: <spec-dir-name>`, and a hook that greps project memory would fire
-on any incidental mention. Keeping the marker in a file with nothing else in it
-is what makes the signal unambiguous. See **L-004**, **L-005**.
+**AD-008 — `specs/STATE.md` is the project memory; root `STATE.md` is a run marker only.** → moved to `STATE-ARCHIVE.md`
 
-**AD-009 — Adopted habit_tracker's harness shape; retired the `/feature` +
-`/resume` pipeline.** (2026-08-26) The old harness used `specs/NNN-slug/` with
-`SPEC`/`PLAN`/`STATE`/`CRITIQUE.md`, four subagents, two slash commands and one
-Stop hook, and routed models by a planner-assigned `Complexity:` rating. It is
-replaced by: `Analyst.md` / `tasks.md` / `CriticReview.md` per
-`specs/<feature-name>/`; a repo-wide `specs/STATE.md` + `specs/LESSONS.md` +
-`specs/STATE-ARCHIVE.md`; per-step `Model:` fields (`haiku` / `sonnet` /
-`top-level`, **never `opus`**); two PreToolUse hooks and one UserPromptSubmit
-hook; and a `clean-table-check.sh` pre-push gate mirrored in CI. Why: the
-enforcement layer is the part the old harness lacked entirely — its single Stop
-hook asked for a STATE.md update and nothing checked archives, lesson
-correspondence, memory size, or who was allowed to write what. The top-level
-session now orchestrates directly; the `Model:` field replaces `resume.md`'s
-complexity routing, and putting it *in the step* makes an absent one a visible
-defect rather than a silent inherit of the session model. Cost, accepted: the
-nine archived specs keep the old filenames (see Quick Tasks).
+**AD-009 — Adopted habit_tracker's harness shape; retired the `/feature` + `/resume` pipeline.** → moved to `STATE-ARCHIVE.md`
 
 **AD-010 — A stale persisted `card.left` is clamped once, at the source, by one
 shared helper — not guarded at each call site.** (2026-08-26,
@@ -265,6 +233,33 @@ versions or paths — it leaks liveness and nothing else. This is the one
 deliberate hole in "auth in front of everything", recorded as such rather than
 buried. Worth revisiting at Phase 1 whether a Fly **TCP** check would close it.
 
+**AD-017 — A worktree is removed when its branch merges, and any pre-existing
+worktree is checked against its own `HEAD` before anything is committed from
+it.** (2026-08-27, discovered while resuming `specs/014-spec-continuity`)
+`worktree-spec-memory-tracking` was merged into `feature/SSD-habit-tracker-algined`
+(PR #5) and on into `main` (PR #6), but the worktree was kept. Its branch ref
+moved to the merge commit `9cb0e05` without the checkout being refreshed, so
+the index and working tree stayed byte-identical to `228360b` — the pre-013
+state. `git status` there showed a 24-file phantom revert, including staged
+deletions of `server/src/app.ts`, `server/src/config.ts`,
+`server/src/middleware/auth.ts` and all of
+`specs/archive/2026-08-27-013-server-hardening/`. A commit from that worktree
+would have landed as a clean revert of everything AD-011–AD-015 describe.
+Two rules, because one does not cover the other: **(1)** when a branch merges,
+`git worktree remove` it — not `rm -rf`, which leaves `.git/worktrees/<name>/`
+behind and a phantom row in `git worktree list` until someone runs `prune`;
+`git worktree unlock` first if it is locked — then `git branch -d` the branch
+too, since removing a worktree leaves its ref behind and `-d` refuses if it
+turns out not to be merged. **(2)** on entering any worktree
+this session did not just create, `git diff --cached --quiet` must succeed
+before anything is committed from it. The creation side needs no rule:
+`worktree.baseRef` is unset, so `EnterWorktree` already branches from
+`origin/main`. Note that merging is the *occasion*, not the mechanism — a
+moving ref is — so rule (2) is what covers the unmerged case, and it is not
+hypothetical: this same worktree branched from `30d1eea` and sat there while
+`011c0c0` landed on the sibling branch, stale-based long before PR #5. See
+L-010.
+
 ## Blockers
 
 (none open)
@@ -280,6 +275,7 @@ buried. Worth revisiting at Phase 1 whether a Fly **TCP** check would close it.
 - **L-009** — A hand-maintained pointer decays the moment nobody is forced to touch it.
 - **L-007** — Size a limit against the largest *measured* payload, not a round number that sounds safe.
 - **L-008** — A hardening change can pass every status-code check and still leave the app broken on screen.
+- **L-010** — A stale worktree's `git status` is indistinguishable from deliberate deletions.
 
 ## Quick Tasks
 
