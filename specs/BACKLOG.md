@@ -21,3 +21,11 @@ at that point, strike it here with the date and a pointer to where it went.
 ## Ideas
 
 - [ ] (2026-08-26) Nothing logged yet — add ideas here as they come up.
+- [ ] (2026-08-27) Opus sessions sometimes do heavy tool-search legwork
+  (many `ToolSearch`/grep-style calls hunting for something) directly at the
+  top level instead of delegating it. Investigate whether search-heavy
+  subtasks should be routed to a Sonnet/Haiku subagent (e.g. the `Explore`
+  agent type) rather than switching the whole session's model — mirrors the
+  `haiku`/`sonnet`/`top-level`, never-`opus` delegation rule this repo
+  already uses for `tasks.md` steps. Not scoped yet; worth checking whether
+  it's a prompting/tool-batching issue or a genuine delegation gap.
