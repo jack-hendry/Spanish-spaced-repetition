@@ -169,3 +169,38 @@ dialog is not answerable by the tooling (a `user:pass@host` URL is rejected
 outright, and priming the credential cache with an `Authorization`-header
 `fetch()` does not populate it) — so the check was done by a human. A criterion
 that requires human eyes may also require human hands.
+
+**L-010 — A stale worktree's `git status` is indistinguishable from deliberate
+deletions.** (2026-08-27, `specs/014-spec-continuity`, AD-017) The worktree
+`worktree-spec-memory-tracking` had already been merged into `main` by way of
+two PRs, but was kept on disk. Its branch ref moved to the merge commit while
+the checkout itself was never refreshed, leaving `HEAD` and the index pointing
+at different trees. The result was a `git status` listing 24 changed files —
+`D server/src/app.ts`, `D server/src/config.ts`,
+`D server/src/middleware/auth.ts`, `D specs/archive/2026-08-27-013-server-hardening/*`
+— staged and ready to commit.
+
+Nothing about that output says "stale." It is exactly the output of someone
+having deliberately reverted the previous feature, and the natural reading of a
+staged deletion is that it was staged on purpose. Working *forward* from it —
+adding a file, committing, pushing — would have silently reverted all of
+`specs/013-server-hardening` while looking like an ordinary commit, and the diff
+would have been reviewed as "my change, plus some deletions that were already
+there."
+
+The distinguishing test is one command, and it costs nothing: in a checkout you
+have not yet touched, `git diff --cached --quiet` must succeed. If it fails, the
+staged content is not yours and the tree is not what `HEAD` says it is; confirm
+with `git diff --cached --name-only <suspected-commit>`, which returns zero
+files when the tree is merely stale rather than genuinely modified. That is what
+identified this case: the working tree matched `228360b` exactly, an ancestor of
+`HEAD`, so nothing was lost and the fix was to discard the worktree entirely
+rather than to reconcile it.
+
+The general shape: git's porcelain reports *differences*, never *intent*, and a
+checkout that has drifted from its own ref produces differences that read as
+intent. Any state you did not personally create should be verified against
+ground truth before you build on it — the same discipline AD-016's `Status:`
+field prescribes for a `done` marker, applied to a working tree instead of a
+task list. Deleting a worktree the moment its branch merges (AD-017) removes
+most opportunities for this; the check covers the rest.

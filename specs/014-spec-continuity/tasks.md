@@ -42,6 +42,8 @@ resolved or handed off explicitly rather than guessed:
 
 **Model:** top-level
 
+**Status:** done (2026-08-27, `commit 228360b` — `grep -n 'Status field — resuming after context loss' specs/TEMPLATE.md` returns 1 hit; the `**Status:**` line is present in the step-format block; "except **Done when** and **Status**, both mandatory" present)
+
 **Files**
 - MODIFY `specs/TEMPLATE.md` — anchor: the fenced step-format block starting
   `### Step N — <one-line imperative summary>`, and the `### What each
@@ -112,6 +114,8 @@ is shown. `**Status:**` follows the same shape and goes directly under it.
 
 **Model:** top-level
 
+**Status:** done (2026-08-27, `commit 228360b` — `specs/STATE.md:42`, rule 6 "safety net, not the only entry point")
+
 **Depends on:** Step 1 — none (independent finding, same file family, no
 shared symbol or file).
 
@@ -153,6 +157,8 @@ right now, before this spec is anywhere near archived.
 ### Step 3 — Reword the Archive ritual step 2 and CLAUDE.md's matching bullet
 
 **Model:** top-level
+
+**Status:** done (2026-08-27, `commit 228360b` — `specs/STATE.md:58` "Confirm the `AD` / `L`" with the old "Add the `AD` / `L`" wording gone; `CLAUDE.md:88` carries "confirm the `AD`/`B` entries" and "written as they happened")
 
 **Depends on:** Step 2 — the new Rule 6 it references by name ("Rule 6").
 
@@ -214,6 +220,8 @@ this spec) just named.
 
 **Model:** top-level
 
+**Status:** done (2026-08-27, Steps 1-3 Done-when all re-run green; `python3 tools/state_rotate.py --check` reports 238/300 ok. `git status --short` shows a phantom 013 diff: this worktree was never refreshed after its branch ref moved to merge `9cb0e05`, and index+tree are byte-identical to `228360b`. Not spec drift; see the wrap-up note below.)
+
 **Do**
 1. Re-run every `Done when` from Steps 1–3.
 2. `python3 tools/state_rotate.py --check` — must still pass; this step's
@@ -231,6 +239,8 @@ this spec) just named.
 ### Step 5 — Get 013's real step status before touching it — RESOLVED
 
 **Model:** top-level
+
+**Status:** done (2026-08-27, per-step 1-15 report received from session `Specs/013 server hardening [de2bea]` via `SendMessage` and transcribed verbatim in this step)
 
 **Depends on:** none — this was a coordination step, not a file edit.
 
@@ -275,6 +285,8 @@ sourced from that session's own report, not inferred from file existence.
 
 **Model:** top-level
 
+**Status:** done (2026-08-27, owning session confirmed via `SendMessage` that all 15 `**Status:**` lines were applied with `Edit`; its own verification: 15 x `### Step` / 15 x `**Status:**` / 15 x `**Model:**`, no orphans. Not visible in this worktree until that branch merges.)
+
 **Depends on:** Step 5 — the per-step status list it produced. Also depends
 on Step 1 — the `**Status:**` convention this step is applying.
 
@@ -312,6 +324,8 @@ this spec's own acceptance criteria depend on seeing directly.
 ### Step 7 — Regression, fix the "Current work" pointer, and wrap-up
 
 **Model:** top-level
+
+**Status:** done (2026-08-27, `commit 228360b` — root `STATE.md` "Current work" rewritten to name 013 finished, 010 next, and the `<spec> - step N of M` format; `AD-016` at `specs/STATE.md:193`; `L-009` headline at `specs/STATE.md:224` with its body at `specs/LESSONS.md:104`; `Analyst.md` `## Retrospective` filled in. A1-A5 re-verified directly; A6's clean-`git status` clause is masked by the stale-worktree artifact noted in Step 4.)
 
 **Depends on:** Step 6 — the accurate 013 status this step's "Current work"
 text is built from.
