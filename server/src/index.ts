@@ -1,30 +1,30 @@
-import { join } from 'node:path';
-
-import cors from 'cors';
-import express from 'express';
-
 import { dataDir } from './paths.js';
-import { buildRouter } from './routes/index.js';
+import { createApp } from './app.js';
+import { ConfigError, loadConfig } from './config.js';
 import { FileStore } from './store/file-store.js';
 
-const PORT = Number(process.env.PORT ?? 3000);
-
 async function main(): Promise<void> {
+  let config;
+  try {
+    config = loadConfig();
+  } catch (err) {
+    if (err instanceof ConfigError) {
+      console.error(`[server] refusing to start: ${err.message}`);
+      process.exit(1);
+    }
+    throw err;
+  }
+
   const store = new FileStore(dataDir());
   await store.init();
 
-  const app = express();
-  app.use(cors());
-  app.use(express.json({ limit: '50mb' }));
-  // Locally imported deck audio (e.g. Anki .apkg media) lives here.
-  app.use('/media', express.static(join(dataDir(), 'media')));
-  app.use('/api', buildRouter(store));
+  const app = createApp(store, config);
 
-  app.get('/api/health', (_req, res) => res.json({ ok: true }));
-
-  const server = app.listen(PORT, () => {
-    console.log(`[server] listening on http://localhost:${PORT}`);
+  const server = app.listen(config.port, () => {
+    console.log(`[server] listening on port ${config.port}`);
     console.log(`[server] data dir: ${dataDir()}`);
+    console.log(`[server] hardened: ${config.hardened}`);
+    console.log(`[server] serving app: ${config.staticDir ?? '(not built)'}`);
   });
 
   // Flush debounced writes on shutdown so no review is lost.
