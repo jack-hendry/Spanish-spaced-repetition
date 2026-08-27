@@ -25,6 +25,12 @@ blocked; with a stale marker every direct edit is blocked.
 
 ## Current work
 
-`specs/010-day-rollover-anchoring/` — the only live spec. Converted to the
-Analyst/tasks/CriticReview shape during the harness migration (AD-009); it has
-`Analyst.md` + `CriticReview.md` and is awaiting `tasks.md`.
+`specs/013-server-hardening/` — **finished** (all 15 `tasks.md` steps done
+and Done-when verified, 2026-08-26/27). Not yet committed or archived as of
+this writing.
+
+`specs/010-day-rollover-anchoring/` is next in line: has `Analyst.md` +
+`CriticReview.md`, awaiting `tasks.md`.
+
+Format while a run is in progress: `<spec> — step N of M` (see
+`specs/TEMPLATE.md`'s `Status:` field convention, AD-016).
