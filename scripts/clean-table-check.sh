@@ -11,6 +11,10 @@
 #      what keeps STATE.md inside its size budget, so the two must not drift.
 #      Unlike gates 1-2 this runs on EVERY push, not only archive pushes —
 #      a lesson can drift in any commit.
+#   5. Status gate  — every '### Step' in a changed specs/*/tasks.md carries a
+#      '**Status:**' line. Mandatory per specs/TEMPLATE.md so a session
+#      resuming a half-finished run can find where to pick up (AD-016).
+#      specs/archive/** is exempt: finished history, not a run to resume.
 #
 # This script CHECKS. It never edits files or commits on your behalf — on
 # failure it prints the exact fix and exits non-zero so the push is refused.
@@ -162,6 +166,7 @@ fi
 
 # --- Walk the diff: collect newly-added archive files, note STATE.md ---
 NEW_ARCHIVE_FILES=()
+CHANGED_TASKS_FILES=()
 STATE_CHANGED=0
 
 while IFS=$'\t' read -r status path1 path2; do
@@ -191,7 +196,61 @@ while IFS=$'\t' read -r status path1 path2; do
   if [[ "$is_new" -eq 1 && "$path" == specs/archive/* && "$(basename "$path")" != ".gitkeep" ]]; then
     NEW_ARCHIVE_FILES+=("$path")
   fi
+
+  # Gate 5 input. A deleted path has nothing to check, and specs/archive/**
+  # is deliberately exempt: those specs are finished history, written before
+  # the Status: convention existed, and requiring the field there would turn
+  # every archive move into a retrofit of a file nobody will execute again.
+  if [[ "$status" != D* && "$path" == specs/*/tasks.md && "$path" != specs/archive/* ]]; then
+    CHANGED_TASKS_FILES+=("$path")
+  fi
 done <<<"$DIFF_OUTPUT"
+
+# --- Gate 5: Status field on every tasks.md step ------------------------
+# specs/TEMPLATE.md makes **Status:** mandatory on every step, same as
+# **Model:** — it is what lets a session resuming a half-finished run find
+# where to pick up instead of re-deriving progress from scratch (AD-016).
+#
+# Checked per step rather than by total count, so that N status lines bunched
+# into one step cannot satisfy a file with N steps. Runs on every push, like
+# gates 3-4, and only over tasks.md files this push actually touched.
+if [[ "${#CHANGED_TASKS_FILES[@]}" -gt 0 ]]; then
+  STATUS_PROBLEMS=()
+  for path in "${CHANGED_TASKS_FILES[@]}"; do
+    # Measure the pushed content, not the working tree, for the same reason
+    # gates 3-4 read from HEAD.
+    content="$(git show "HEAD:${path}" 2>/dev/null || true)"
+    [[ -z "$content" ]] && continue
+
+    missing="$(printf '%s\n' "$content" | awk '
+      /^### Step / {
+        if (step != "" && count == 0) print step
+        step = $0; sub(/^### /, "", step); count = 0; next
+      }
+      /^\*\*Status:\*\*/ { if (step != "") count++ }
+      END { if (step != "" && count == 0) print step }
+    ')"
+
+    if [[ -n "$missing" ]]; then
+      STATUS_PROBLEMS+=("${path}")
+      while IFS= read -r line; do
+        [[ -n "$line" ]] && STATUS_PROBLEMS+=("    ${line}")
+      done <<<"$missing"
+    fi
+  done
+
+  if [[ "${#STATUS_PROBLEMS[@]}" -gt 0 ]]; then
+    echo "Every tasks.md step needs a **Status:** line (specs/TEMPLATE.md)." >&2
+    for entry in "${STATUS_PROBLEMS[@]}"; do
+      echo "  ${entry}" >&2
+    done
+    echo "" >&2
+    echo "  Add one under each step's **Model:** line:" >&2
+    echo "    **Status:** not started      (or: in progress; or: done (<date>, <evidence>))" >&2
+    exit 1
+  fi
+  echo "clean-table-check: Status: field present on every step in ${#CHANGED_TASKS_FILES[@]} tasks.md file(s)"
+fi
 
 if [[ "${#NEW_ARCHIVE_FILES[@]}" -eq 0 ]]; then
   echo "clean-table-check: no new archive files in this push, nothing to check"

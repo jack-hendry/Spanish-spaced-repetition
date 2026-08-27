@@ -124,14 +124,27 @@ the every-4-steps grain. A `done` marker is a claim, not proof; treat a step
 whose Done when no longer holds as `in progress` again and say so, rather
 than pushing forward on a false premise.
 
-**Mandatory on every step**, same as `Model:`:
-```sh
-steps=$(grep -c '^### Step ' tasks.md)
-[ "$steps" -gt 0 ] && [ "$(grep -c '^\*\*Status:\*\*' tasks.md)" = "$steps" ]
+**Mandatory on every step**, same as `Model:`, and **enforced** — gate 5 of
+`scripts/clean-table-check.sh` refuses a push whose `tasks.md` has a step
+without one:
+
 ```
-No hook runs this check yet (a follow-up, not part of this convention) — but
-the shape is written down now so a future gate can reuse it verbatim, the
-same way the `Model:` gate is documented before any hook enforces it.
+Every tasks.md step needs a **Status:** line (specs/TEMPLATE.md).
+  specs/014-spec-continuity/tasks.md
+    Step 3 — reword the archive ritual
+```
+
+The gate checks **per step**, not by total count, so N status lines bunched
+into one step cannot satisfy a file with N steps. It runs on every push, over
+the `tasks.md` files that push actually touched. `specs/archive/**` is exempt:
+those are finished history, written before this convention existed, and
+requiring the field there would turn every archive move into a retrofit of a
+file nobody will execute again. A `tasks.md` with no `### Step` headers at all
+(the old `T001` format) passes untouched.
+
+Like every gate here it is a client-side hook — `git push --no-verify` skips
+it — with CI as the guarantee. `scripts/clean-table-check.test.sh` is its
+regression matrix.
 
 Three rules:
 

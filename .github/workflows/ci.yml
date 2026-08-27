@@ -67,3 +67,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: ./.claude/hooks/enforce-haiku-tasks.test.sh
+      # Gate 5 of the clean-table check is the only gate that reads inside a
+      # file rather than judging it by path and size, so its regressions are
+      # invisible to clean-table-gate, which only ever runs the script against
+      # this repo's own already-compliant history.
+      - run: ./scripts/clean-table-check.test.sh
