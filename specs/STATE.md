@@ -175,7 +175,10 @@ Archive ritual's step 2 changed from "add the `AD`/`L` entries" to "confirm
 they're already here," because `specs/013-server-hardening/CriticReview.md`
 already held real, verified decisions that would have been invisible to any
 future session had that spec been abandoned before archiving — see
-`specs/014-spec-continuity/Analyst.md` §1 for the concrete incident.
+`specs/014-spec-continuity/Analyst.md` §1 for the concrete incident. Archived
+2026-08-27 to `specs/archive/2026-08-27-014-spec-continuity/` — this entry
+and `L-009` below were already recorded before the archive move, confirming
+Rule 6 rather than adding anything new at archive time.
 **AD-011 — Hardening is the default; `DEV_MODE=1` is the only opt-out.**
 (2026-08-27, `specs/013-server-hardening`, D2) Supersedes the usual
 `NODE_ENV === 'production'` shape, which was the spec's first proposal. Under
