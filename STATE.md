@@ -25,9 +25,9 @@ blocked; with a stale marker every direct edit is blocked.
 
 ## Current work
 
-`specs/013-server-hardening/` — **finished** (all 15 `tasks.md` steps done
-and Done-when verified, 2026-08-26/27). Not yet committed or archived as of
-this writing.
+`specs/013-server-hardening/` and `specs/014-spec-continuity/` are both
+**finished and archived** (`specs/archive/2026-08-27-013-server-hardening/`,
+`specs/archive/2026-08-27-014-spec-continuity/`).
 
 `specs/010-day-rollover-anchoring/` is next in line: has `Analyst.md` +
 `CriticReview.md`, awaiting `tasks.md`.
