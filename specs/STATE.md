@@ -248,7 +248,9 @@ would have landed as a clean revert of everything AD-011–AD-015 describe.
 Two rules, because one does not cover the other: **(1)** when a branch merges,
 `git worktree remove` it — not `rm -rf`, which leaves `.git/worktrees/<name>/`
 behind and a phantom row in `git worktree list` until someone runs `prune`;
-`git worktree unlock` first if it is locked. **(2)** on entering any worktree
+`git worktree unlock` first if it is locked — then `git branch -d` the branch
+too, since removing a worktree leaves its ref behind and `-d` refuses if it
+turns out not to be merged. **(2)** on entering any worktree
 this session did not just create, `git diff --cached --quiet` must succeed
 before anything is committed from it. The creation side needs no rule:
 `worktree.baseRef` is unset, so `EnterWorktree` already branches from

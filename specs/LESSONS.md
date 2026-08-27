@@ -204,3 +204,10 @@ ground truth before you build on it — the same discipline AD-016's `Status:`
 field prescribes for a `done` marker, applied to a working tree instead of a
 task list. Deleting a worktree the moment its branch merges (AD-017) removes
 most opportunities for this; the check covers the rest.
+
+Postscript: `git worktree remove` deletes the checkout but *not* the branch, so
+doing only that leaves a merged ref behind and the residue accumulates anyway —
+two of them (`worktree-spec-memory-tracking`, `worktree-cli-version-flag-plan`)
+were already sitting there when this lesson was written. Pair the removal with
+`git branch -d`, which refuses the delete if the branch turns out not to be
+merged and so cannot cost you work.
