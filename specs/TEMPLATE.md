@@ -53,12 +53,14 @@ Three rules carry most of the weight:
 ### tasks.md — step format
 
 Each step follows this shape. Sections with nothing to say may be dropped —
-except **Done when**, which is mandatory.
+except **Done when** and **Status**, both mandatory.
 
 ```markdown
 ### Step N — <one-line imperative summary>
 
 **Model:** haiku            (or: sonnet — <why this step needs visual judgement>; or: top-level)
+
+**Status:** not started            (or: in progress; or: done (2026-08-27, `commit abc1234` — or the exact evidence the step's own Done when names))
 
 **Depends on:** Step N-1 — <what this step consumes from it: a type, a
 signature, a file it creates>   (omit only if this step shares nothing
@@ -99,6 +101,37 @@ did not land>. Do not improvise a fix.
 | Edit code, run tests/builds, grep, git, write docs | `haiku` |
 | Read a `design/compare/*.png` composite, or judge anything rendered | `sonnet` |
 | Write to `tasks.md` / `Analyst.md` / `CriticReview.md` | `top-level` |
+
+### Status field — resuming after context loss
+
+A `tasks.md` run can span multiple sessions — a session runs out of budget,
+gets interrupted, or the work is picked up days later. Without a per-step
+marker, resuming means re-deriving progress from scratch: opening every
+step, grepping the codebase for what it was supposed to create, checking
+`git status`. `**Status:**` exists so that cost is paid once, by whoever
+finished the step, instead of every time someone resumes it.
+
+Three states: `not started`, `in progress`, `done (<date>, <evidence>)`.
+`<evidence>` is the exact thing that proves it without re-deriving it — a
+commit SHA, or the literal file/grep/test result the step's own **Done
+when** names. Not a restatement of the step summary.
+
+**A resuming session trusts the marker to find where to resume, then
+re-verifies only that one boundary step's Done when before continuing** —
+not every prior step. This is the checkpoint pattern (verify against ground
+truth, don't just trust a claim) applied at the single-step grain instead of
+the every-4-steps grain. A `done` marker is a claim, not proof; treat a step
+whose Done when no longer holds as `in progress` again and say so, rather
+than pushing forward on a false premise.
+
+**Mandatory on every step**, same as `Model:`:
+```sh
+steps=$(grep -c '^### Step ' tasks.md)
+[ "$steps" -gt 0 ] && [ "$(grep -c '^\*\*Status:\*\*' tasks.md)" = "$steps" ]
+```
+No hook runs this check yet (a follow-up, not part of this convention) — but
+the shape is written down now so a future gate can reuse it verbatim, the
+same way the `Model:` gate is documented before any hook enforces it.
 
 Three rules:
 

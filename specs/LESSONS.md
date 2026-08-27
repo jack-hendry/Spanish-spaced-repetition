@@ -101,6 +101,32 @@ table (`[{ subject, options, stepCount }, …]`) over a conditional; a table
 cannot silently select the same branch three times. Identity comparison against
 a helper's return value is always wrong when that helper is a factory.
 
+**L-009 — A hand-maintained pointer decays the moment nobody is forced to
+touch it.** (`specs/014-spec-continuity`, motivated by resuming
+`specs/013-server-hardening`) The root `STATE.md`'s "Current work" section is
+free-text prose with nothing checking it against reality. It said
+`specs/010-day-rollover-anchoring/` was "the only live spec" while
+`specs/013-server-hardening` — fully planned, then actively implemented by a
+separate session — went unmentioned the entire time. Nobody lied; nobody
+even edited the file incorrectly. It was simply never touched after 010
+stopped being current, because nothing forces it to be touched, unlike the
+`## Executing:` marker in the same file, which a hook actually reads and
+which sessions have a mechanical reason to add and remove.
+
+The general shape: a status signal that lives in prose, separate from the
+thing it describes, and that nothing mechanically checks, will describe
+whatever was true the last time someone happened to update it — which drifts
+further from reality the longer that has been. The fix applied here
+(`specs/014-spec-continuity`, AD-016) was to move per-step status *into*
+`tasks.md` itself, next to the `Done when` it's the status *of*, rather than
+inventing a second, separate ledger that could disagree with the first. A
+signal colocated with the thing it tracks can still go stale, but it can't
+silently drift into a *different* document's shape of wrong — there's only
+one place to look, and one place to have forgotten to update. Where a
+separate pointer can't be avoided (the root `STATE.md` "Current work"
+section still is one, by necessity — it summarizes across all specs), treat
+it as advisory only, and re-derive the real state from the spec directory
+itself before trusting it for anything that matters.
 **L-007 — Size a limit against the largest *measured* payload, not a round
 number that sounds safe.** (2026-08-27, `specs/013-server-hardening`) The spec
 set out to trim `express.json({ limit: '50mb' })`, and 100 KB looked like the

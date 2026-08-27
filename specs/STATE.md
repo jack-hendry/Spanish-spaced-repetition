@@ -39,6 +39,14 @@ pre-push gate enforces (AD-009).
    Reconstruction is how the reasoning gets lost. (AD-001 … AD-008 below are an
    acknowledged exception: they were back-filled from the nine archived specs
    during the 2026-08-26 migration, so their reasoning is second-hand.)
+6. **The Archive ritual (below) is a safety net, not the only entry point.**
+   A `CriticReview.md` finding that resolves into a real decision, or an
+   `Analyst.md` "Discovered" note that rises above a scope-parked
+   observation, gets its `AD`/`L`/`B` entry written here in the same session
+   that produced it. Waiting for archive time is how an abandoned or
+   interrupted spec's reasoning never arrives at all — see
+   `specs/014-spec-continuity/Analyst.md` for the incident that motivated
+   this rule.
 
 ## Archive ritual (run when a feature is finished)
 
@@ -47,9 +55,13 @@ code keeps the decision, nobody keeps the reason. So, in order:
 
 1. **Read the spec one more time** — `Analyst.md`, `tasks.md`, and especially
    `CriticReview.md`. The critic findings are where the lessons live.
-2. **Add the `AD` / `L` (and any `B`) entries it produced.** `AD` and `B` go
-   in this file in full; each `L` is a one-line headline here **plus** its body
-   in `LESSONS.md`. Writing only one of the two fails the pre-push hook.
+2. **Confirm the `AD` / `L` (and any `B`) entries it produced are already
+   here.** Per Rule 6 above, they should have been written as they
+   happened, not saved up for this step — this is a safety net, not the
+   first opportunity. Add anything that was missed. `AD` and `B` go in
+   this file in full; each `L` is a one-line headline here **plus** its
+   body in `LESSONS.md`. Writing only one of the two fails the pre-push
+   hook.
 3. **Summarize the spec down to what matters** before it moves — the final
    `Analyst.md`, the decisions, what changed from the plan. Drafts and long
    back-and-forth come out. Any archived file over 20 KB fails the hook.
@@ -178,6 +190,24 @@ comment, in one place. Accepted residual risk: nothing forces a future fifth
 `stepCount >= 1` (guaranteed today by the `steps.length ? … : [1]` guard at each
 call site). See the `scheduling-domain` skill's 2026-08-26 lesson.
 
+**AD-016 — `tasks.md` steps carry a mandatory `**Status:**` field, and durable
+findings are promoted into `STATE.md` as they happen, not saved for archive
+time.** (2026-08-27, `specs/014-spec-continuity`) Motivated by resuming
+`specs/013-server-hardening` mid-run: with no per-step marker, resuming after
+a session runs out of budget meant re-deriving progress from scratch —
+grepping the codebase for what each step should have created, one step at a
+time (~10 tool calls before any real work could resume). `specs/TEMPLATE.md`
+now documents `**Status:** not started | in progress | done (<date>,
+<evidence>)`, mandatory like `Model:`, with the same shape of grep-based gate
+documented (not yet hooked up — a follow-up). A resuming session trusts the
+marker to find *where* to resume, then re-verifies only that one boundary
+step's Done-when — the checkpoint pattern at single-step grain instead of
+every-4-steps. Paired with Rule 6 (above, in "Rules for this file"): the
+Archive ritual's step 2 changed from "add the `AD`/`L` entries" to "confirm
+they're already here," because `specs/013-server-hardening/CriticReview.md`
+already held real, verified decisions that would have been invisible to any
+future session had that spec been abandoned before archiving — see
+`specs/014-spec-continuity/Analyst.md` §1 for the concrete incident.
 **AD-011 — Hardening is the default; `DEV_MODE=1` is the only opt-out.**
 (2026-08-27, `specs/013-server-hardening`, D2) Supersedes the usual
 `NODE_ENV === 'production'` shape, which was the spec's first proposal. Under
@@ -247,6 +277,7 @@ buried. Worth revisiting at Phase 1 whether a Fly **TCP** check would close it.
 - **L-004** — A guard-rail keyed to a fuzzy signal fails open *and* closed.
 - **L-005** — An unindented example of a marker line shadows every real one below it.
 - **L-006** — A test that goes red when you stash the fix is not proof that every case inside it is live.
+- **L-009** — A hand-maintained pointer decays the moment nobody is forced to touch it.
 - **L-007** — Size a limit against the largest *measured* payload, not a round number that sounds safe.
 - **L-008** — A hardening change can pass every status-code check and still leave the app broken on screen.
 
