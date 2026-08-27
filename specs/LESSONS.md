@@ -100,3 +100,72 @@ test that decides which fixture or expectation to use. Prefer an explicit case
 table (`[{ subject, options, stepCount }, …]`) over a conditional; a table
 cannot silently select the same branch three times. Identity comparison against
 a helper's return value is always wrong when that helper is a factory.
+
+**L-009 — A hand-maintained pointer decays the moment nobody is forced to
+touch it.** (`specs/014-spec-continuity`, motivated by resuming
+`specs/013-server-hardening`) The root `STATE.md`'s "Current work" section is
+free-text prose with nothing checking it against reality. It said
+`specs/010-day-rollover-anchoring/` was "the only live spec" while
+`specs/013-server-hardening` — fully planned, then actively implemented by a
+separate session — went unmentioned the entire time. Nobody lied; nobody
+even edited the file incorrectly. It was simply never touched after 010
+stopped being current, because nothing forces it to be touched, unlike the
+`## Executing:` marker in the same file, which a hook actually reads and
+which sessions have a mechanical reason to add and remove.
+
+The general shape: a status signal that lives in prose, separate from the
+thing it describes, and that nothing mechanically checks, will describe
+whatever was true the last time someone happened to update it — which drifts
+further from reality the longer that has been. The fix applied here
+(`specs/014-spec-continuity`, AD-016) was to move per-step status *into*
+`tasks.md` itself, next to the `Done when` it's the status *of*, rather than
+inventing a second, separate ledger that could disagree with the first. A
+signal colocated with the thing it tracks can still go stale, but it can't
+silently drift into a *different* document's shape of wrong — there's only
+one place to look, and one place to have forgotten to update. Where a
+separate pointer can't be avoided (the root `STATE.md` "Current work"
+section still is one, by necessity — it summarizes across all specs), treat
+it as advisory only, and re-derive the real state from the spec directory
+itself before trusting it for anything that matters.
+**L-007 — Size a limit against the largest *measured* payload, not a round
+number that sounds safe.** (2026-08-27, `specs/013-server-hardening`) The spec
+set out to trim `express.json({ limit: '50mb' })`, and 100 KB looked like the
+obvious "sensible" replacement — the review payload is one card plus one revlog
+entry, comfortably under 10 KB. Measuring first is what saved it:
+`POST /api/collection/resume` sends `{id, due}` for **every** card in the
+collection, **~311 KB at 7,276 cards**, and it grows linearly as the collection
+does. A 100 KB cap would have thrown 413 mid-resume with `pausedAt` still set —
+i.e. pause/resume silently broken, in the one code path whose entire job is not
+losing scheduling state. The cap landed at 2 MB (~6x headroom) and is pinned by
+a test that posts 8,000 entries (~320 KB) and asserts the response is not a 413.
+Two transferable rules. First: before capping anything, go find the biggest real
+payload and measure it — the endpoint you are thinking about is rarely the
+largest one. Second: a limit needs a test at *realistic scale*, because a cap
+that is too tight fails only on large inputs, and every small-input test passes
+while the feature is broken in production.
+
+**L-008 — A hardening change can pass every status-code check and still leave
+the app broken on screen.** (2026-08-27, `specs/013-server-hardening`, critic
+round 1 finding R2) Angular's production build inlines critical CSS via
+*beasties* and emits
+`<link rel="stylesheet" href="styles-….css" media="print" onload="this.media='all'">`.
+That `onload=` is an inline event handler, which `script-src 'self'` blocks —
+so the stylesheet would have stayed `media="print"` forever and the app would
+have rendered essentially unstyled, **while every curl check in the verification
+step still returned 200**. HTTP status is a liveness signal, not a correctness
+one; nothing in a status matrix can see a blocked stylesheet. Two things follow.
+First, any spec that touches CSP, static serving or auth needs at least one
+acceptance criterion that requires *looking at the rendered page* — this one has
+A7, "study a real card and confirm it renders styled and the audio plays", and
+it is the criterion that cannot be automated away. Second, when CSP collides
+with a build artifact, fix the artifact rather than widening the policy: the fix
+was `inlineCritical: false` in `web/angular.json`, verified by rebuilding and
+confirming the `onload` and the inline `<style>` block were both gone, in
+preference to `script-src 'unsafe-inline'` (throws away most of the CSP's value)
+or an `'unsafe-hashes'` digest of Angular's snippet (brittle — the hash changes
+whenever Angular changes the snippet). Postscript from execution: A7 could not
+be driven by browser automation at all, because Chrome's native HTTP Basic Auth
+dialog is not answerable by the tooling (a `user:pass@host` URL is rejected
+outright, and priming the credential cache with an `Authorization`-header
+`fetch()` does not populate it) — so the check was done by a human. A criterion
+that requires human eyes may also require human hands.

@@ -23,7 +23,7 @@ function nextNewPosition(cards: Card[]): number {
   return max + 1;
 }
 
-export function buildRouter(store: FileStore): Router {
+export function buildRouter(store: FileStore, opts: { allowImport?: boolean } = {}): Router {
   const r = Router();
 
   // ---- collection bundle ---------------------------------------------------
@@ -214,18 +214,21 @@ export function buildRouter(store: FileStore): Router {
   });
 
   // ---- import --------------------------------------------------------------
-  // Runs the scraped-tree -> canonical transform over data/spanish/_source.
-  r.post('/import', async (_req, res) => {
-    const { runImport } = await import('../import/run.js');
-    const result = await runImport(store, sourceDir());
-    res.json({
-      source: sourceDir(),
-      target: dataDir(),
-      decks: result.decks.length,
-      notes: result.notes.length,
-      cards: result.cards.length,
+  // Whole-store rewrite from _source/. Desktop-only, opt-in.
+  if (opts.allowImport === true) {
+    // Runs the scraped-tree -> canonical transform over data/spanish/_source.
+    r.post('/import', async (_req, res) => {
+      const { runImport } = await import('../import/run.js');
+      const result = await runImport(store, sourceDir());
+      res.json({
+        source: sourceDir(),
+        target: dataDir(),
+        decks: result.decks.length,
+        notes: result.notes.length,
+        cards: result.cards.length,
+      });
     });
-  });
+  }
 
   return r;
 }

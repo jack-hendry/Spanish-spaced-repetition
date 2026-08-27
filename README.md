@@ -36,6 +36,33 @@ The app will be available at `http://localhost:4200`
 npm run import
 ```
 
+### Running the Server
+
+The production server is hardened by default: it requires HTTP Basic authentication credentials via environment variables and refuses to start without them. Use `DEV_MODE=1` to disable hardening for local development.
+
+**Environment variables** (all optional in dev mode, required in production):
+
+- `AUTH_USER` — HTTP Basic username (default: unset; production required)
+- `AUTH_PASSWORD` — HTTP Basic password (default: unset; production required)
+- `DEV_MODE=1` — disable all security hardening (auth, HTTPS redirect, CORS, import route blocking)
+- `PORT` — server listening port (default: `3000`)
+- `BODY_LIMIT` — max request body size (default: `2mb`)
+- `DATA_DIR` — path to the data store directory (default: `data/spanish/`)
+
+Example (development):
+
+```bash
+DEV_MODE=1 npm run start -w server
+```
+
+Example (production — credentials from your platform secrets provider, never hardcoded):
+
+```bash
+AUTH_USER=<username> AUTH_PASSWORD=<your-password> npm run start -w server
+```
+
+The server will refuse to start in production mode (hardened) without valid credentials set.
+
 ### Building for Production
 
 ```bash

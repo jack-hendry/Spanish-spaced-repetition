@@ -39,30 +39,32 @@ The server today (`server/src/index.ts`) has no auth, a wide-open `cors()`,
 and no production static-file serving — only the dev proxy splits API (:3000)
 from Angular (:4200). Needed before anything touches the public internet:
 
-- [ ] Serve the built Angular app (`web/dist/...`) from Express so one
+- [x] Serve the built Angular app (`web/dist/...`) from Express so one
       process answers both `/api` and the app.
-- [ ] Add auth middleware in front of **everything** — `/api`, `/media`, and
+- [x] Add auth middleware in front of **everything** — `/api`, `/media`, and
       the static app — credentials from env vars/platform secrets, never
       committed. HTTP Basic is proportionate here because the data layer has
       no user model at all (genuinely single-user); decide at spec time
       whether the phone experience wants a signed session cookie instead of
       re-prompting. Constant-time credential comparison either way.
-- [ ] Lock `cors()` down to the real deployed origin instead of the open
+- [x] Lock `cors()` down to the real deployed origin instead of the open
       default.
-- [ ] Force HTTPS (redirect/refuse plain HTTP) — Basic credentials over
+- [x] Force HTTPS (redirect/refuse plain HTTP) — Basic credentials over
       cleartext would be sent on every single request.
-- [ ] **Contain `POST /api/import`.** It calls `store.replaceAll(...)`, so a
+- [x] **Contain `POST /api/import`.** It calls `store.replaceAll(...)`, so a
       single unauthenticated POST can rewrite the entire canonical store from
       whatever is (or isn't) in `_source/`. It should not be reachable from
       the deployed instance at all — disable it in production, or gate it
       behind a separate admin credential.
-- [ ] Trim the `express.json({ limit: '50mb' })` body cap to something the
+- [x] Trim the `express.json({ limit: '50mb' })` body cap to something the
       real payloads need, and add basic rate limiting — a 50MB unauthenticated
       body is a free memory/disk exhaustion primitive once public.
 - [ ] Add security headers (helmet or equivalent) and confirm nothing outside
       `data/spanish/media/` is reachable through the static mounts.
 - [ ] Verify by trying: unauthenticated `curl` against `/api/collection`,
       `/api/review`, `/media/...` and the app root must all fail.
+
+**Phase 0 complete.** All 6 core hardening checkboxes landed in `specs/013-server-hardening`.
 
 ## Phase 1 — Deploy to Fly.io
 
