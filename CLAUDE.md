@@ -53,6 +53,8 @@ The review loop: the SPA loads the collection + cards, the user rates a card, th
 - `import/transform.ts` + `import/run.ts` — turn scraped McGraw-Hill "menu tree" book JSON into canonical decks/notes/cards. Identity is derived deterministically from `(bookSlug, Card_ID)` via a hash so **re-import reconciles in place and preserves scheduling state**.
 - `models/index.ts` — the canonical data model and the contract between store, importer, and API. The Angular app mirrors these types in `web/src/app/core/models/`. Keep the two in sync.
 - `paths.ts` — `dataDir()` / `sourceDir()`, overridable via `DATA_DIR` / `SOURCE_DIR` env vars (used by tests).
+- `config.ts` — the fail-safe env contract: `AUTH_USER`, `AUTH_PASSWORD`, `DEV_MODE`, `PORT`, `BODY_LIMIT`, `DATA_DIR`. In production (hardened mode), the server refuses to start without `AUTH_USER` and `AUTH_PASSWORD` set.
+- `app.ts` — the middleware stack in order: `GET /api/health` is registered first and is the one deliberately anonymous route; then, only if hardened, `forceHttps` (loopback-exempt) → `helmet` → two `express-rate-limit` tiers → `basicAuth`; `express.json` sits **after** auth on purpose (so an unauthenticated request never gets a body parsed); then `/media` static, `/api` routes, and (if built) the Angular app + SPA fallback.
 
 ### Web (`web/`, Angular 22, standalone components + signals)
 
