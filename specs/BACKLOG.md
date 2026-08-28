@@ -42,3 +42,15 @@ at that point, strike it here with the date and a pointer to where it went.
   unclear whether this checks source JSON pre-import, the canonical store
   post-import, or both; whether it should cover just this one source file
   or all of `_source/`; and what the false-positive tolerance should be.
+- [ ] (2026-08-28) Investigate delegating the final commit-and-PR step of a
+  task/spec run to a cheaper subagent (Haiku or Sonnet) instead of doing it
+  at the top level. The idea: that subagent commits and opens the PR
+  automatically, without a per-commit confirmation from the user, and the
+  user's review moves to the PR itself rather than to a pre-commit
+  permission prompt. Would need to reconcile with the working agreement's
+  "never commit without explicit permission" rule (`CLAUDE.md`) — this is
+  effectively asking for a standing, scoped exception rather than a
+  case-by-case one, so it needs a clear boundary (which branches/paths
+  qualify, what still requires a stop-and-ask) before it's safe to adopt.
+  Not scoped yet; worth checking whether cost savings and reduced
+  interruption are worth the loss of a manual gate before every commit.
