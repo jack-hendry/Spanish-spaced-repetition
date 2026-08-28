@@ -7,6 +7,7 @@ Spec-Driven Development: write the plan documents before writing code; code foll
 ```
 specs/
 └── <feature-name>/
+    ├── ROADMAP.md       <- optional: map for a Large, multi-phase initiative
     ├── Analyst.md       <- WHAT and WHY (problem, scope, what is OUT of scope)
     ├── tasks.md         <- HOW (numbered checklist of small steps)
     └── CriticReview.md  <- findings from the critic/harden pass
@@ -14,6 +15,50 @@ specs/
 specs/archive/
 └── YYYY-MM-DD-<feature-name>/   <- finished specs move here once merged
 ```
+
+## ROADMAP.md — for Large, multi-phase initiatives
+
+Most Large tasks still fit one `Analyst.md` + `tasks.md`. Reach for a
+`ROADMAP.md` instead when a Large task also has **phases whose sub-scope
+isn't knowable yet** — you can name the phases but not size them until an
+earlier phase produces the information (an audit, a discovery pass, a first
+deploy). Forcing that into one `tasks.md` produces steps nobody can write
+truthfully; forcing it into silence produces scope creep, discovered one
+surprise at a time. `ROADMAP.md` is the middle way: write down the shape
+now, size each phase for real only when it's about to be executed.
+
+A `ROADMAP.md` is a **living planning doc, not a spec** — no harden pass, no
+`Model:`/`Status:` fields, nothing enforced by the push gates. Each phase
+gets a proper `Analyst.md` + `tasks.md` + harden pass of its own when it's
+ready to execute, in its own numbered `specs/<name>/` folder (or as a
+sub-section if the phase is small enough to share the roadmap's folder —
+judgment call). See `specs/011-mobile-remote-access/ROADMAP.md` and
+`specs/015-typescript-lint-rollout/ROADMAP.md` for worked examples.
+
+Shape, in order:
+
+1. **Status line.** State plainly that this is pre-spec and point at the
+   sizing rule for why it's Large.
+2. **Goal.** One paragraph — what does done look like, and why does it need
+   phases instead of one spec.
+3. **Non-negotiables (optional).** Hard constraints every phase is judged
+   against — the kind of thing that would make a phase wrong even if it
+   shipped faster by dropping it. Skip this section if the initiative
+   doesn't have any that are worth repeating per phase.
+4. **Ordering rule.** Which phases must land before which — and, just as
+   important, which phases must **never** get folded into another phase's
+   batch work regardless of how small they look once the real scope is
+   known (this is where a "scheduling-core never gets mechanically
+   batch-fixed" type of rule belongs).
+5. **Phases**, each with a checklist. A checklist item can be genuinely
+   unsized ("Batch plan TBD — depends on Phase 0's inventory") — that's the
+   point of a roadmap over a spec. What it must not be is unscoped forever:
+   the phase that resolves the unknown (an audit, a discovery pass) comes
+   first and its whole job is turning "TBD" into a real plan.
+6. **Discovered log**, dated, append-only — same purpose as a spec's
+   `## Discovered` note (see "Scope discipline" in `CLAUDE.md`): things
+   found mid-roadmap that belong to a specific phase, recorded instead of
+   fixed inline or lost.
 
 ## Analyst.md — must answer 4 questions
 
