@@ -5,7 +5,13 @@ criteria live in [`Analyst.md`](./Analyst.md); everything an executor needs is
 repeated in the step itself.
 
 Baseline for every count below: clean `origin/main` @ 66b1d70, measured with
-`npx eslint web/src`. Phase 1 starts at **116** violations and ends at **0**.
+`npx eslint web/src` **from a tree with `node_modules` installed**. Phase 1
+starts at **121** violations and ends at **0**.
+
+> **Counts are only valid after `npm install`.** In a worktree without
+> dependencies, type-aware rules silently stop firing and every total below
+> comes out ~5 low — a well-formed, reproducible, wrong number. See Step 0 and
+> `Analyst.md` §1a.
 
 ## Step 0 — prerequisite, do this before Step 1
 
@@ -33,7 +39,7 @@ Run `npm install` once in the worktree root, then confirm
 - **Every fix is behaviour-preserving.** `npm run test` must show the same
   pass count after as before. A fix that needs a test changed is not
   behaviour-preserving — STOP and report it instead.
-- **No `eslint --fix` runs.** Only 8 of the 116 are auto-fixable; a blanket
+- **No `eslint --fix` runs.** Only 9 of the 74 are auto-fixable; a blanket
   autofix would touch files this phase does not own.
 - Run `npm run format` on any file you edit before declaring a step done —
   `format:check` is a CI gate.
@@ -44,7 +50,13 @@ Run `npm install` once in the worktree root, then confirm
 
 **Model:** haiku
 
-**Status:** not started
+**Status:** done (2026-08-28, `npx eslint web/src` → 74 problems,
+`npx eslint server/src` → 41, the three clean directories and
+`deck-list.html` all exit 0, `git status --short` limited to
+`eslint.config.mjs`). The executor reported 74 against a predicted 69 and
+stopped rather than adjusting options to hit the number — the correct call.
+The prediction was wrong, not the work: see the note under the title above and
+`Analyst.md` §1a. Predicted value corrected to 74 below.
 
 **Depends on:** nothing.
 
@@ -97,8 +109,8 @@ not, so the current rule makes a behaviour-breaking edit the compliant one.
    ```
 
 **Done when**
-- `npx eslint web/src 2>&1 | tail -3` reports exactly **69 problems**
-  (was 147: 116 Phase 1 + 31 Phase 2).
+- `npx eslint web/src 2>&1 | tail -3` reports exactly **74 problems**
+  (was 152: 121 Phase 1 + 31 Phase 2).
 - `npx eslint server/src 2>&1 | tail -3` reports exactly **41 problems**
   (was 102).
 - `npx eslint web/src/app/features/stats web/src/app/shared web/src/app/core/models`
@@ -128,25 +140,33 @@ what was specified.
   off-limits to subagents), any source file.
 
 **Context**
-The published inventory says 254; a clean checkout says **249**. The 5-violation
-gap is uncommitted work-in-progress in the checkout Phase 0 ran in
-(`review.spec.ts` +4, `deck-list.spec.ts` +1) — not a method error, but the
-recorded number is of a working tree rather than of `main`. On top of that,
-Step 1's calibration changes every phase's count. Both need recording, and the
+The inventory's 254 is **correct** and stays. Step 1's calibration changes every
+phase's count, and Phase 2's file list widens — both need recording, and the
 Phase 2 drop especially must not read as progress.
 
+One warning belongs in the file: these counts only reproduce from a tree with
+`node_modules` installed. Measured from a fresh worktree without them,
+type-aware rules silently stop firing and the total comes back 249 — plausible,
+reproducible, and wrong. That cost this spec a withdrawn finding
+(`Analyst.md` §1a, L-013), and Phases 2 and 3 will measure from fresh worktrees.
+
 **Do**
-1. Add a `## Re-baseline (2026-08-28, Phase 1)` section near the top, stating:
-   the original 254 was measured against a dirty checkout; clean `origin/main`
-   @ 66b1d70 gives **249**; the difference is named above.
+1. Add a `## Re-baseline (2026-08-28, Phase 1)` section near the top, opening
+   with the reproducibility warning above: **run `npm install` before measuring;
+   a tree without `node_modules` under-reports by 5 in `web/src`.** State that
+   the original 254 (152 `web/src` + 102 `server/src`) was re-verified at
+   `origin/main` @ 66b1d70 and is confirmed.
 2. Add the post-calibration table:
 
-   | Phase | Baseline (clean) | After calibration | After Phase 2 reassignment |
+   | Phase | Baseline | After calibration | After Phase 2 reassignment |
    |---|---|---|---|
-   | Phase 1 | 116 | 64 | **45** |
-   | Phase 2 | 31 | 5 | **24** |
+   | Phase 1 | 121 | — | **50** |
+   | Phase 2 | 31 | — | **24** |
    | Phase 3 | 102 | 41 | 41 |
-   | Total | 249 | 110 | 110 |
+   | Total | 254 | 115 | 115 |
+
+   (`web/src` post-calibration is 74 in total; the Phase 1 / Phase 2 split of
+   that is the last column.)
 
 3. Add a subsection **"Second widening of the attribution rule"**, in the same
    spirit as the one already in this file. Content: the textual rule
@@ -167,6 +187,8 @@ Phase 2 drop especially must not read as progress.
 
 **Done when**
 - `grep -c 'Re-baseline' specs/015-typescript-lint-rollout/INVENTORY.md` ≥ 1.
+- `grep -c 'npm install' specs/015-typescript-lint-rollout/INVENTORY.md` ≥ 1
+  (the reproducibility warning is present).
 - All six reassigned filenames appear in the file:
   `for f in pause-shift pause.service heatmap stats; do grep -q "$f" specs/015-typescript-lint-rollout/INVENTORY.md || echo "MISSING $f"; done` prints nothing.
 - `grep -n '16 files' specs/015-typescript-lint-rollout/INVENTORY.md` returns a hit.
@@ -175,6 +197,8 @@ Phase 2 drop especially must not read as progress.
 **If blocked**
 If the numbers in Step 1's Done when did not match, do not write this file —
 STOP. An inventory recording unverified numbers is worse than no re-baseline.
+Do **not** "correct" the 254 to some other figure without first confirming
+`npm install` has been run in this tree.
 
 ---
 
@@ -450,13 +474,13 @@ equivalent to absent. Revert that single edit and report which line.
 **Done when**
 - Build green; tests 280 (71 server + 209 web); `format:check` clean;
   `lint:ci` exit 0.
-- `npx eslint web/src` reports **55 problems** (69 after Step 1, minus 9 from
+- `npx eslint web/src` reports **60 problems** (74 after Step 1, minus 9 from
   Batch 1 and 5 from Batch 2).
 - The changed-file list contains **no** path matching
   `core/scheduling/|collection\.store|study-queue|pause-shift|pause\.service|core/heatmap|core/stats`.
 
 **If blocked**
-If the eslint total is not 55, report the actual number and the per-file
+If the eslint total is not 60, report the actual number and the per-file
 breakdown from `npx eslint web/src --format json` before continuing.
 
 ---
@@ -472,12 +496,12 @@ breakdown from `npx eslint web/src --format json` before continuing.
 **Files**
 - MODIFY `web/src/main.ts` — L5
 - MODIFY `web/src/app/app.spec.ts` — L102, L105
-- MODIFY `web/src/app/features/deck-list/deck-list.spec.ts` — L71, L88
+- MODIFY `web/src/app/features/deck-list/deck-list.spec.ts` — L71, L88, L105
 - DO NOT TOUCH: `web/src/app/app.ts` (already clean), `deck-list.ts`,
   `deck-list.html`.
 
 **Context**
-Six violations. `main.ts` has two on one line. The four spec-file ones are all
+Seven violations. `main.ts` has two on one line. Four spec-file ones are all
 `no-unnecessary-condition: "Unnecessary optional chain on a non-nullish value"`
 — an `?.` where the type says the value is never nullish. Read each line and
 delete just the `?`, leaving the property access. If removing it makes the
@@ -497,6 +521,14 @@ wrong about that line: leave it and report.
    braces fix `no-confusing-void-expression`.
 2. `app.spec.ts` L102 and L105: remove the unnecessary `?.` optional chains.
 3. `deck-list.spec.ts` L71 and L88: same.
+4. `deck-list.spec.ts` L105 (`no-misused-promises`, "Promise returned in
+   function argument where a void return was expected"): an `async` callback is
+   being passed where a `void`-returning one is expected, so a rejection would
+   go unhandled. Read the call site. If it is a test-harness callback that can
+   take a promise (e.g. an `it(...)` body), hoist the `await` to the enclosing
+   test instead; otherwise wrap the call so the promise is explicitly consumed
+   (`void someAsyncFn();` when the result is genuinely not awaited, or `await`
+   it if the test should wait). Do not silence it with a disable comment.
 
 **Done when**
 - `npx eslint web/src/main.ts web/src/app/app.spec.ts web/src/app/features/deck-list`
@@ -648,21 +680,32 @@ remaining count.
 edit is never blamed for an implementation change.
 
 **Files**
-- MODIFY `web/src/app/features/review/review.spec.ts` — L230, L346, L353, L360, L371, L613, L623, L624, L632, L642
+- MODIFY `web/src/app/features/review/review.spec.ts` — L198 (×2), L230, L263, L304, L346, L353, L360, L371, L613, L623, L624, L632, L642
 - DO NOT TOUCH: `review.ts`.
 
 **Context**
-Ten violations: eight `no-unnecessary-condition` optional chains and two
-`no-explicit-any` (L613, L632). The `any`s are mock types — Analyst.md §5.1
-deliberately kept `no-explicit-any` on in tests, because an `any`-typed mock is
-how a test keeps passing after the contract it mocks has drifted. So type them
-properly rather than suppressing.
+Fourteen violations: eight `no-unnecessary-condition` optional chains, two
+`no-explicit-any` (L613, L632), and four on `vitest` spy handles — L198
+(`no-unsafe-call` + `no-unsafe-member-access` on `.mockRestore`), L263 and L304
+(`no-unsafe-member-access` on `.mock`). All six of the latter share one root
+cause: a spy is being held in an `any`-typed binding, so every use of it is
+unchecked.
+
+Analyst.md §5.1 deliberately kept these rules on in tests, because an
+`any`-typed mock is how a test keeps passing after the contract it mocks has
+drifted. Type them properly rather than suppressing.
 
 **Do**
 1. L230, L346, L353, L360, L371, L623, L624, L642: remove the unnecessary `?.`
    optional chains, same rule as Step 9 — if an occurrence will not compile
    without it, leave it and report.
-2. L613 and L632: replace `any` with the real type of the thing being mocked.
+2. L198, L263, L304: find the binding holding the spy and give it vitest's real
+   type rather than `any`. `vi.spyOn(obj, 'method')` already returns a typed
+   `MockInstance`, so in most cases the fix is to stop annotating (or casting)
+   the binding as `any` and let inference do it; import `type MockInstance` from
+   `vitest` if an explicit annotation is needed. One correct binding type should
+   clear all four violations.
+3. L613 and L632: replace `any` with the real type of the thing being mocked.
    Read the surrounding mock setup to find it. If the precise type is genuinely
    unavailable, use `unknown` plus a narrowing cast at the point of use — never
    an `eslint-disable` comment.
@@ -674,9 +717,11 @@ properly rather than suppressing.
 - Add `web/src/app/features/review` to `lint:ci`; `npm run lint:ci` exits 0.
 
 **If blocked**
-If typing a mock at L613/L632 cascades into more than ~3 further edits in the
-file, STOP and report — that is a bigger change than this step is scoped for,
-and §5.1 already anticipates revisiting it.
+If typing a mock at L198/L263/L304/L613/L632 cascades into more than ~5 further
+edits in the file, STOP and report — that is a bigger change than this step is
+scoped for, and §5.1 already anticipates revisiting it (turning `no-unsafe-*`
+off for tests is the documented fallback, but that is the user's call, not
+yours).
 
 ---
 
@@ -751,7 +796,8 @@ refuses the push.
 1. Walk all nine acceptance criteria in `Analyst.md` §7 and record the actual
    result of each.
 2. Tick the Phase 1 checkboxes in `ROADMAP.md` and append dated Discovered
-   entries for: the 254→249 baseline correction, the missing
+   entries for: the withdrawn 254→249 "correction" and its real cause
+   (type-aware lint under-reports without `node_modules` — L-013), the missing
    `.claude/worktrees/**` ignore, the `eqeqeq`/`== null` trap, and the second
    widening of the phase-attribution rule (Phase 2 is now 16 files).
 3. Add to `specs/STATE.md`: an `AD-020` for the calibration decision (a lint
@@ -772,7 +818,8 @@ refuses the push.
 **Done when**
 - All nine §7 criteria recorded with actual results.
 - `bash scripts/clean-table-check.sh` passes.
-- `python3 tools/state_rotate.py --check` passes.
+- `python3 tools/state_rotate.py --check` passes — **see the note below; this
+  one is expected to fail until a human rotates.**
 - Every `### Step` in this file has a `**Status:**` line reading
   `done (<date>, <evidence>)`.
 - `git status --short` shows nothing under `data/spanish/`.
@@ -781,3 +828,12 @@ refuses the push.
 **If blocked**
 If `clean-table-check.sh` fails on the `L-NNN` gate, a lesson headline is
 missing its body (or vice versa) — fix the pairing, do not `--no-verify`.
+
+**Known blocker — `specs/STATE.md` is over its size budget.** As of 2026-08-28
+the file is 320 lines against a 300-line budget, and it was already at ~290
+*before* this spec added `AD-020`, `L-013` and `L-014`. The tool names
+`AD-014`, `AD-015` and `AD-016` (all 2026-08-27) as due for rotation, freeing
+37 lines. **Do not run `python3 tools/state_rotate.py --apply`** — CLAUDE.md
+reserves that for a human who has decided to rotate, and no hook ever runs it
+for you. Report the `--check` output and stop; the push gate will refuse until
+someone rotates.

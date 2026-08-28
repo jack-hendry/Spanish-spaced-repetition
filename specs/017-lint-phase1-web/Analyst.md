@@ -19,12 +19,23 @@ behaviour, or (b) shipping a red gate.
 The inventory was taken as read and then re-derived from a clean checkout
 before planning. Four things came out of that, and they reshape the phase:
 
-**(a) The published baseline is 5 violations high.** `npm run lint:json` on a
-clean `origin/main` (66b1d70) reports **249**, not 254. The difference is
-uncommitted work-in-progress in the checkout Phase 0 ran in —
-`review.spec.ts` (+4) and `deck-list.spec.ts` (+1). Phase 1's real committed
-baseline is **116**, not 121. Every number below is measured on a clean
-checkout.
+**(a) The published baseline is correct — and the process of doubting it found
+something worse.** An early draft of this document claimed the inventory's 254
+was 5 high, because a fresh worktree measured 249. That claim was wrong and has
+been withdrawn. The worktree had no `node_modules`; `npx eslint` resolved
+upward to the parent checkout and ran, but could not fully resolve the types
+behind `vitest`'s mock helpers, so every rule needing type information
+(`no-unsafe-call`, `no-unsafe-member-access`, `no-misused-promises`) quietly
+declined to fire. After `npm install` in the worktree, the same commit
+reproduces **254** exactly — 152 `web/src` + 102 `server/src`, matching the
+inventory to the violation.
+
+The real finding is the failure mode: **a type-aware lint count taken in a tree
+without dependencies installed is silently low, not an error.** It is
+well-formed, reproducible on re-run, and wrong. Any Phase 2/3 session that
+measures from a fresh worktree will hit it. → **L-013**.
+
+Phase 1's baseline is therefore **121**, as originally published.
 
 **(b) `npm run lint` lints stale worktrees.** `eslint.config.mjs`'s `ignores`
 list has no `.claude/worktrees/**` entry, so a leftover worktree gets linted as
@@ -166,16 +177,23 @@ report-only until Phase 4 collapses the two.
 
 ## 5. Measured effect
 
-Clean checkout, `origin/main` @ 66b1d70:
+Clean checkout, `origin/main` @ 66b1d70, **with `node_modules` installed** (see
+§1a — without them these numbers come out 5 low):
 
 | Config | Phase 1 | Phase 2 | Phase 3 | Total |
 |---|---|---|---|---|
-| Baseline (as committed) | 116 | 31 | 102 | 249 |
-| + D1 (`eqeqeq`) | 109 | 28 | 101 | 238 |
-| + D2 (`allowNumber`) | 95 | 23 | 88 | 206 |
-| + D3 (test relaxations) | 94 | 16 | 56 | 166 |
-| **D1+D2+D3 combined** | **64** | **5** | **41** | **110** |
-| …minus Phase 2 reassignment | **45** | **24** | 41 | 110 |
+| Baseline (as committed) | 121 | 31 | 102 | 254 |
+| **D1+D2+D3 combined** | **74**† | — | **41** | **115** |
+| …after Phase 2 reassignment | **50** | **24** | 41 | 115 |
+
+† 74 is all of `web/src` post-calibration; the Phase 1 / Phase 2 split of it is
+the last row.
+
+What each decision removes, counted from the 254 baseline: D1 `eqeqeq` **13**
+(11 TS + 2 template), D2 `restrict-template-expressions` **43**, D3 the five
+test-scoped rules **83** (65 `no-non-null-assertion`, 6 `unbound-method`, 6
+`no-empty-function`, 4 `require-await`, 2 `no-extraneous-class`). Total 139;
+254 − 139 = 115. ✓
 
 Calibration alone takes `app.ts`, `deck-list.ts`, `deck-list.html`,
 `features/stats/stats.ts` and `shared/heatmap/heatmap.ts` to zero without a
@@ -184,16 +202,15 @@ single code edit — enough for three directories (`core/models`,
 
 ### 5.1 Open question — `no-unsafe-*` in test files
 
-D3 keeps `no-unsafe-*` and `no-explicit-any` on in tests. Most of the fallout
-lands in files reassigned to Phase 2 (`pause.service.spec.ts` alone has 13, and
-`heatmap.spec.ts` 1), so it is not this spec's problem. Phase 1 keeps 4: two in
-`type-answer.ts` (not a test — a real `any` leak from a regex `match`) and two
-`no-explicit-any` in `review.spec.ts`. They come from `any`-typed mocks, and
-fixing them properly means typing the mocks — genuinely better test code, but
-real work rather than a lint tidy.
+D3 keeps `no-unsafe-*` and `no-explicit-any` on in tests. `pause.service.spec.ts`
+alone has 13 and `heatmap.spec.ts` 1, but both are reassigned to Phase 2, so
+they are not this spec's problem. Phase 1 keeps 8: two in `type-answer.ts` (not
+a test — a real `any` leak from a regex `match`), and six in `review.spec.ts`
+(two `no-explicit-any`, one `no-unsafe-call`, three `no-unsafe-member-access` —
+all on `vitest` spy handles). Fixing them properly means typing the mocks —
+genuinely better test code, but real work rather than a lint tidy.
 
-Turning them off in tests as well would drop Phase 1's residual from 45 to 43
-— i.e. almost nothing, which is itself the argument for keeping them on.
+Turning them off in tests as well would drop Phase 1's residual from 50 to 44.
 Kept on, because an `any`-typed mock is the mechanism by which a test
 keeps passing after the contract it mocks has changed — the one failure mode
 the test suite exists to prevent. Revisit if the mock-typing work proves
@@ -201,26 +218,26 @@ disproportionate.
 
 ## 6. Residual work after calibration
 
-45 violations, 13 files, in four batches:
+50 violations, 13 files, in four batches:
 
 | Batch | Directory | Files | Violations |
 |---|---|---|---|
 | B1 | `core/templating/` + `core/` leaves (`api.service.ts`, `daily-limits.ts`) | 6 | 9 |
 | B2 | `features/browser/`, `features/options/` | 2 | 5 |
-| B3 | app shell — `app.spec.ts`, `main.ts`, `deck-list.spec.ts` | 3 | 6 |
-| B4 | `features/review/` — incl. the `onKey` complexity decomposition | 2 | 25 |
+| B3 | app shell — `app.spec.ts`, `main.ts`, `deck-list.spec.ts` | 3 | 7 |
+| B4 | `features/review/` — incl. the `onKey` complexity decomposition | 2 | 29 |
 
-Only 8 of the 116 baseline violations are `--fix`-able, so this is hand work
+Only 9 of the post-calibration violations are `--fix`-able, so this is hand work
 throughout; no unattended autofix run is planned anywhere in this phase.
 
 ## 7. How do we know it is done?
 
 1. `eslint.config.mjs` carries D1, D2, D3 and a `.claude/worktrees/**` ignore,
    each with a comment saying *why*, not just what.
-2. `INVENTORY.md` is re-baselined: clean-checkout numbers under the calibrated
-   ruleset, per phase, reconciling to the measured total; the 5-violation
-   discrepancy and its cause recorded; the widened Phase 2 attribution rule
-   (16 files) recorded alongside the existing widening note.
+2. `INVENTORY.md` records the post-calibration numbers per phase, reconciling to
+   the measured total; the widened Phase 2 attribution rule (16 files) recorded
+   alongside the existing widening note; and a warning that these counts are
+   only reproducible from a tree with `node_modules` installed (§1a).
 3. `npm run lint` reports **zero** violations for every directory named in
    §6's batch table.
 4. `npm run lint:ci` exists, covers exactly the directories cleaned by this
@@ -239,16 +256,25 @@ throughout; no unattended autofix run is planned anywhere in this phase.
 
 ## 8. Discovered
 
-- (2026-08-28) The Phase 0 inventory's 254 was measured against a dirty
-  checkout; clean `origin/main` gives 249. Not a Phase 0 error in method —
-  `lint:json` does reproduce it — but a reminder that a baseline taken from a
-  working tree is a baseline of that working tree. → **L-013**.
+- (2026-08-28) **Withdrawn claim.** This spec first asserted the Phase 0
+  inventory was 5 violations high. It is not; the inventory is correct. The
+  discrepancy was an artifact of measuring from a worktree with no
+  `node_modules`, where type-aware rules silently stop firing. Recorded rather
+  than deleted because the wrong version reached `Analyst.md`, a lesson, and
+  fourteen steps' "Done when" before being tested. → **L-013**,
+  CriticReview R11.
 - (2026-08-28) `eslint.config.mjs` `ignores` was missing `.claude/worktrees/**`,
   so a local `npm run lint` linted every stale worktree as a second copy of the
   repo. Fixed in this spec's batch 0.
 - (2026-08-28) The `eqeqeq`/`== null` finding (§1c) is the concrete instance of
   the risk the roadmap's non-negotiable #1 names, and it landed *outside* the
   file list that non-negotiable protects. → **L-014**.
+- (2026-08-28) `specs/STATE.md` is over its 300-line budget (320 after this
+  spec's `AD-020` + two lesson headlines; ~290 before them), so
+  `tools/state_rotate.py --check` — and therefore the pre-push gate — fails.
+  `AD-014`/`AD-015`/`AD-016` are due for rotation, freeing 37 lines. Not
+  actioned here: CLAUDE.md reserves `--apply` for a human who has decided to
+  rotate. **Needs a decision before this branch can be pushed.**
 
 ## 9. Retrospective
 

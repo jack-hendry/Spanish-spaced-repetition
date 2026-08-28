@@ -270,3 +270,67 @@ watch it report. And treat partial verification as what it is — verification
 of a part. The habit that catches all three cases is the same one: make the
 artifact demonstrate what it does, instead of reasoning about what it ought to
 say.
+
+**L-013 — A type-aware linter in a tree with no dependencies installed reports a
+smaller number, not an error.** (2026-08-28, `specs/017-lint-phase1-web`,
+CriticReview R11) Phase 1 opened by re-deriving Phase 0's baseline rather than
+trusting it. Run from a fresh `EnterWorktree` checkout, `npx eslint` reported
+**249** where the inventory said **254**, and the five-violation gap sat in two
+`*.spec.ts` files. The obvious story fit perfectly: Phase 0 must have measured
+against a dirty checkout. That story was written into `Analyst.md`, into a
+lesson, and into the "Done when" of fourteen steps before it was tested.
+
+It was wrong. A git worktree has no `node_modules`, and `npx eslint` resolves
+upward to the parent checkout's copy, so the linter **runs** — it just cannot
+fully resolve the types behind `vitest`'s mock helpers. Every rule that needs
+type information to fire (`no-unsafe-call`, `no-unsafe-member-access`,
+`no-misused-promises`) silently declines to report. Installing dependencies in
+the worktree reproduced 254 exactly, and 152/102 per workspace, matching the
+inventory to the violation.
+
+The trap is that the failure is **quiet and directional**. An unresolvable
+import is a loud error; an unresolvable *type* just degrades to `any` and takes
+its rules with it. The number that comes back is well-formed, plausible, lower
+than before, and wrong — and "lower than before" is exactly what someone
+starting a remediation phase is primed to accept. Two of this repo's own habits
+made it worse: `npm run dev` dirties `data/spanish/` on every review (L-002), so
+"the tree was dirty" is always an available explanation; and the count did
+reproduce perfectly on re-runs, because determinism is not accuracy.
+
+Rules: **a type-aware lint number is only valid from a tree with dependencies
+installed** — run `npm install` in a new worktree before measuring anything, and
+treat any count taken before that as void. When a re-derived number disagrees
+with a recorded one, **find the mechanism before writing the story**: the
+disagreement is evidence that something differs, not evidence of *what*. Here
+one command (`git show HEAD:eslint.config.mjs` re-run after `npm install`)
+settled it. And prefer the check that can exonerate the existing record —
+had `git status` on the original checkout been read as disproof rather than
+explained away, the wrong story would have died on day one.
+
+**L-014 — A lint rule can make the behaviour-changing edit the compliant one.**
+(2026-08-28, `specs/017-lint-phase1-web`, Analyst.md §1c, D1) `eqeqeq:
+['error', 'always']` flagged nine sites across `pause.service.ts`, `app.ts`,
+`review.ts`, `deck-list.ts` and `deck-list.html`. Every one of them was
+`coll.pausedAt != null` or `== null` — the deliberate idiom that matches null
+*and* undefined. The compliant fix, `!== null`, stops matching `undefined`, and
+the pause toggle silently starts reading a paused collection as unpaused.
+
+The danger is not that a linter can be wrong. It is that a linter is a
+*queue of instructions*, executed by whoever is cheapest — increasingly a small
+model working from a rule name and a line number, with no view of why the line
+is written that way. "Fix the eqeqeq violations" is a well-formed, mechanical,
+completable task whose correct-looking completion introduces a bug. Every
+guard-rail in this repo pointed the other way: the roadmap's non-negotiable #1
+quarantines scheduling-core from batch fixes, but `pause.service.ts` is not
+under `core/scheduling/`, so the textual attribution rule let it through
+(the same gap produced the Phase 2 widening in the same spec).
+
+Rules: **before enforcing a rule, read what it currently flags — all of it.**
+Not to estimate effort, but to ask of each class of hit: is this code wrong, or
+is the rule miscalibrated for this codebase? A rule whose violations are
+overwhelmingly one idiom is describing the codebase's conventions, not its
+defects. Calibrating on that evidence (`{ null: 'ignore' }`, `allowNumber`) is
+part of adopting a linter, not a retreat from it — and it is much cheaper
+before the rule is enforced than after a batch has "fixed" 40 sites. Where a
+rule must stay strict and its hits are genuine, that is exactly the finding
+worth having; the point is to know which of the two you have.

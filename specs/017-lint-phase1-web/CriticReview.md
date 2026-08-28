@@ -5,10 +5,12 @@ implementation step. Per `specs/TEMPLATE.md`: every step that assumes a type, a
 signature or a value defined elsewhere had that file opened and the assumption
 confirmed, rather than the plan merely being re-read for internal consistency.
 
-10 findings. **R1–R4 were plan defects that would have broken a step**; R5–R8
+11 findings. **R1–R4 were plan defects that would have broken a step**; R5–R8
 are confirmations that removed a hedge from the plan; R9 is an environment
 prerequisite the plan did not state; R10 pins the baseline every step's
-*Done when* compares against.
+*Done when* compares against. **R11 was found during execution, not in this
+pass, and is the most serious**: the baseline "correction" this spec opened with
+was itself wrong. R9 turned out to be its cause.
 
 ---
 
@@ -142,18 +144,61 @@ Every *Done when* in `tasks.md` compares against a number. All were measured on
 this worktree at `origin/main` @ 66b1d70 rather than carried over from
 `INVENTORY.md` (which, per `Analyst.md` §1a, is 5 high):
 
+**Superseded by R11 — the first version of this table was measured before
+`npm install` and was 5 low in `web/src`.** Corrected values, all re-measured
+with dependencies installed:
+
 | Quantity | Verified value |
 |---|---|
-| `npx eslint web/src`, before calibration | 147 (116 Phase 1 + 31 Phase 2) |
-| `npx eslint web/src`, after calibration | 69 |
+| `npx eslint web/src`, before calibration | 152 (121 Phase 1 + 31 Phase 2) |
+| `npx eslint server/src`, before calibration | 102 |
+| Repo total, before calibration | 254 — matches `INVENTORY.md` exactly |
+| `npx eslint web/src`, after calibration | 74 |
 | `npx eslint server/src`, after calibration | 41 |
-| Phase 1 residual after calibration + reassignment | 45, in 13 files |
+| Phase 1 residual after calibration + reassignment | 50, in 13 files |
 | Server tests | 71 |
 | Web tests | 209 |
 | Total tests | 280 |
 
-The intermediate checkpoint targets (55 at Step 8, 24 at Step 13) are derived
-from these: 69 − 9 (Batch 1) − 5 (Batch 2) = 55; 69 − 45 = 24.
+The intermediate checkpoint targets (60 at Step 8, 24 at Step 13) are derived
+from these: 74 − 9 (Batch 1) − 5 (Batch 2) = 60; 74 − 50 = 24. The calibration
+arithmetic also reconciles independently: D1 removes 13, D2 removes 43, D3
+removes 83 → 139; 254 − 139 = 115 = 74 + 41. ✓
+
+## R11 — the baseline "correction" was itself wrong *(defect, found during execution)*
+
+**Severity: highest of this pass — it reached `Analyst.md`, a lesson, and
+fourteen steps' "Done when" before anything tested it.**
+
+Phase 1 opened by re-deriving Phase 0's baseline instead of trusting it. From a
+fresh `EnterWorktree` checkout `npx eslint` reported **249** where
+`INVENTORY.md` said **254**, with the gap in two `*.spec.ts` files. The
+inference — Phase 0 measured against a dirty checkout — was plausible, fitted
+the evidence, and was written up as finding §1(a).
+
+It was wrong. A git worktree has no `node_modules`; `npx eslint` resolves upward
+to the parent checkout and *runs*, but cannot fully resolve the types behind
+`vitest`'s mock helpers, so `no-unsafe-call`, `no-unsafe-member-access` and
+`no-misused-promises` silently declined to fire on 5 sites. Running
+`npm install` in the worktree reproduced 254 exactly, 152/102 per workspace.
+
+Two things let it stand as long as it did. The count was **reproducible** —
+every re-run gave 249 — and determinism reads as accuracy. And the session had
+already noted `git status` was clean on the original checkout at session start,
+then explained that away rather than treating it as disproof.
+
+What caught it: Step 1's executor reported 74 against a predicted 69 and
+stopped, exactly as its *If blocked* clause required, instead of adjusting rule
+options to hit the number. A step that says "do not tune the config to match the
+number, report the mismatch" is what converted a silent wrong premise into a
+visible one.
+
+**Fixes applied:** §1(a) rewritten and the claim withdrawn (kept in the
+Discovered log rather than deleted); every count in `Analyst.md`, `tasks.md` and
+this file re-measured with dependencies installed; Step 2's `INVENTORY.md`
+rewrite changed from "correct the 254" to "confirm the 254 and warn that the
+number needs `npm install` to reproduce"; L-013 rewritten from the wrong lesson
+to the real one; the newly-visible violations folded into Steps 9 and 12.
 
 ---
 
