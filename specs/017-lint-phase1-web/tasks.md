@@ -439,7 +439,11 @@ and report — `prefer-optional-chain` is not worth a type-safety regression.
 
 **Model:** haiku
 
-**Status:** not started
+**Status:** done (2026-08-28). `npx eslint` exits 0 on both directories; web
+tests **209 passed**; build succeeds; `lint:ci` exit 0; `npx eslint web/src`
+**65 → 60**, exactly the 5 this step owns — verified by the orchestrator. The
+`options.ts` `!` assertion became a throwing guard documenting the invariant,
+per R7. Both feature directories join the gate.
 
 **Depends on:** Step 1.
 

@@ -34,7 +34,7 @@ function frontText(note: Note, noteType: NoteType | undefined, cardOrd: number):
   const values = Object.values(note.fields);
   if (noteType?.kind === 'cloze') {
     const clozeField = values.find((v) => clozeOrds(v).length > 0);
-    if (clozeField) return stripHtml(renderCloze(clozeField, cardOrd + 1, false));
+    if (clozeField !== undefined) return stripHtml(renderCloze(clozeField, cardOrd + 1, false));
   }
   return values.map(stripHtml).find((v) => v.length > 0) ?? '';
 }
@@ -147,7 +147,7 @@ export class Browser {
   /** The row currently open in the editor, or undefined. */
   readonly editingRow = computed<BrowserRow | undefined>(() => {
     const id = this.editingId();
-    if (!id) return undefined;
+    if (id == null || id === '') return undefined;
     return this.allRows().find((r) => r.note.id === id);
   });
 
@@ -187,7 +187,7 @@ export class Browser {
 
   async saveEdit(): Promise<void> {
     const id = this.editingId();
-    if (!id || this.busy()) return;
+    if (id == null || id === '' || this.busy()) return;
     this.busy.set(true);
     try {
       const result = await this.store.saveNoteFields(id, this.draft(), this.draftTags());
