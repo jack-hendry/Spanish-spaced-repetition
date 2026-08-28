@@ -274,7 +274,15 @@ STOP, do not remove a directory from the list to make it pass.
 
 **Model:** haiku
 
-**Status:** not started
+**Status:** done (2026-08-28, all 8 checks green). `npm run build` succeeds;
+`npm run test` → **71 server + 209 web = 280**, unchanged from the pre-spec
+baseline; `format:check` clean; `lint:ci` exit 0; `npx eslint web/src` → 74,
+`server/src` → 41, both matching Step 1. `git diff --name-only 64c7e4c^..HEAD`
+lists 10 files — `eslint.config.mjs`, `package.json`,
+`.github/workflows/ci.yml`, `STATE.md`, `INVENTORY.md`, the three
+`017-lint-phase1-web/` docs, `LESSONS.md`, `specs/STATE.md` — with **zero**
+paths under `web/src/`, `server/src/` or `data/spanish/`. Calibration is
+confirmed behaviour-neutral: 139 violations removed, no test moved.
 
 **Depends on:** Steps 1–3.
 
