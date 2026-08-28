@@ -271,6 +271,27 @@ of a part. The habit that catches all three cases is the same one: make the
 artifact demonstrate what it does, instead of reasoning about what it ought to
 say.
 
+**Recurrence (2026-08-28, `specs/017-lint-phase1-web` Step 2 — same file, same
+defect, one spec later.)** The executor re-baselining `INVENTORY.md` produced a
+correct headline table (121/31 → 50/24) over a six-file decomposition it had
+never measured: `pause.service.spec.ts` 5 against 13 actual, `heatmap.ts` 1
+against 0, `stats.ts` 3 against 0. The list summed to 16 while its own table,
+three paragraphs above, gave the Phase 2 total as 24. Every one of the step's
+five "Done when" greps passed, because they checked that sections and phrases
+*existed*, not that numbers *reconciled*.
+
+So the lesson as written did not prevent its own recurrence. A headline in
+`STATE.md` is read by whoever goes looking; a step's `Done when` is executed by
+whoever is cheapest. The fix has to live in the second place.
+
+Added rule: **a table an executor writes must carry a reconciliation line the
+step can check** — an identity tying the decomposition to a number stated
+elsewhere (`Phase 1 50 + Phase 2 24 = 74 = the web/src total`), with the
+step's `Done when` naming the command that recomputes it. A `grep -c` proving a
+heading exists is not verification of the table beneath it. Where the executor
+writes numbers at all, give it the measured values in the step and forbid
+adjustment, rather than asking it to derive them.
+
 **L-013 — A type-aware linter in a tree with no dependencies installed reports a
 smaller number, not an error.** (2026-08-28, `specs/017-lint-phase1-web`,
 CriticReview R11) Phase 1 opened by re-deriving Phase 0's baseline rather than

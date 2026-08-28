@@ -43,6 +43,11 @@ Run `npm install` once in the worktree root, then confirm
   autofix would touch files this phase does not own.
 - Run `npm run format` on any file you edit before declaring a step done —
   `format:check` is a CI gate.
+- **Any table you write must reconcile against a number stated elsewhere, and
+  you must recompute it by command before reporting.** A `grep` proving a
+  heading exists says nothing about the numbers beneath it. Where a step gives
+  you measured values, use them verbatim — do not re-derive or adjust them.
+  (L-012, which has now recurred once.)
 
 ---
 
@@ -130,7 +135,16 @@ what was specified.
 
 **Model:** haiku
 
-**Status:** not started
+**Status:** done (2026-08-28, `INVENTORY.md` +45 lines; `grep -c 'Re-baseline'`
+→ 1, `grep -c 'npm install'` → 1, `16 files` present at L190; `git status
+--short` limited to `INVENTORY.md`). Took two attempts: the first wrote a
+correct headline table over a **fabricated** six-file decomposition
+(`pause.service.spec.ts` 5 vs. 13 actual, `heatmap.ts` 1 vs. 0, `stats.ts` 3
+vs. 0; the list summed to 16 against a Phase 2 total of 24 stated in its own
+table three paragraphs above). Caught by the orchestrator re-measuring, not by
+the executor's checks — the same defect as L-012, in the same file. Corrected
+version carries both baseline and post-calibration columns plus two
+reconciliation lines.
 
 **Depends on:** Step 1 — reads the post-calibration counts it produced.
 
