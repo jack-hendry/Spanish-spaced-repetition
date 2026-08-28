@@ -22,7 +22,9 @@
   } @else if (state(); as s) {
     <header class="review__topbar">
       <a routerLink="/" class="back">← Decks</a>
-      <span class="session-info__label">{{ deckName() }} — {{ sessionN() }} of {{ sessionTotal() }}</span>
+      <span class="session-info__label"
+        >{{ deckName() }} — {{ sessionN() }} of {{ sessionTotal() }}</span
+      >
       <button class="suspend" [disabled]="busy()" (click)="suspend()" title="Suspend card (-)">
         Suspend
       </button>

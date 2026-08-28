@@ -75,12 +75,7 @@ export class StudyQueueService {
     const subtree = new Set(decks.map((d) => d.id));
     const coll = this.store.collection();
     const today = coll ? todayNumber(coll) : 0;
-    const { newRemaining, reviewRemaining } = remainingLimits(
-      decks,
-      subtree,
-      today,
-      opts,
-    );
+    const { newRemaining, reviewRemaining } = remainingLimits(decks, subtree, today, opts);
     this.session = { deckId: 'all', subtree, opts, newRemaining, reviewRemaining };
     return true;
   }
@@ -116,17 +111,13 @@ export class StudyQueueService {
 
     // 3. New cards (within the daily limit).
     if (s.newRemaining > 0) {
-      const news = cards
-        .filter((c) => c.queue === 'new')
-        .sort((a, b) => a.due - b.due);
+      const news = cards.filter((c) => c.queue === 'new').sort((a, b) => a.due - b.due);
       if (news.length) return news[0];
     }
 
     // 4. Learning cards due later today — surface the soonest so the session
     //    can be completed rather than stalling on a timer.
-    const laterLearning = cards
-      .filter((c) => c.queue === 'learning')
-      .sort((a, b) => a.due - b.due);
+    const laterLearning = cards.filter((c) => c.queue === 'learning').sort((a, b) => a.due - b.due);
     return laterLearning[0] ?? null;
   }
 

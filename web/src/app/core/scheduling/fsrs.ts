@@ -28,11 +28,7 @@ const GRADE: Record<Rating, 1 | 2 | 3 | 4> = RATING_BUTTON;
  * review thereafter.
  */
 export class FsrsScheduler implements Scheduler {
-  preview(
-    card: Card,
-    opts: DeckOptions,
-    ctx: ReviewContext,
-  ): Record<Rating, SchedulingResult> {
+  preview(card: Card, opts: DeckOptions, ctx: ReviewContext): Record<Rating, SchedulingResult> {
     switch (card.type) {
       case 'new':
       case 'learning':
@@ -57,12 +53,7 @@ export class FsrsScheduler implements Scheduler {
       cardId: card.id,
       reviewedAt: ctx.now,
       button: GRADE[rating],
-      type:
-        card.type === 'review'
-          ? 'review'
-          : card.type === 'relearning'
-            ? 'relearn'
-            : 'learn',
+      type: card.type === 'review' ? 'review' : card.type === 'relearning' ? 'relearn' : 'learn',
       interval: result.intervalDays,
       lastInterval: card.interval,
       factorOrStability: Math.round((result.card.stability ?? 0) * 100) / 100,
@@ -116,10 +107,7 @@ export class FsrsScheduler implements Scheduler {
     opts: DeckOptions,
     extra: Partial<Card> = {},
   ): SchedulingResult {
-    const ivl = this.clampInterval(
-      nextInterval(stability, opts.fsrs.desiredRetention),
-      opts,
-    );
+    const ivl = this.clampInterval(nextInterval(stability, opts.fsrs.desiredRetention), opts);
     const next: Card = {
       ...this.touched(card, ctx),
       type: 'review',
@@ -222,10 +210,7 @@ export class FsrsScheduler implements Scheduler {
     const relearnSteps = opts.fsrs.relearningSteps;
 
     let again: SchedulingResult;
-    const lapseIvl = this.clampInterval(
-      nextInterval(lapseS, opts.fsrs.desiredRetention),
-      opts,
-    );
+    const lapseIvl = this.clampInterval(nextInterval(lapseS, opts.fsrs.desiredRetention), opts);
     if (relearnSteps.length) {
       const delay = relearnSteps[0];
       again = {

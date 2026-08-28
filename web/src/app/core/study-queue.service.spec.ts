@@ -113,9 +113,7 @@ describe('StudyQueueService pause gate', () => {
     const { store, queue } = setup();
     // A due review card so unpaused behaviour would clearly return something.
     store.collection.set(collection({ pausedAt: null }));
-    store.cards.set([
-      card({ id: 'r1', queue: 'review', type: 'review', due: 0 }),
-    ]);
+    store.cards.set([card({ id: 'r1', queue: 'review', type: 'review', due: 0 })]);
     queue.start('d1');
 
     // Sanity check: unpaused, the queue serves the due card.
@@ -131,9 +129,7 @@ describe('StudyQueueService pause gate', () => {
   it('leaves existing behaviour unchanged when pausedAt is null', () => {
     const { store, queue } = setup();
     store.collection.set(collection({ pausedAt: null }));
-    store.cards.set([
-      card({ id: 'n1', queue: 'new', type: 'new', due: 0 }),
-    ]);
+    store.cards.set([card({ id: 'n1', queue: 'new', type: 'new', due: 0 })]);
     queue.start('d1');
 
     expect(queue.next(ctx)?.id).toBe('n1');

@@ -17,11 +17,7 @@
 
       <label class="field">
         <span class="field__label">Scheduler</span>
-        <select
-          [ngModel]="scheduler()"
-          (ngModelChange)="scheduler.set($event)"
-          name="scheduler"
-        >
+        <select [ngModel]="scheduler()" (ngModelChange)="scheduler.set($event)" name="scheduler">
           <option value="sm2">SM-2 (classic)</option>
           <option value="fsrs">FSRS-5</option>
         </select>
@@ -31,24 +27,53 @@
         <legend>New cards</legend>
         <label class="field">
           <span class="field__label">New / day</span>
-          <input type="number" min="0" [ngModel]="newPerDay()" (ngModelChange)="newPerDay.set($event)" name="newPerDay" />
+          <input
+            type="number"
+            min="0"
+            [ngModel]="newPerDay()"
+            (ngModelChange)="newPerDay.set($event)"
+            name="newPerDay"
+          />
         </label>
         <label class="field">
           <span class="field__label">Learning steps (minutes)</span>
-          <input [ngModel]="learningSteps()" (ngModelChange)="learningSteps.set($event)" name="learningSteps" />
+          <input
+            [ngModel]="learningSteps()"
+            (ngModelChange)="learningSteps.set($event)"
+            name="learningSteps"
+          />
         </label>
         @if (scheduler() === 'sm2') {
           <label class="field">
             <span class="field__label">Graduating interval (days)</span>
-            <input type="number" min="1" [ngModel]="graduatingInterval()" (ngModelChange)="graduatingInterval.set($event)" name="grad" />
+            <input
+              type="number"
+              min="1"
+              [ngModel]="graduatingInterval()"
+              (ngModelChange)="graduatingInterval.set($event)"
+              name="grad"
+            />
           </label>
           <label class="field">
             <span class="field__label">Easy interval (days)</span>
-            <input type="number" min="1" [ngModel]="easyInterval()" (ngModelChange)="easyInterval.set($event)" name="easyIvl" />
+            <input
+              type="number"
+              min="1"
+              [ngModel]="easyInterval()"
+              (ngModelChange)="easyInterval.set($event)"
+              name="easyIvl"
+            />
           </label>
           <label class="field">
             <span class="field__label">Starting ease (permille)</span>
-            <input type="number" min="1300" step="50" [ngModel]="startingEase()" (ngModelChange)="startingEase.set($event)" name="ease" />
+            <input
+              type="number"
+              min="1300"
+              step="50"
+              [ngModel]="startingEase()"
+              (ngModelChange)="startingEase.set($event)"
+              name="ease"
+            />
           </label>
         }
       </fieldset>
@@ -57,20 +82,46 @@
         <legend>Reviews</legend>
         <label class="field">
           <span class="field__label">Reviews / day</span>
-          <input type="number" min="0" [ngModel]="reviewPerDay()" (ngModelChange)="reviewPerDay.set($event)" name="revPerDay" />
+          <input
+            type="number"
+            min="0"
+            [ngModel]="reviewPerDay()"
+            (ngModelChange)="reviewPerDay.set($event)"
+            name="revPerDay"
+          />
         </label>
         <label class="field">
           <span class="field__label">Maximum interval (days)</span>
-          <input type="number" min="1" [ngModel]="maxInterval()" (ngModelChange)="maxInterval.set($event)" name="maxIvl" />
+          <input
+            type="number"
+            min="1"
+            [ngModel]="maxInterval()"
+            (ngModelChange)="maxInterval.set($event)"
+            name="maxIvl"
+          />
         </label>
         @if (scheduler() === 'sm2') {
           <label class="field">
             <span class="field__label">Easy bonus</span>
-            <input type="number" min="1" step="0.05" [ngModel]="easyBonus()" (ngModelChange)="easyBonus.set($event)" name="easyBonus" />
+            <input
+              type="number"
+              min="1"
+              step="0.05"
+              [ngModel]="easyBonus()"
+              (ngModelChange)="easyBonus.set($event)"
+              name="easyBonus"
+            />
           </label>
           <label class="field">
             <span class="field__label">Hard interval</span>
-            <input type="number" min="0.5" step="0.05" [ngModel]="hardInterval()" (ngModelChange)="hardInterval.set($event)" name="hardIvl" />
+            <input
+              type="number"
+              min="0.5"
+              step="0.05"
+              [ngModel]="hardInterval()"
+              (ngModelChange)="hardInterval.set($event)"
+              name="hardIvl"
+            />
           </label>
         }
       </fieldset>
@@ -92,12 +143,25 @@
           </label>
           <label class="field">
             <span class="field__label">Maximum interval (days)</span>
-            <input type="number" min="1" [ngModel]="fsrsMaxInterval()" (ngModelChange)="fsrsMaxInterval.set($event)" name="fsrsMaxIvl" />
+            <input
+              type="number"
+              min="1"
+              [ngModel]="fsrsMaxInterval()"
+              (ngModelChange)="fsrsMaxInterval.set($event)"
+              name="fsrsMaxIvl"
+            />
           </label>
-          <p class="hint">FSRS reuses the learning &amp; relearning steps above for short-term scheduling.</p>
+          <p class="hint">
+            FSRS reuses the learning &amp; relearning steps above for short-term scheduling.
+          </p>
 
           <div class="optimize">
-            <button type="button" class="btn btn--ghost" [disabled]="optimizing()" (click)="optimize()">
+            <button
+              type="button"
+              class="btn btn--ghost"
+              [disabled]="optimizing()"
+              (click)="optimize()"
+            >
               {{ optimizing() ? 'Optimising…' : 'Optimise weights from review history' }}
             </button>
             @if (optimizeNote(); as note) {
@@ -111,19 +175,39 @@
         <legend>Lapses</legend>
         <label class="field">
           <span class="field__label">Relearning steps (minutes)</span>
-          <input [ngModel]="relearningSteps()" (ngModelChange)="relearningSteps.set($event)" name="relearnSteps" />
+          <input
+            [ngModel]="relearningSteps()"
+            (ngModelChange)="relearningSteps.set($event)"
+            name="relearnSteps"
+          />
         </label>
         <label class="field">
           <span class="field__label">Minimum interval (days)</span>
-          <input type="number" min="1" [ngModel]="lapseMinInterval()" (ngModelChange)="lapseMinInterval.set($event)" name="lapseMin" />
+          <input
+            type="number"
+            min="1"
+            [ngModel]="lapseMinInterval()"
+            (ngModelChange)="lapseMinInterval.set($event)"
+            name="lapseMin"
+          />
         </label>
         <label class="field">
           <span class="field__label">Leech threshold (lapses)</span>
-          <input type="number" min="0" [ngModel]="leechThreshold()" (ngModelChange)="leechThreshold.set($event)" name="leech" />
+          <input
+            type="number"
+            min="0"
+            [ngModel]="leechThreshold()"
+            (ngModelChange)="leechThreshold.set($event)"
+            name="leech"
+          />
         </label>
         <label class="field">
           <span class="field__label">Leech action</span>
-          <select [ngModel]="leechAction()" (ngModelChange)="leechAction.set($event)" name="leechAction">
+          <select
+            [ngModel]="leechAction()"
+            (ngModelChange)="leechAction.set($event)"
+            name="leechAction"
+          >
             <option value="suspend">Suspend card</option>
             <option value="tagOnly">Tag only</option>
           </select>
@@ -133,11 +217,21 @@
       <fieldset class="group">
         <legend>Burying</legend>
         <label class="check">
-          <input type="checkbox" [ngModel]="buryNew()" (ngModelChange)="buryNew.set($event)" name="buryNew" />
+          <input
+            type="checkbox"
+            [ngModel]="buryNew()"
+            (ngModelChange)="buryNew.set($event)"
+            name="buryNew"
+          />
           <span>Bury new siblings until the next day</span>
         </label>
         <label class="check">
-          <input type="checkbox" [ngModel]="buryReview()" (ngModelChange)="buryReview.set($event)" name="buryReview" />
+          <input
+            type="checkbox"
+            [ngModel]="buryReview()"
+            (ngModelChange)="buryReview.set($event)"
+            name="buryReview"
+          />
           <span>Bury review siblings until the next day</span>
         </label>
       </fieldset>

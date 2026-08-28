@@ -13,11 +13,7 @@ const MIN_EASE = 1300; // 130% floor
 
 /** SuperMemo-2 style scheduler with learning/relearning steps and ease factors. */
 export class Sm2Scheduler implements Scheduler {
-  preview(
-    card: Card,
-    opts: DeckOptions,
-    ctx: ReviewContext,
-  ): Record<Rating, SchedulingResult> {
+  preview(card: Card, opts: DeckOptions, ctx: ReviewContext): Record<Rating, SchedulingResult> {
     switch (card.type) {
       case 'new':
       case 'learning':
@@ -42,12 +38,7 @@ export class Sm2Scheduler implements Scheduler {
       cardId: card.id,
       reviewedAt: ctx.now,
       button: RATING_BUTTON[rating],
-      type:
-        card.type === 'review'
-          ? 'review'
-          : card.type === 'relearning'
-            ? 'relearn'
-            : 'learn',
+      type: card.type === 'review' ? 'review' : card.type === 'relearning' ? 'relearn' : 'learn',
       interval: result.intervalDays,
       lastInterval: card.interval,
       factorOrStability: result.card.ease,
@@ -76,7 +67,11 @@ export class Sm2Scheduler implements Scheduler {
       left,
       due: ctx.now + delayMin * 60_000,
     };
-    return { card: next, intervalDays: minutesToDays(delayMin), label: formatDays(minutesToDays(delayMin)) };
+    return {
+      card: next,
+      intervalDays: minutesToDays(delayMin),
+      label: formatDays(minutesToDays(delayMin)),
+    };
   }
 
   private graduate(

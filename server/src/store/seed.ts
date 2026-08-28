@@ -1,12 +1,6 @@
 // Initial seed content written when data/spanish is first initialised.
 
-import type {
-  CardTemplate,
-  Collection,
-  Deck,
-  DeckOptions,
-  NoteType,
-} from '../models/index.js';
+import type { CardTemplate, Collection, Deck, DeckOptions, NoteType } from '../models/index.js';
 
 export const SCHEMA_VERSION = 1;
 
@@ -17,9 +11,8 @@ export const LISTENING_DECK_ID = 'dec-listening';
 
 // FSRS-5 default parameters (19 weights).
 export const FSRS5_DEFAULT_WEIGHTS = [
-  0.40255, 1.18385, 3.173, 15.69105, 7.1949, 0.5345, 1.4604, 0.0046, 1.54575,
-  0.1192, 1.01925, 1.9395, 0.11, 0.29605, 2.2698, 0.2315, 2.9898, 0.51655,
-  0.6621,
+  0.40255, 1.18385, 3.173, 15.69105, 7.1949, 0.5345, 1.4604, 0.0046, 1.54575, 0.1192, 1.01925,
+  1.9395, 0.11, 0.29605, 2.2698, 0.2315, 2.9898, 0.51655, 0.6621,
 ];
 
 const BASIC_CSS = `.card {

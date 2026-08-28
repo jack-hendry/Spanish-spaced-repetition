@@ -8,7 +8,7 @@
 
   <div class="heatmap__grid" [style.grid-template-columns]="gridTemplateColumns()">
     @for (m of monthLabels(); track m.name + m.column) {
-      <span class="heatmap__month-label" [style.grid-column]="m.column" style="grid-row: 1;">{{
+      <span class="heatmap__month-label" [style.grid-column]="m.column" style="grid-row: 1">{{
         m.name
       }}</span>
     }

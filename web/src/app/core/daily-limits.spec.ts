@@ -9,10 +9,24 @@ function deck(id: string, daily?: Deck['daily']): Deck {
 
 function card(over: Partial<Card> = {}): Card {
   return {
-    id: 'c', noteId: 'n', deckId: 'd1', ord: 0,
-    type: 'new', queue: 'new', due: 0, reps: 0, lapses: 0, left: 0,
-    lastReviewed: null, created: 0, modified: 0, ease: 2500, interval: 0,
-    stability: null, difficulty: null, ...over,
+    id: 'c',
+    noteId: 'n',
+    deckId: 'd1',
+    ord: 0,
+    type: 'new',
+    queue: 'new',
+    due: 0,
+    reps: 0,
+    lapses: 0,
+    left: 0,
+    lastReviewed: null,
+    created: 0,
+    modified: 0,
+    ease: 2500,
+    interval: 0,
+    stability: null,
+    difficulty: null,
+    ...over,
   };
 }
 
@@ -25,8 +39,11 @@ describe('dailyForToday', () => {
   });
 
   it('treats a stale or missing tally as zero', () => {
-    expect(dailyForToday(deck('d1', { day: 4, newStudied: 9, reviewStudied: 9 }), 5))
-      .toEqual({ day: 5, newStudied: 0, reviewStudied: 0 });
+    expect(dailyForToday(deck('d1', { day: 4, newStudied: 9, reviewStudied: 9 }), 5)).toEqual({
+      day: 5,
+      newStudied: 0,
+      reviewStudied: 0,
+    });
     expect(dailyForToday(deck('d1'), 5)).toEqual({ day: 5, newStudied: 0, reviewStudied: 0 });
   });
 });
@@ -34,13 +51,20 @@ describe('dailyForToday', () => {
 describe('bumpDaily', () => {
   it('increments new for a new card and resets a stale tally first', () => {
     const d = deck('d1', { day: 4, newStudied: 5, reviewStudied: 1 });
-    expect(bumpDaily(d, card({ queue: 'new' }), 5)).toEqual({ day: 5, newStudied: 1, reviewStudied: 0 });
+    expect(bumpDaily(d, card({ queue: 'new' }), 5)).toEqual({
+      day: 5,
+      newStudied: 1,
+      reviewStudied: 0,
+    });
   });
 
   it('increments review for a review card', () => {
     const d = deck('d1', { day: 5, newStudied: 2, reviewStudied: 2 });
-    expect(bumpDaily(d, card({ queue: 'review', type: 'review' }), 5))
-      .toEqual({ day: 5, newStudied: 2, reviewStudied: 3 });
+    expect(bumpDaily(d, card({ queue: 'review', type: 'review' }), 5)).toEqual({
+      day: 5,
+      newStudied: 2,
+      reviewStudied: 3,
+    });
   });
 
   it('spends no slot for learning cards', () => {

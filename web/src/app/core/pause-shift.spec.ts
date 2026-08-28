@@ -20,10 +20,24 @@ function collection(over: Partial<Collection> = {}): Collection {
 
 function card(over: Partial<Card> = {}): Card {
   return {
-    id: 'c', noteId: 'n', deckId: 'd1', ord: 0,
-    type: 'new', queue: 'new', due: 0, reps: 0, lapses: 0, left: 0,
-    lastReviewed: null, created: 0, modified: 0, ease: 2500, interval: 0,
-    stability: null, difficulty: null, ...over,
+    id: 'c',
+    noteId: 'n',
+    deckId: 'd1',
+    ord: 0,
+    type: 'new',
+    queue: 'new',
+    due: 0,
+    reps: 0,
+    lapses: 0,
+    left: 0,
+    lastReviewed: null,
+    created: 0,
+    modified: 0,
+    ease: 2500,
+    interval: 0,
+    stability: null,
+    difficulty: null,
+    ...over,
   };
 }
 

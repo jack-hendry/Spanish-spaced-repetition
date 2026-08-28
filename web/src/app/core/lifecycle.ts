@@ -34,16 +34,10 @@ function isActive(card: Card): boolean {
  * new/review bury options. A new-queue sibling is buried when buryNewSiblings is
  * set; review/learning siblings when buryReviewSiblings is set.
  */
-export function siblingsToBury(
-  cards: Card[],
-  answered: Card,
-  opts: DeckOptions,
-): Card[] {
+export function siblingsToBury(cards: Card[], answered: Card, opts: DeckOptions): Card[] {
   return cards.filter((c) => {
     if (c.noteId !== answered.noteId || c.id === answered.id) return false;
     if (!isActive(c)) return false;
-    return c.queue === 'new'
-      ? opts.display.buryNewSiblings
-      : opts.display.buryReviewSiblings;
+    return c.queue === 'new' ? opts.display.buryNewSiblings : opts.display.buryReviewSiblings;
   });
 }

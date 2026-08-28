@@ -89,10 +89,7 @@ export function createApp(store: FileStore, config: ServerConfig): express.Expre
   // AFTER auth, deliberately: an anonymous request never gets a body parsed.
   app.use(express.json({ limit: config.bodyLimit }));
 
-  app.use(
-    '/media',
-    express.static(join(dataDir(), 'media'), { dotfiles: 'deny', index: false }),
-  );
+  app.use('/media', express.static(join(dataDir(), 'media'), { dotfiles: 'deny', index: false }));
   app.use('/api', buildRouter(store, { allowImport: !config.hardened }));
 
   // Serve the built Angular app (web/dist/web/browser). Absent in dev, where

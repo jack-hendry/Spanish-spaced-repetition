@@ -11,9 +11,8 @@ import {
 import { forgettingCurve, initStability } from './fsrs-math';
 
 const W = [
-  0.40255, 1.18385, 3.173, 15.69105, 7.1949, 0.5345, 1.4604, 0.0046, 1.54575,
-  0.1192, 1.01925, 1.9395, 0.11, 0.29605, 2.2698, 0.2315, 2.9898, 0.51655,
-  0.6621,
+  0.40255, 1.18385, 3.173, 15.69105, 7.1949, 0.5345, 1.4604, 0.0046, 1.54575, 0.1192, 1.01925,
+  1.9395, 0.11, 0.29605, 2.2698, 0.2315, 2.9898, 0.51655, 0.6621,
 ];
 
 function rev(cardId: string, reviewedAt: number, button: 1 | 2 | 3 | 4): RevlogEntry {
@@ -35,12 +34,7 @@ const dayOf = (ms: number) => Math.floor(ms / DAY);
 
 describe('buildHistories', () => {
   it('groups by card, orders by time, and computes elapsed days', () => {
-    const log = [
-      rev('b', 5 * DAY, 3),
-      rev('a', 0, 3),
-      rev('a', 2 * DAY, 3),
-      rev('a', 5 * DAY, 1),
-    ];
+    const log = [rev('b', 5 * DAY, 3), rev('a', 0, 3), rev('a', 2 * DAY, 3), rev('a', 5 * DAY, 1)];
     const hs = buildHistories(log, dayOf);
     const a = hs.find((h) => h.length === 3)!;
     expect(a.map((r) => r.elapsedDays)).toEqual([0, 2, 3]);

@@ -30,10 +30,9 @@ export class Options {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
-  private readonly optionsId = toSignal(
-    this.route.paramMap.pipe(map((p) => p.get('optionsId'))),
-    { initialValue: null },
-  );
+  private readonly optionsId = toSignal(this.route.paramMap.pipe(map((p) => p.get('optionsId'))), {
+    initialValue: null,
+  });
 
   readonly loading = signal(true);
   readonly saving = signal(false);
@@ -136,7 +135,8 @@ export class Options {
       }
       this.weights.set(result.weights);
       const drop = (result.initialLoss - result.loss).toFixed(4);
-      const caveat = result.scored < 400 ? ' (few reviews — FSRS suggests 1000+ for a good fit)' : '';
+      const caveat =
+        result.scored < 400 ? ' (few reviews — FSRS suggests 1000+ for a good fit)' : '';
       this.optimizeNote.set(
         `Optimised over ${result.scored} reviews; loss ${result.initialLoss.toFixed(4)} → ` +
           `${result.loss.toFixed(4)} (−${drop}). Save to apply.${caveat}`,

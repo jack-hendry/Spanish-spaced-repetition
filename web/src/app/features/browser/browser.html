@@ -29,11 +29,7 @@
       </div>
 
       @for (row of matches(); track row.card.id) {
-        <div
-          class="trow"
-          [class.trow--selected]="editingId() === row.note.id"
-          (click)="edit(row)"
-        >
+        <div class="trow" [class.trow--selected]="editingId() === row.note.id" (click)="edit(row)">
           <span class="col col--front">{{ row.front }}</span>
           <span class="col col--deck">{{ row.deckLeaf }}</span>
           <span class="col col--state">
@@ -80,7 +76,9 @@
                   class="tag-chip__remove"
                   aria-label="Remove tag"
                   (click)="removeTag(tag)"
-                >✕</button>
+                >
+                  ✕
+                </button>
               </span>
             }
             <input

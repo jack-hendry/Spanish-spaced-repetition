@@ -147,9 +147,7 @@ describe('FileStore.init startup migration', () => {
     // Persisted to disk too, not just in memory.
     const reopened = new FileStore(dir, { debounceMs: 0 });
     await reopened.init();
-    const reopenedNoteType = reopened
-      .getNoteTypes()
-      .find((nt) => nt.id === 'nt-spanish-2sided')!;
+    const reopenedNoteType = reopened.getNoteTypes().find((nt) => nt.id === 'nt-spanish-2sided')!;
     expect(reopenedNoteType.templates).toHaveLength(2);
   });
 

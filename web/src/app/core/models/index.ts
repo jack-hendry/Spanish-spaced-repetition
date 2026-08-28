@@ -55,13 +55,7 @@ export interface Note {
 }
 
 export type CardType = 'new' | 'learning' | 'review' | 'relearning';
-export type CardQueue =
-  | 'new'
-  | 'learning'
-  | 'review'
-  | 'suspended'
-  | 'userBuried'
-  | 'schedBuried';
+export type CardQueue = 'new' | 'learning' | 'review' | 'suspended' | 'userBuried' | 'schedBuried';
 
 export interface Card {
   id: Id;

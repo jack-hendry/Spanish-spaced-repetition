@@ -28,11 +28,7 @@ export interface SchedulingResult {
 
 export interface Scheduler {
   /** Preview all four outcomes without mutating the card. */
-  preview(
-    card: Card,
-    opts: DeckOptions,
-    ctx: ReviewContext,
-  ): Record<Rating, SchedulingResult>;
+  preview(card: Card, opts: DeckOptions, ctx: ReviewContext): Record<Rating, SchedulingResult>;
 
   /** Apply a rating: returns the updated card and the revlog entry to append. */
   answer(

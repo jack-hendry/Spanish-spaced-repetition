@@ -12,9 +12,7 @@ import {
 } from './transform.js';
 
 export function loadSourceBooks(dir: string): SourceBook[] {
-  const files = readdirSync(dir).filter(
-    (f) => f.endsWith('.json') && !f.startsWith('_'),
-  );
+  const files = readdirSync(dir).filter((f) => f.endsWith('.json') && !f.startsWith('_'));
   return files.map((f) => {
     const root = JSON.parse(readFileSync(join(dir, f), 'utf8')) as ScrapedBook;
     return { slug: basename(f, '.json'), root };
@@ -22,10 +20,7 @@ export function loadSourceBooks(dir: string): SourceBook[] {
 }
 
 /** Transform all source books and persist the result, preserving scheduling. */
-export async function runImport(
-  store: FileStore,
-  sourceDir: string,
-): Promise<ImportResult> {
+export async function runImport(store: FileStore, sourceDir: string): Promise<ImportResult> {
   const books = loadSourceBooks(sourceDir);
   const result = transformBooks(books, {
     decks: store.getDecks(),

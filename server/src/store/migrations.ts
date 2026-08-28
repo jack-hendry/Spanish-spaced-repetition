@@ -47,10 +47,7 @@ function nextNewPosition(cards: Card[]): number {
  * returns `{ changedNoteTypes: false, changedCards: false }`. Surviving ord-0
  * cards keep all scheduling fields (reconcile only re-stamps `modified`).
  */
-export function migrateAddListeningTemplate(
-  data: MigratableData,
-  now: number,
-): MigrationResult {
+export function migrateAddListeningTemplate(data: MigratableData, now: number): MigrationResult {
   const result: MigrationResult = {
     changedNoteTypes: false,
     changedCards: false,
@@ -107,9 +104,7 @@ export function migrateAddListeningTemplate(
 
     // Advance past any newly created "new" cards so subsequent notes don't
     // collide on queue position.
-    const createdNew = reconciled.filter(
-      (c) => !existingForNote.some((e) => e.id === c.id),
-    );
+    const createdNew = reconciled.filter((c) => !existingForNote.some((e) => e.id === c.id));
     basePosition += createdNew.length;
 
     // Replace this note's cards in place: drop the old set, append the

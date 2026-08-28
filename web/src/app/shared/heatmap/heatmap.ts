@@ -48,7 +48,11 @@ export class Heatmap {
    * gap between month blocks (Req 10) without touching `core/heatmap.ts`.
    */
   readonly weekColumns = computed<number[]>(() => {
-    const monthStartWeeks = new Set(this.grid().months.slice(1).map((m) => m.weekIndex));
+    const monthStartWeeks = new Set(
+      this.grid()
+        .months.slice(1)
+        .map((m) => m.weekIndex),
+    );
     let col = 1;
     return this.grid().weeks.map((_, i) => {
       if (monthStartWeeks.has(i)) col += 1;

@@ -66,8 +66,12 @@ describe('siblingsToBury', () => {
   });
 
   it('respects the per-kind bury flags', () => {
-    expect(siblingsToBury(all, answered, opts({ newS: true, reviewS: false })).map((c) => c.id)).toEqual(['b']);
-    expect(siblingsToBury(all, answered, opts({ newS: false, reviewS: true })).map((c) => c.id)).toEqual(['c']);
+    expect(
+      siblingsToBury(all, answered, opts({ newS: true, reviewS: false })).map((c) => c.id),
+    ).toEqual(['b']);
+    expect(
+      siblingsToBury(all, answered, opts({ newS: false, reviewS: true })).map((c) => c.id),
+    ).toEqual(['c']);
   });
 
   it('never buries the answered card, other notes, or inactive cards', () => {
