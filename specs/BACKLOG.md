@@ -29,3 +29,16 @@ at that point, strike it here with the date and a pointer to where it went.
   `haiku`/`sonnet`/`top-level`, never-`opus` delegation rule this repo
   already uses for `tasks.md` steps. Not scoped yet; worth checking whether
   it's a prompting/tool-batching issue or a genuine delegation gap.
+- [ ] (2026-08-28) Want a way to check that the Spanish sentences are
+  grammatically correct, starting with
+  `data/spanish/_source/10000-spanish-vocabulary-part-1-of-3.json` (the
+  McGraw Hill scrape's `SideA`/`SideB` fields carry `word<br>example
+  sentence` pairs — the sentence is the grammar-check target, not the
+  headword). Likely wants to be repeatable — re-run after each
+  scrape/import rather than a one-off pass — so probably some kind of
+  grammar-check tool or LLM-assisted linter invoked from the Python
+  pipeline or as a standalone script, with a way to report/flag suspect
+  cards for review rather than silently "fixing" them. Not scoped yet:
+  unclear whether this checks source JSON pre-import, the canonical store
+  post-import, or both; whether it should cover just this one source file
+  or all of `_source/`; and what the false-positive tolerance should be.
