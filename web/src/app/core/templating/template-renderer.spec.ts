@@ -107,7 +107,7 @@ describe('renderCard', () => {
     expect(front).toContain('<audio');
     expect(front).toContain('class="card-audio"');
     // Should have exactly two audio elements (word and sentence)
-    expect((front.match(/<audio/g) || []).length).toBe(2);
+    expect((front.match(/<audio/g) ?? []).length).toBe(2);
     // Should NOT contain any text
     expect(front).not.toContain('tía');
     expect(front).not.toContain('la tía');
@@ -122,7 +122,7 @@ describe('renderCard', () => {
     expect(back).toContain('tia.jpg');
     expect(back).toContain('family.jpg');
     // Should have two audio elements
-    expect((back.match(/<audio/g) || []).length).toBe(2);
+    expect((back.match(/<audio/g) ?? []).length).toBe(2);
     // Should contain the answer divider
     expect(back).toContain('<hr id="answer">');
   });

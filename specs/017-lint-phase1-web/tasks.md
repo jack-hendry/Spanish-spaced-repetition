@@ -375,7 +375,12 @@ report which one — do not adjust the test.
 
 **Model:** haiku
 
-**Status:** not started
+**Status:** done (2026-08-28). `npx eslint` exits 0 on all three paths; build
+succeeds; web tests **209 passed**; `lint:ci` exit 0; `npx eslint web/src`
+**69 → 65**, exactly the 4 this step owns — verified by the orchestrator. The
+`daily-limits.ts` local binding was required as predicted (CriticReview R1's
+sibling case); `??` conversion confirmed safe per R5. `lint:ci` now also gates
+`core/templating`, `api.service.ts` and `daily-limits.ts`.
 
 **Depends on:** Step 5 — same directory; keeps the two steps' edits from
 racing in one file's neighbourhood.

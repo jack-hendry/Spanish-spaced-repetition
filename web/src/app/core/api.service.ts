@@ -30,9 +30,10 @@ export class ApiService {
   }
 
   getCards(deckId?: string): Observable<Card[]> {
-    const url = deckId
-      ? `${this.base}/cards?deckId=${encodeURIComponent(deckId)}`
-      : `${this.base}/cards`;
+    const url =
+      deckId != null && deckId !== ''
+        ? `${this.base}/cards?deckId=${encodeURIComponent(deckId)}`
+        : `${this.base}/cards`;
     return this.http.get<Card[]>(url);
   }
 
