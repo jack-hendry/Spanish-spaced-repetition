@@ -499,7 +499,13 @@ equivalent to absent. Revert that single edit and report which line.
 
 **Model:** haiku
 
-**Status:** not started
+**Status:** done (2026-08-28, all checks green). Build succeeds; `npm run test`
+→ **71 server + 209 web = 280**, unchanged; `format:check` clean; `lint:ci`
+exit 0; `npx eslint web/src` → **60**, matching 74 − 9 − 5 exactly. The scope
+check — `git diff --name-only 64c7e4c^..HEAD` filtered for
+`core/scheduling/|collection.store|study-queue|pause-shift|pause.service|core/heatmap|core/stats`
+— printed nothing (grep exit 1), re-run independently by the orchestrator. 18
+files changed so far, 8 of them source, **zero** of them Phase 2.
 
 **Depends on:** Steps 5–7.
 

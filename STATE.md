@@ -37,7 +37,7 @@ Format while a run is in progress: `<spec> — step N of M` (see
 
 ## Executing: 017-lint-phase1-web
 
-Phase 1 of the TypeScript lint rollout — step 8 of 14. Remove this line when
+Phase 1 of the TypeScript lint rollout — step 9 of 14. Remove this line when
 the run finishes.
 
 ## Current work
