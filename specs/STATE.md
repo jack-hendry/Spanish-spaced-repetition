@@ -137,26 +137,7 @@ is enough; the cost is that renaming a deck recolours it.
 
 **AD-009 — Adopted habit_tracker's harness shape; retired the `/feature` + `/resume` pipeline.** → moved to `STATE-ARCHIVE.md`
 
-**AD-010 — A stale persisted `card.left` is clamped once, at the source, by one
-shared helper — not guarded at each call site.** (2026-08-26,
-`specs/012-clamp-learning-steps-nan-due`, from audit B1) `card.left` is
-persisted; the steps array it indexes comes from deck options the user can edit,
-so shortening that array left `card.left > steps.length` and the `good` branch
-of all four `previewLearning`/`previewRelearning` functions read `steps[-1]` →
-`undefined * 60_000` → `due: NaN`. The fix is `clampLeft(left, stepCount)` in
-`web/src/app/core/scheduling/learning-steps.ts`, called at exactly the four
-points where `curLeft` is first derived from `card.left` (`sm2.ts` ×2,
-`fsrs.ts` ×2). Clamping into `[1, stepCount]` makes every downstream
-`steps[...]` index valid *by construction*, so no second, downstream clamp is
-added and `StudyQueueService` needs no change. **Why one shared helper rather
-than four inline `Math.min`/`Math.max` expressions:** the audit found this bug
-duplicated verbatim across `sm2.ts` and `fsrs.ts` — which is what you get when
-one is written by copying the other. Four inline clamps would have re-created
-exactly the condition that produced the bug. The *why* now lives in one doc
-comment, in one place. Accepted residual risk: nothing forces a future fifth
-`previewX` to call it, and the helper's unstated precondition is
-`stepCount >= 1` (guaranteed today by the `steps.length ? … : [1]` guard at each
-call site). See the `scheduling-domain` skill's 2026-08-26 lesson.
+**AD-010 — A stale persisted `card.left` is clamped once, at the source, by one shared helper — not guarded at each call site.** → moved to `STATE-ARCHIVE.md`
 
 **AD-016 — `tasks.md` steps carry a mandatory `**Status:**` field, and durable
 findings are promoted into `STATE.md` as they happen, not saved for archive
@@ -179,41 +160,11 @@ future session had that spec been abandoned before archiving — see
 2026-08-27 to `specs/archive/2026-08-27-014-spec-continuity/` — this entry
 and `L-009` below were already recorded before the archive move, confirming
 Rule 6 rather than adding anything new at archive time.
-**AD-011 — Hardening is the default; `DEV_MODE=1` is the only opt-out.**
-(2026-08-27, `specs/013-server-hardening`, D2) Supersedes the usual
-`NODE_ENV === 'production'` shape, which was the spec's first proposal. Under
-`NODE_ENV`, a *forgotten* environment variable yields the **insecure** state —
-the exact failure this spec exists to prevent, and one that boots
-"successfully" so nothing surfaces it. Inverting it means a forgotten variable
-yields the secure state, and the insecure mode requires someone to have asked
-for it by name. The second-order benefit is the one that actually decided it:
-the hardened path is now what runs by default, so **the default is what gets
-tested**. `server/src/config.ts` therefore contains no `NODE_ENV` branch at all,
-and the step's "Done when" greps for exactly that (`grep -c NODE_ENV` → `0`) so
-the old shape cannot creep back in later.
+**AD-011 — Hardening is the default; `DEV_MODE=1` is the only opt-out.** → moved to `STATE-ARCHIVE.md`
 
-**AD-012 — A hardened server with no credentials refuses to boot.**
-(2026-08-27, `specs/013-server-hardening`, D3) `loadConfig` throws `ConfigError`
-when hardened and `AUTH_USER`/`AUTH_PASSWORD` are not both set; `index.ts`
-catches it, logs `refusing to start: …` and exits 1. The two rejected
-alternatives fail in the same way: serving unauthenticated *is* the breach, and
-generating a random password nobody knows produces a machine that is up but
-unreachable. A misconfiguration should be a **failed boot, not a silently wrong
-one** — the same shape as the Phase 1 empty-volume sentinel.
+**AD-012 — A hardened server with no credentials refuses to boot.** → moved to `STATE-ARCHIVE.md`
 
-**AD-013 — `express.json` is mounted *after* auth, deliberately.**
-(2026-08-27, `specs/013-server-hardening`, §2.3) Order in `server/src/app.ts` is
-`trust proxy → forceHttps → helmet → rate limit → basicAuth → express.json →
-routes`. With the body parser after auth, an unauthenticated request never has
-its body parsed at all, which is what demotes the body-size limit from a
-security control to a tuning decision. That ordering is the substantive content
-of the file and prose alone would not survive a refactor, so the step pins it
-with a `grep -n` that must print `basicAuth` < `express.json` <
-`app.use('/api'` in strictly increasing line order. Two more things there look
-like bugs and are not: `trust proxy` is `1`, not `true` (express-rate-limit
-rejects a permissive setting with `ERR_ERL_PERMISSIVE_TRUST_PROXY`, since it
-would let a client spoof its IP and defeat the limiter), and the HTTPS redirect
-exempts loopback — without which every local verification command gets a 308.
+**AD-013 — `express.json` is mounted *after* auth, deliberately.** → moved to `STATE-ARCHIVE.md`
 
 **AD-014 — `POST /api/import` is not registered when hardened, rather than
 gated behind a check.** (2026-08-27, `specs/013-server-hardening`, §2.6)
@@ -263,6 +214,46 @@ hypothetical: this same worktree branched from `30d1eea` and sat there while
 `011c0c0` landed on the sibling branch, stale-based long before PR #5. See
 L-010.
 
+**AD-018 — ESLint is adopted, report-only, with the full ruleset from day one;
+the CI gate is deferred to a directory-at-a-time rollout.** (2026-08-28,
+`specs/016-lint-audit`, Phase 0 of `specs/015-typescript-lint-rollout`)
+**Supersedes the 2026-08-28 Quick Tasks position** ("ESLint was considered and
+deliberately skipped: both tsconfigs already run `strict: true`, so `tsc`
+covers most of what a linter would catch"). That reasoning holds for the
+*general TypeScript* half and is why this is not urgent — it does not hold for
+the house-style half, which is the gap that reopened the question: `strict:
+true` cannot check a single rule in `.claude/skills/angular-conventions`, and
+those are the rules a model reaching for training-data Angular is most likely
+to break. One root flat config (`eslint.config.mjs`), dependencies and scripts
+at the root, following the Prettier precedent set the same day. Not wired into
+`ci.yml`: a directory joins the gate once it is already clean, never before —
+the same `include`-list discipline `ruff.toml` uses, for the same reason, that
+a job red from its first run teaches everyone to ignore it. Baseline: **254
+violations across 51 files**, attributed to Phase 1 (121), Phase 2 (31) and
+Phase 3 (102), summing exactly. Notably **140 of the 254 are in test files**,
+so whether to relax type-checked rules for `*.spec.ts`/`*.test.ts` is a real
+decision Phases 1 and 3 now get to make with a number in hand rather than by
+default. Two upgrade constraints fell out and are recorded in the roadmap's
+Discovered log: the root must pin `typescript` (an unconstrained
+`typescript: "*"` peer from `angular-eslint` otherwise resolves to 7.x), and no
+`typescript-eslint` release supports TypeScript 7 yet.
+
+**AD-019 — A spec's durable artifact lives in the folder that outlives the
+spec, not in the spec folder.** (2026-08-28, `specs/016-lint-audit` D6) The
+lint inventory is written to `specs/015-typescript-lint-rollout/INVENTORY.md`
+— the *roadmap's* folder — rather than to the spec that produced it. Two
+reasons, and the second is the reusable one. First, Phases 1–4 consume it, so
+its lifetime is the initiative's, not this spec's. Second, **the archive
+ritual's 20 KB gate collides with exactly this class of artifact**: a detailed
+inventory is valuable *because* it is detailed, and `scripts/clean-table-check.sh`
+refuses a push adding any file over 20 KB under `specs/archive/`. Putting it in
+the spec folder would have forced a summarise pass over the one file whose
+value is its detail, at archive time, by someone who no longer remembers which
+rows mattered. Keeping it outside the archiving folder removes the conflict
+instead of trading against it. Generalises: when a spec produces something later
+work depends on, ask which folder's lifetime matches the artifact's, and put it
+there — the spec folder is for the spec's own reasoning.
+
 ## Blockers
 
 (none open)
@@ -279,6 +270,8 @@ L-010.
 - **L-007** — Size a limit against the largest *measured* payload, not a round number that sounds safe.
 - **L-008** — A hardening change can pass every status-code check and still leave the app broken on screen.
 - **L-010** — A stale worktree's `git status` is indistinguishable from deliberate deletions.
+- **L-011** — An acceptance check that forbids a required change teaches the executor to delete the requirement.
+- **L-012** — A total that reconciles says nothing about how it was decomposed.
 
 ## Quick Tasks
 
@@ -286,7 +279,7 @@ L-010.
 |---|---|---|
 | 2026-08-26 | Ported the SDD harness from `habit_tracker` | Large, done without a spec — it is infrastructure, not a feature. Scope: `scripts/clean-table-check.sh`, `tools/state_rotate.py`, three `.claude/hooks/`, `.pre-commit-config.yaml`, `.github/workflows/ci.yml`, `ruff.toml`, `specs/TEMPLATE.md`, this file + `LESSONS.md` + `STATE-ARCHIVE.md`, root `STATE.md`. Specs 002–009 archived under their finish dates with the old `SPEC`/`PLAN`/`STATE`/`CRITIQUE` filenames intact; `004` and `006` STATE.md summarized to clear the 20 KB gate. 010 converted to `Analyst.md` + `CriticReview.md`. Retired `.claude/commands/{feature,resume}.md`, `.claude/agents/{spec-writer,planner,implementer,critic}.md`, `.claude/hooks/check-state-updated.sh`, `.claude/templates/STATE.md`. See AD-008, AD-009. |
 | 2026-08-26 | Fixed the `Card.due` doc-comment at its origin | Small. `server/src/models/index.ts:92` still said "learning: epoch seconds" — 006 T011 fixed only the `scheduling-domain` skill's copy, and `CLAUDE.md` had inherited it too. Both corrected to epoch **milliseconds**. Comment-only, no behaviour change. Closes the last live instance of **L-001**. |
-| 2026-08-28 | Wired up Prettier for real | Small. `.prettierrc` existed in `web/` but nothing ran it and it wasn't in CI — dead config. Moved it to repo root (applies to both workspaces; the `*.html` → angular-parser override only matches files that exist in `web/`), hoisted the `prettier` devDependency from `web/package.json` to root, added `format`/`format:check` scripts scoped to `web/src` and `server/src` (not `data/spanish` or `specs/` — avoids reformatting live data or archived history), and added `npm run format:check` as a step in the CI `tests` job. Ran `format --write` once to normalize the whole (previously never-formatted) codebase — 48 files, whitespace/quote-style only, verified with `npm run test` and `npm run build` before and after. ESLint was considered and deliberately skipped: both tsconfigs already run `strict: true`, so `tsc` covers most of what a linter would catch; not worth the config surface for a solo project until a specific gap shows up. |
+| 2026-08-28 | Wired up Prettier for real | Small. `.prettierrc` existed in `web/` but nothing ran it and it wasn't in CI — dead config. Moved it to repo root (applies to both workspaces; the `*.html` → angular-parser override only matches files that exist in `web/`), hoisted the `prettier` devDependency from `web/package.json` to root, added `format`/`format:check` scripts scoped to `web/src` and `server/src` (not `data/spanish` or `specs/` — avoids reformatting live data or archived history), and added `npm run format:check` as a step in the CI `tests` job. Ran `format --write` once to normalize the whole (previously never-formatted) codebase — 48 files, whitespace/quote-style only, verified with `npm run test` and `npm run build` before and after. ESLint was considered and deliberately skipped: both tsconfigs already run `strict: true`, so `tsc` covers most of what a linter would catch; not worth the config surface for a solo project until a specific gap shows up. **→ superseded by AD-018** (the gap that showed up is house style: `strict: true` checks no rule in `angular-conventions`). |
 | 2026-08-26 | `AUDIT-2026-08-26-src.md` T2: turned on `strict` (`web/tsconfig.json`) + `strictTemplates` (`angularCompilerOptions`) | Small — audit already verified 0 errors under plain `tsc --strict`. `ng build` under `strictTemplates` surfaced one real NG8102 warning at `browser.html:66` (`draft()[f.name] ?? ''` — the `??` was dead code since `Record<string,string>` indexing can't type as `undefined`); removed it. `ng build` clean, 183 web + 37 server tests still pass, `git status` clean after. `server/tsconfig.json` already had `strict: true`. |
 | 2026-08-26 | `AUDIT-2026-08-26-src.md` B3 + B4: `review.ts` template-by-ord lookup, keydown stealing input from type-in answers | Small each, same file. B3: `noteType.templates[card.ord]` → `.find(t => t.ord === card.ord)`, matching `templateByOrd` used elsewhere (`generate.ts`, `transform.ts`). B4: `onKey` now early-returns while typing an unrevealed type-in answer, handling only Enter (reveal) and Escape (blur, not navigate) — `-` and everything else reaches the input instead of triggering `suspend()`. Added 4 regression tests to `review.spec.ts`; verified they fail against the pre-fix code via `git stash` on `review.ts` alone (3 failed as expected), then restored the fix. 187 web tests green, `ng build` clean. |
 | 2026-08-26 | `AUDIT-2026-08-26-src.md` C1: escape `"`/`<`/`>` in `mediaImage()`'s `<img src>` | Small. `server/src/import/transform.ts` — mirrors the escaping `transformMedia` (`template-renderer.ts`) already does for audio, closing the attribute-injection hole a `"` in a scraped/`.apkg` image URL opened (combined with `bypassSecurityTrustHtml` at render time — see audit C2, left as an accepted risk, not fixed). Added a regression test in `transform.test.ts` with a `"><script>` payload in the URL. 38 server tests green, `tsc` build clean. |

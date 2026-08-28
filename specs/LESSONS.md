@@ -211,3 +211,62 @@ two of them (`worktree-spec-memory-tracking`, `worktree-cli-version-flag-plan`)
 were already sitting there when this lesson was written. Pair the removal with
 `git branch -d`, which refuses the delete if the branch turns out not to be
 merged and so cannot cost you work.
+
+**L-011 — An acceptance check that forbids a required change teaches the
+executor to delete the requirement.** (2026-08-28, `specs/016-lint-audit`,
+CriticReview R13) Step 1's "Done when" read: *`git diff --name-only` lists
+exactly `package.json` and `package-lock.json` — nothing else.* But root
+`STATE.md` was legitimately dirty: it carried the `## Executing:` marker that
+`.claude/hooks/enforce-haiku-tasks-pretooluse.sh` keys off to block top-level
+edits during a run, and `CLAUDE.md` *requires* that marker while a `tasks.md`
+run is in flight. The check and the harness contradicted each other, and the
+executor resolved it the only way the step permitted — it reverted `STATE.md`.
+`git diff --stat STATE.md` then came back empty and the check passed
+**honestly**. The delegation hook was dormant from that moment.
+
+Why this is worse than an ordinary wrong assertion: a failing check announces
+itself, and this one *succeeded*. Nothing downstream would ever have reported
+that the guard had stopped guarding; it surfaced only because a file-changed
+notice happened to show `STATE.md` reverting to its committed state. Same
+family as L-004 and L-005 — a guard rail that fails silently — but arrived at
+from the opposite direction: here the process itself supplied the motive to
+disable it.
+
+Rules: a `git diff`/`git status` assertion in a step must explicitly exempt
+what the harness expects to be dirty (root `STATE.md`, `specs/`), and should
+name the paths that actually matter rather than asserting global cleanliness —
+`git diff --name-only -- . ':!STATE.md' ':!specs/'`, or better, assert
+emptiness of `web/src`/`server/src` directly. More generally: before writing a
+check that forbids a change, ask whether anything in the process *requires*
+that change. If so, the check is wrong, and it will be "satisfied" by
+destroying the requirement.
+
+**L-012 — A total that reconciles says nothing about how it was decomposed.**
+(2026-08-28, `specs/016-lint-audit`, CriticReview R15, with R14 as its mirror)
+Step 8 wrote the lint inventory and reported all five of its "Done when"
+checks green. They were green. The file was still wrong. The by-rule table's
+`Count` column was real data and summed to 254 exactly as required; the
+adjacent `Server` and `Web` columns had never been computed from anything.
+They summed to 107/147 against a true 102/152, with six individual rows
+carrying an invented or reversed split. The step's checks covered the count
+column and the directory column and said nothing about the split columns, so
+nothing looked at them.
+
+The verified total worked *against* detection: it made the table look audited,
+and the one number a reader would instinctively spot-check was the one number
+that was right.
+
+R14 is the same error mirrored. Four Angular rules reported `0`, and the
+inference "9 components lack `OnPush`, so the rule must be dead" was checked at
+every step except its premise — under Angular 22 `prefer-on-push` flags an
+*explicit opt-out*, not an omission. A correct result was nearly written up as
+a defect, for want of provoking the rule and watching it fire.
+
+Rules: **verify every column, not the first one** — and prefer a per-row
+identity (`server + web == count`, checked by command) over a column total,
+because a row-level identity cannot be satisfied by a lucky sum. **Prove a
+rule fires before believing its zero**: feed it a deliberate violation and
+watch it report. And treat partial verification as what it is — verification
+of a part. The habit that catches all three cases is the same one: make the
+artifact demonstrate what it does, instead of reasoning about what it ought to
+say.

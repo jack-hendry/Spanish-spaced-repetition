@@ -34,3 +34,12 @@ blocked; with a stale marker every direct edit is blocked.
 
 Format while a run is in progress: `<spec> — step N of M` (see
 `specs/TEMPLATE.md`'s `Status:` field convention, AD-016).
+
+## Current work (no run in progress)
+
+`specs/016-lint-audit/` — Phase 0 of the TypeScript lint rollout — is
+**finished**, all 12 steps plus a mid-run Step 4b. Not yet archived. Baseline
+recorded in `specs/015-typescript-lint-rollout/INVENTORY.md`; see AD-018,
+AD-019, L-011, L-012.
+
+`specs/010-day-rollover-anchoring/` remains next in line.

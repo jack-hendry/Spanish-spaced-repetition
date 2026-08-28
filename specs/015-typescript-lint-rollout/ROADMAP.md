@@ -52,18 +52,20 @@ start:
   complexity/cognitive-complexity caps, `strict-boolean-expressions`, or
   whatever `typescript-eslint`'s `recommended-type-checked` gives for free.
 
-- [ ] Add the eslint config and dependencies to both workspaces. Not wired
+- [x] Add the eslint config and dependencies to both workspaces. Not wired
       into `ci.yml` yet — report-only.
-- [ ] Run it repo-wide and capture one written inventory: violation counts
+- [x] Run it repo-wide and capture one written inventory: violation counts
       by rule and by file, for `web/` and `server/` separately.
-- [ ] From the inventory, explicitly flag every file under
+- [x] From the inventory, explicitly flag every file under
       `core/scheduling/` (plus `collection.store.ts`,
       `study-queue.service.ts`) as Phase 2 — these never get counted as
       Phase 1 batch work, even if the fix looks like a one-line change.
-- [ ] Done when: the inventory is written down somewhere durable (this
+- [x] Done when: the inventory is written down somewhere durable (this
       roadmap's Discovered log, or a linked file) and every remaining
       violation is attributed to a phase below — nothing left unaccounted
       for.
+
+Inventory: [INVENTORY.md](./INVENTORY.md) — generated 2026-08-28 by `npm run lint:json`.
 
 ## Phase 1 — Non-scheduling `web/` batches
 
@@ -115,3 +117,7 @@ Same batching approach as Phase 1, applied to `server/src/`.
   as a phased roadmap rather than one spec, specifically to avoid scope
   creep — Phase 0's inventory is what makes the total remediation scope
   knowable up front instead of discovered incrementally.
+- (2026-08-28) Phase 0 landed as `specs/016-lint-audit/`: ESLint installed and report-only, deliberately **not** in `ci.yml`. Total violations: **254** (server 102, web 152) across 51 files and 25 distinct rules. Phase split: Phase 1 = 25 files / 121 violations; Phase 2 = 10 files / 31 violations; Phase 3 = 16 files / 102 violations. Test files carry 140 violations (55%); non-test code 114.
+- (2026-08-28) **TypeScript 7 is an upgrade blocker for this whole roadmap.** `typescript@7.0.2` (the Go port) is the registry's current `latest`, and no `typescript-eslint` release supports it — `typescript-eslint@latest` still declares `typescript: >=4.8.4 <6.1.0`. The root now pins `typescript@~6.0.3` so npm cannot resolve an unconstrained peer to 7.x. Anyone moving this repo to TS 7 must check typescript-eslint support first, or the lint job dies at install time.
+- (2026-08-28) `eslint-plugin-sonarjs` (cognitive-complexity) was considered and left out — core ESLint `complexity` covers the same ground at a third of the dependency surface. Revisit at Phase 4 if the `complexity` counts suggest it would add something.
+- (2026-08-28) `angular-eslint`'s `templateAccessibility` config was deliberately excluded from the Phase 0 ruleset: a11y is real work but is outside what this roadmap scoped, and folding it in would have inflated the inventory with violations no phase below is written to fix. A candidate for its own spec, or for Phase 4.
