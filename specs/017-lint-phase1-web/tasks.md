@@ -317,7 +317,12 @@ be impossible. STOP and report rather than fixing forward.
 
 **Model:** haiku
 
-**Status:** not started
+**Status:** done (2026-08-28). `npx eslint` on the three files exits 0; web
+tests **209 passed**, unchanged; build succeeds; diff limited to the three
+files. `npx eslint web/src` **74 → 69**, exactly the 5 this step owns —
+verified by the orchestrator. All four fixes landed as prescribed, including
+`Object.hasOwn` for the L63 dead-guard case and `new Array<number>` for the
+`any[]` leak.
 
 **Depends on:** Step 1 — these 5 violations are what survives calibration.
 
