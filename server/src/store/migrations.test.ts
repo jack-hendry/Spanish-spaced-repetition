@@ -36,7 +36,12 @@ function note(id: string): Note {
   return {
     id,
     noteTypeId: 'nt-spanish-2sided',
-    fields: { SideA: 'hola', SideAAudio: '[sound:a.mp3]', SideB: 'hello', SideBAudio: '[sound:b.mp3]' },
+    fields: {
+      SideA: 'hola',
+      SideAAudio: '[sound:a.mp3]',
+      SideB: 'hello',
+      SideBAudio: '[sound:b.mp3]',
+    },
     tags: [],
     created: 0,
     modified: 0,

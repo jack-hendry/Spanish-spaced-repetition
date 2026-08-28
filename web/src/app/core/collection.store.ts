@@ -4,14 +4,7 @@ import { lastValueFrom } from 'rxjs';
 import { ApiService } from './api.service';
 import { bumpDaily } from './daily-limits';
 import { isBuried, restoreQueue, siblingsToBury } from './lifecycle';
-import type {
-  Card,
-  Collection,
-  Deck,
-  DeckOptions,
-  Note,
-  NoteType,
-} from './models';
+import type { Card, Collection, Deck, DeckOptions, Note, NoteType } from './models';
 
 export interface DeckCounts {
   new: number;
@@ -258,9 +251,7 @@ export class CollectionStore {
     if (!coll || !deck) return;
     const daily = bumpDaily(deck, card, todayNumber(coll));
     if (!daily) return;
-    this.decks.update((decks) =>
-      decks.map((d) => (d.id === deck.id ? { ...d, daily } : d)),
-    );
+    this.decks.update((decks) => decks.map((d) => (d.id === deck.id ? { ...d, daily } : d)));
     await lastValueFrom(this.api.patchDeck(deck.id, { daily }));
   }
 
@@ -284,9 +275,7 @@ export class CollectionStore {
     if (buried.length) {
       this.setQueues(new Map(buried.map((c) => [c.id, restoreQueue(c.type)])));
       await Promise.all(
-        buried.map((c) =>
-          lastValueFrom(this.api.patchCard(c.id, { queue: restoreQueue(c.type) })),
-        ),
+        buried.map((c) => lastValueFrom(this.api.patchCard(c.id, { queue: restoreQueue(c.type) }))),
       );
     }
 

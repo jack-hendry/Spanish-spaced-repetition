@@ -6,10 +6,24 @@ import { parseQuery, type SearchRow } from './search';
 function row(over: Partial<SearchRow> = {}, card: Partial<Card> = {}): SearchRow {
   const note = { id: 'n1', tags: [] } as unknown as Note;
   const c: Card = {
-    id: 'c1', noteId: 'n1', deckId: 'd1', ord: 0,
-    type: 'review', queue: 'review', due: 50, reps: 0, lapses: 0, left: 0,
-    lastReviewed: null, created: 0, modified: 0, ease: 2500, interval: 5,
-    stability: null, difficulty: null, ...card,
+    id: 'c1',
+    noteId: 'n1',
+    deckId: 'd1',
+    ord: 0,
+    type: 'review',
+    queue: 'review',
+    due: 50,
+    reps: 0,
+    lapses: 0,
+    left: 0,
+    lastReviewed: null,
+    created: 0,
+    modified: 0,
+    ease: 2500,
+    interval: 5,
+    stability: null,
+    difficulty: null,
+    ...card,
   };
   return {
     card: c,
@@ -58,9 +72,15 @@ describe('parseQuery', () => {
   });
 
   it('is:due respects the day for review cards and is always true for learning', () => {
-    expect(parseQuery('is:due')(row({}, { queue: 'review', type: 'review', due: 100 }), TODAY)).toBe(true);
-    expect(parseQuery('is:due')(row({}, { queue: 'review', type: 'review', due: 101 }), TODAY)).toBe(false);
-    expect(parseQuery('is:due')(row({}, { queue: 'learning', type: 'learning' }), TODAY)).toBe(true);
+    expect(
+      parseQuery('is:due')(row({}, { queue: 'review', type: 'review', due: 100 }), TODAY),
+    ).toBe(true);
+    expect(
+      parseQuery('is:due')(row({}, { queue: 'review', type: 'review', due: 101 }), TODAY),
+    ).toBe(false);
+    expect(parseQuery('is:due')(row({}, { queue: 'learning', type: 'learning' }), TODAY)).toBe(
+      true,
+    );
   });
 
   it('combines qualifiers and text with AND', () => {

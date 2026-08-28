@@ -7,7 +7,11 @@
         <span class="stat-card__label">Reviews</span>
         <span class="stat-card__value">{{ reviews30() }}</span>
         @if (reviewsDelta(); as d) {
-          <span class="stat-card__delta" [class.delta--up]="d.positive" [class.delta--down]="!d.positive">
+          <span
+            class="stat-card__delta"
+            [class.delta--up]="d.positive"
+            [class.delta--down]="!d.positive"
+          >
             {{ d.positive ? '▲' : '▼' }} {{ d.value }}% vs last month
           </span>
         }
@@ -17,7 +21,11 @@
         <span class="stat-card__label">Study time</span>
         <span class="stat-card__value">{{ formatDuration(studyTime30()) }}</span>
         @if (studyTimeDelta(); as d) {
-          <span class="stat-card__delta" [class.delta--up]="d.positive" [class.delta--down]="!d.positive">
+          <span
+            class="stat-card__delta"
+            [class.delta--up]="d.positive"
+            [class.delta--down]="!d.positive"
+          >
             {{ d.positive ? '▲' : '▼' }} {{ d.value }}% vs last month
           </span>
         }
@@ -81,7 +89,11 @@
       <header class="panel__head">
         <h3>Year in review — {{ year }}</h3>
       </header>
-      <app-heatmap [reviewTimestamps]="heatTimestamps()" [collection]="collection()" [year]="year" />
+      <app-heatmap
+        [reviewTimestamps]="heatTimestamps()"
+        [collection]="collection()"
+        [year]="year"
+      />
     </div>
   }
 </section>

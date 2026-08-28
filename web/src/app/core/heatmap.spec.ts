@@ -68,7 +68,9 @@ describe('buildHeatGrid', () => {
     const reviewTimestamps = Array(12).fill(new Date(2024, 0, 1, 12).getTime());
 
     const grid = buildHeatGrid(reviewTimestamps, coll, 2024);
-    const jan1Cell = grid.weeks.flat().find((c) => c.inYear && c.date.getMonth() === 0 && c.date.getDate() === 1);
+    const jan1Cell = grid.weeks
+      .flat()
+      .find((c) => c.inYear && c.date.getMonth() === 0 && c.date.getDate() === 1);
     expect(jan1Cell?.count).toBe(12);
     expect(jan1Cell?.level).toBe(2);
   });
@@ -115,8 +117,18 @@ describe('buildHeatGrid', () => {
     const grid = buildHeatGrid([], collection(), 2024);
     expect(grid.months).toHaveLength(12);
     expect(grid.months.map((m) => m.name)).toEqual([
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ]);
     for (let i = 1; i < grid.months.length; i++) {
       expect(grid.months[i].weekIndex).toBeGreaterThan(grid.months[i - 1].weekIndex);

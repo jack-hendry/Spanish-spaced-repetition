@@ -141,7 +141,10 @@ describe('CollectionStore.defaultDeckOptions (audit B6)', () => {
   it('resolves through collection.defaultDeckOptionsId, not array position 0', () => {
     const store = setup();
     // "o2" sits first in the array; the collection's declared default is "o1".
-    store.deckOptions.set([deckOptions({ id: 'o2', name: 'Other' }), deckOptions({ id: 'o1', name: 'Default' })]);
+    store.deckOptions.set([
+      deckOptions({ id: 'o2', name: 'Other' }),
+      deckOptions({ id: 'o1', name: 'Default' }),
+    ]);
     store.collection.set(collection({ defaultDeckOptionsId: 'o1' }));
 
     expect(store.defaultDeckOptions()?.id).toBe('o1');

@@ -5,7 +5,14 @@ import { ApiService } from '../../core/api.service';
 import { CollectionStore, todayNumber } from '../../core/collection.store';
 import type { RevlogEntry } from '../../core/models';
 import { PauseService } from '../../core/pause.service';
-import { buttonCounts, dayStreak, pace, studiedToday, timeToday, type DayTime } from '../../core/stats';
+import {
+  buttonCounts,
+  dayStreak,
+  pace,
+  studiedToday,
+  timeToday,
+  type DayTime,
+} from '../../core/stats';
 import { Heatmap } from '../../shared/heatmap/heatmap';
 
 interface ForecastSegment {

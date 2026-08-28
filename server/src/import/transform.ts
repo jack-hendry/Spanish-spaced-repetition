@@ -23,8 +23,7 @@ const NOTE_TYPES_BY_ID = new Map(buildSeedNoteTypes().map((nt) => [nt.id, nt]));
 
 /** Map a book's optional `noteType` hint to a seeded note type id. */
 function resolveNoteType(hint: string | undefined): NoteType {
-  const id =
-    hint === 'spanish2both' ? NOTE_TYPE_IDS.spanish2both : NOTE_TYPE_IDS.spanish2;
+  const id = hint === 'spanish2both' ? NOTE_TYPE_IDS.spanish2both : NOTE_TYPE_IDS.spanish2;
   return NOTE_TYPES_BY_ID.get(id)!;
 }
 
@@ -179,8 +178,7 @@ export function transformBooks(
 
       if (carriesCards) {
         // Collapse this node into its parent: the deck is the ancestor path.
-        const deckName =
-          ancestorPath.length > 0 ? ancestorPath.join(DECK_SEP) : rootTitle;
+        const deckName = ancestorPath.length > 0 ? ancestorPath.join(DECK_SEP) : rootTitle;
         const deckId = ensureDeck(reg, deckName, existingDecksByName);
 
         for (const sc of node.cards!) {

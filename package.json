@@ -12,10 +12,13 @@
     "build": "npm run build -w server && npm run build -w web",
     "import": "npm run import -w server",
     "test": "npm run test -w server && npm run test -w web",
-    "shoot": "node tools/shoot.mjs"
+    "shoot": "node tools/shoot.mjs",
+    "format": "prettier --write \"web/src/**/*.{ts,html,css,scss}\" \"server/src/**/*.ts\"",
+    "format:check": "prettier --check \"web/src/**/*.{ts,html,css,scss}\" \"server/src/**/*.ts\""
   },
   "devDependencies": {
     "concurrently": "^9.1.0",
-    "playwright": "^1.61.1"
+    "playwright": "^1.61.1",
+    "prettier": "^3.8.1"
   }
 }

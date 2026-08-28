@@ -14,9 +14,8 @@ import type { ReviewContext } from './types';
 
 // FSRS-5 published default weights.
 const W = [
-  0.40255, 1.18385, 3.173, 15.69105, 7.1949, 0.5345, 1.4604, 0.0046, 1.54575,
-  0.1192, 1.01925, 1.9395, 0.11, 0.29605, 2.2698, 0.2315, 2.9898, 0.51655,
-  0.6621,
+  0.40255, 1.18385, 3.173, 15.69105, 7.1949, 0.5345, 1.4604, 0.0046, 1.54575, 0.1192, 1.01925,
+  1.9395, 0.11, 0.29605, 2.2698, 0.2315, 2.9898, 0.51655, 0.6621,
 ];
 
 const NOW = 1_000_000_000_000;
@@ -220,7 +219,14 @@ describe('FsrsScheduler — review', () => {
 describe('FsrsScheduler — answer', () => {
   it('emits a revlog carrying the resulting stability', () => {
     const { card: next, revlog } = sched.answer(
-      card({ type: 'review', queue: 'review', interval: 10, due: 100, stability: 10, difficulty: 5 }),
+      card({
+        type: 'review',
+        queue: 'review',
+        interval: 10,
+        due: 100,
+        stability: 10,
+        difficulty: 5,
+      }),
       'good',
       opts(),
       ctx,
@@ -276,7 +282,14 @@ describe('FsrsScheduler — steps shortened mid-learning (audit B1)', () => {
   });
 
   it('never produces a NaN due for a relearning card with a stale left', () => {
-    const relearning = card({ type: 'relearning', queue: 'learning', left: 3, interval: 3, stability: 4, difficulty: 5 });
+    const relearning = card({
+      type: 'relearning',
+      queue: 'learning',
+      left: 3,
+      interval: 3,
+      stability: 4,
+      difficulty: 5,
+    });
     const o = opts({ relearningSteps: [10] });
     const p = sched.preview(relearning, o, ctx);
 

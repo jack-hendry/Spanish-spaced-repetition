@@ -22,10 +22,24 @@ import {
 
 function card(over: Partial<Card> = {}): Card {
   return {
-    id: 'c', noteId: 'n', deckId: 'd1', ord: 0,
-    type: 'review', queue: 'review', due: 0, reps: 0, lapses: 0, left: 0,
-    lastReviewed: null, created: 0, modified: 0, ease: 2500, interval: 5,
-    stability: null, difficulty: null, ...over,
+    id: 'c',
+    noteId: 'n',
+    deckId: 'd1',
+    ord: 0,
+    type: 'review',
+    queue: 'review',
+    due: 0,
+    reps: 0,
+    lapses: 0,
+    left: 0,
+    lastReviewed: null,
+    created: 0,
+    modified: 0,
+    ease: 2500,
+    interval: 5,
+    stability: null,
+    difficulty: null,
+    ...over,
   };
 }
 
@@ -79,9 +93,7 @@ describe('reviewsByDay', () => {
 
 describe('buttonCounts', () => {
   it('tallies each answer button', () => {
-    const log = [
-      { button: 1 }, { button: 3 }, { button: 3 }, { button: 4 },
-    ] as RevlogEntry[];
+    const log = [{ button: 1 }, { button: 3 }, { button: 3 }, { button: 4 }] as RevlogEntry[];
     expect(buttonCounts(log)).toEqual({ 1: 1, 2: 0, 3: 2, 4: 1 });
   });
 
@@ -271,38 +283,50 @@ describe('countInRange', () => {
 
 describe('formatRelativeDue', () => {
   it('returns an em dash for new cards', () => {
-    expect(formatRelativeDue(card({ queue: 'new', type: 'new', due: 5 }), 10, Date.now())).toBe('—');
+    expect(formatRelativeDue(card({ queue: 'new', type: 'new', due: 5 }), 10, Date.now())).toBe(
+      '—',
+    );
   });
 
   it('returns "today" for a review card due today', () => {
-    expect(formatRelativeDue(card({ queue: 'review', type: 'review', due: 10 }), 10, Date.now())).toBe('today');
+    expect(
+      formatRelativeDue(card({ queue: 'review', type: 'review', due: 10 }), 10, Date.now()),
+    ).toBe('today');
   });
 
   it('returns "N days" for a review card due in the future', () => {
-    expect(formatRelativeDue(card({ queue: 'review', type: 'review', due: 13 }), 10, Date.now())).toBe('3 days');
+    expect(
+      formatRelativeDue(card({ queue: 'review', type: 'review', due: 13 }), 10, Date.now()),
+    ).toBe('3 days');
   });
 
   it('clamps an overdue review card to "today" rather than a negative count', () => {
-    expect(formatRelativeDue(card({ queue: 'review', type: 'review', due: 7 }), 10, Date.now())).toBe('today');
+    expect(
+      formatRelativeDue(card({ queue: 'review', type: 'review', due: 7 }), 10, Date.now()),
+    ).toBe('today');
   });
 
   it('returns "today" for a learning card whose due time has already passed', () => {
     const now = 1_000_000;
-    expect(formatRelativeDue(card({ queue: 'learning', type: 'learning', due: now - 60_000 }), 0, now)).toBe('today');
+    expect(
+      formatRelativeDue(card({ queue: 'learning', type: 'learning', due: now - 60_000 }), 0, now),
+    ).toBe('today');
   });
 
   it('returns "N min" for a learning card due later', () => {
     const now = 1_000_000;
     const due = now + 8 * 60_000;
-    expect(formatRelativeDue(card({ queue: 'learning', type: 'learning', due }), 0, now)).toBe('8 min');
+    expect(formatRelativeDue(card({ queue: 'learning', type: 'learning', due }), 0, now)).toBe(
+      '8 min',
+    );
   });
 
   it('branches on type, not queue, for a suspended leech still in epoch ms (B2)', () => {
     const now = 1_787_000_000_000;
     const due = now + 8 * 60_000;
-    expect(
-      formatRelativeDue(card({ queue: 'suspended', type: 'relearning', due }), 100, now),
-    ).toBe('8 min');
+    expect(formatRelativeDue(card({ queue: 'suspended', type: 'relearning', due }), 100, now)).toBe(
+      '8 min',
+    );
   });
 
   it('branches on type, not queue, for a buried relearning card', () => {

@@ -25,9 +25,7 @@ describe('fresh seed', () => {
 
   it('nt-spanish-2sided has exactly two templates: A → B (ord 0) and Listening (ord 1)', () => {
     const noteTypes = buildSeedNoteTypes();
-    const spanish2Sided = noteTypes.find(
-      (nt) => nt.id === NOTE_TYPE_IDS.spanish2
-    );
+    const spanish2Sided = noteTypes.find((nt) => nt.id === NOTE_TYPE_IDS.spanish2);
 
     expect(spanish2Sided).toBeDefined();
     expect(spanish2Sided!.templates).toHaveLength(2);

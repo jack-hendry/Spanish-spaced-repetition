@@ -171,25 +171,32 @@ describe('transformBooks', () => {
     expect(second.cards[0].interval).toBe(15);
     expect(second.cards[0].reps).toBe(3);
     // deck ids stable too
-    expect(second.decks.map((d) => d.id).sort()).toEqual(
-      first.decks.map((d) => d.id).sort(),
-    );
+    expect(second.decks.map((d) => d.id).sort()).toEqual(first.decks.map((d) => d.id).sort());
   });
 
   it('seeds new-card positions past the existing new queue instead of restarting at 0 (audit B5)', () => {
     // A pre-existing new card, unrelated to this book, already sitting at
     // the back of a long new-card queue.
     const priorNewCard: Card = {
-      id: 'c-unrelated', noteId: 'n-unrelated', deckId: 'd-other', ord: 0,
-      type: 'new', queue: 'new', due: 4000, reps: 0, lapses: 0, left: 0,
-      lastReviewed: null, created: 0, modified: 0, ease: 2500, interval: 0,
-      stability: null, difficulty: null,
+      id: 'c-unrelated',
+      noteId: 'n-unrelated',
+      deckId: 'd-other',
+      ord: 0,
+      type: 'new',
+      queue: 'new',
+      due: 4000,
+      reps: 0,
+      lapses: 0,
+      left: 0,
+      lastReviewed: null,
+      created: 0,
+      modified: 0,
+      ease: 2500,
+      interval: 0,
+      stability: null,
+      difficulty: null,
     };
-    const { cards } = transformBooks(
-      [book],
-      { decks: [], notes: [], cards: [priorNewCard] },
-      1000,
-    );
+    const { cards } = transformBooks([book], { decks: [], notes: [], cards: [priorNewCard] }, 1000);
     // Freshly-created cards must queue up behind the existing new card, not
     // jump ahead of it by restarting at position 0.
     for (const c of cards) {

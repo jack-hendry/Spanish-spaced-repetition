@@ -5,10 +5,7 @@
 // reviews coalesces into one rewrite. revlog.ndjson is append-only.
 
 import { randomUUID } from 'node:crypto';
-import {
-  existsSync,
-  mkdirSync,
-} from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { readFile, rename, writeFile, appendFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
@@ -21,11 +18,7 @@ import type {
   NoteType,
   RevlogEntry,
 } from '../models/index.js';
-import {
-  buildSeedCollection,
-  buildSeedDeckOptions,
-  buildSeedNoteTypes,
-} from './seed.js';
+import { buildSeedCollection, buildSeedDeckOptions, buildSeedNoteTypes } from './seed.js';
 import { migrateAddListeningTemplate } from './migrations.js';
 
 interface FileNames {

@@ -23,7 +23,10 @@ interface BrowserRow extends SearchRow {
 }
 
 function stripHtml(s: string): string {
-  return s.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  return s
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 /** The card's question text; cloze fields render their own deletion as "[...]" . */
@@ -110,7 +113,10 @@ export class Browser {
         card,
         note,
         deckName: (deck?.name ?? '').toLowerCase(),
-        text: values.join('  ').replace(/<[^>]*>/g, ' ').toLowerCase(),
+        text: values
+          .join('  ')
+          .replace(/<[^>]*>/g, ' ')
+          .toLowerCase(),
         tags: note.tags.map((t) => t.toLowerCase()),
         front: frontText(note, noteType, card.ord),
         deckLeaf: (deck?.name ?? '').split('::').pop() ?? '',

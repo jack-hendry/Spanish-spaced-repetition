@@ -66,10 +66,9 @@ export class Review {
 
   readonly ratings = RATINGS;
 
-  private readonly deckId = toSignal(
-    this.route.paramMap.pipe(map((p) => p.get('deckId'))),
-    { initialValue: null },
-  );
+  private readonly deckId = toSignal(this.route.paramMap.pipe(map((p) => p.get('deckId'))), {
+    initialValue: null,
+  });
 
   readonly loading = signal(true);
   readonly finished = signal(false);
