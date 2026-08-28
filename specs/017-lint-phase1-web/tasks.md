@@ -220,7 +220,13 @@ Do **not** "correct" the 254 to some other figure without first confirming
 
 **Model:** haiku
 
-**Status:** not started
+**Status:** done (2026-08-28, `npm run lint:ci` exit 0 with no output;
+`lint:ci` present in `package.json:20` and `ci.yml:68`; `grep -c 'undecided
+step'` → 0; `git status --short` limited to `package.json` and
+`.github/workflows/ci.yml`). Verified independently by the orchestrator. Gate
+covers `core/models`, `features/stats`, `shared`. One nit deferred to Step 13:
+the `lint` job comment still opens "Scoped to `tools/state_rotate.py`", which
+now under-describes a job running both ruff and ESLint.
 
 **Depends on:** Step 1 — the three directories below are clean only after calibration.
 
@@ -767,7 +773,12 @@ and files Phase 1 owns rather than trying to exclude.
    explanation in the `ci.yml` `lint` job comment: this list is Phase 1's
    surface; `core/scheduling/` and the six `card.due` files are Phase 2 and
    join at that phase; the whole repo joins at Phase 4.
-3. Run the full verification set.
+3. While in that comment, fix its opening line. It currently begins "Scoped to
+   `tools/state_rotate.py`", which described the job when ruff was the only
+   linter in it; the job now runs ruff *and* ESLint. Reword the opening so it
+   names both, then keeps the existing ruff-scope explanation as the
+   ruff-specific half.
+4. Run the full verification set.
 
 **Done when**
 - `npm run lint:ci` exits **0**.
