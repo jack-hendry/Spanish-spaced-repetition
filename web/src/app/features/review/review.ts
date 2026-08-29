@@ -304,40 +304,50 @@ export class Review {
     }
   }
 
-  onKey(e: KeyboardEvent): void {
-    if (this.finished() || this.loading()) return;
-    // While the user is typing an answer, only Enter (submit) and Escape (blur)
-    // are shortcuts — every other key, including '-', is answer text and must
-    // reach the input rather than triggering suspend/navigate.
+  /** Handle keys while typing an answer: Enter reveals, Escape blurs, others pass through. */
+  private handleTypeInKey(e: KeyboardEvent): boolean {
     const typingAnswer = (this.state()?.isTypeIn ?? false) && !this.revealed();
-    if (typingAnswer) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        this.reveal();
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        (e.target as HTMLElement | null)?.blur();
-      }
-      return;
+    if (!typingAnswer) return false;
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      this.reveal();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      (e.target as HTMLElement | null)?.blur();
     }
+    return true;
+  }
+
+  /** Handle navigation (Escape → home) and suspend ('-') keys. */
+  private handleNavigationAndSuspendKey(e: KeyboardEvent): boolean {
     if (e.key === 'Escape') {
       e.preventDefault();
       void this.router.navigateByUrl('/');
-      return;
+      return true;
     }
     if (e.key === '-') {
       e.preventDefault();
       void this.suspend();
-      return;
+      return true;
     }
-    if (!this.revealed()) {
-      // Non-type-in cards reveal on Space or Enter.
-      if (e.key === ' ' || e.key === 'Enter') {
-        e.preventDefault();
-        this.reveal();
-      }
-      return;
+    return false;
+  }
+
+  /** Handle pre-reveal keys: Space/Enter reveal, others stop processing. */
+  private handlePreRevealKey(e: KeyboardEvent): boolean {
+    if (this.revealed()) return false;
+
+    // Non-type-in cards reveal on Space or Enter.
+    if (e.key === ' ' || e.key === 'Enter') {
+      e.preventDefault();
+      this.reveal();
     }
+    return true; // Stop processing other handlers when not revealed.
+  }
+
+  /** Handle rating keys: 1-4 or Space/Enter to rate. */
+  private handleRatingKey(e: KeyboardEvent): void {
     const idx = ['1', '2', '3', '4'].indexOf(e.key);
     if (idx >= 0) {
       e.preventDefault();
@@ -346,5 +356,13 @@ export class Review {
       e.preventDefault();
       void this.rate('good');
     }
+  }
+
+  onKey(e: KeyboardEvent): void {
+    if (this.finished() || this.loading()) return;
+    if (this.handleTypeInKey(e)) return;
+    if (this.handleNavigationAndSuspendKey(e)) return;
+    if (this.handlePreRevealKey(e)) return;
+    this.handleRatingKey(e);
   }
 }

@@ -741,7 +741,19 @@ review loop's behaviour is not something to adjust a test around.
 
 **Model:** haiku
 
-**Status:** not started
+**Status:** done (2026-08-29). `npx eslint review.ts` **exit 0** — the
+complexity error is gone; web tests **209 passed**; build succeeds; `npx eslint
+web/src` **39 → 38**. `git diff --stat review.spec.ts` is **empty**, so the
+refactor stands on unmodified tests — verified by the orchestrator.
+
+`onKey` decomposed into four private helpers returning "handled" booleans:
+`handleTypeInKey`, `handleNavigationAndSuspendKey`, `handlePreRevealKey`,
+`handleRatingKey`. `onKey` is now a five-line ordered delegation chain. Traced
+branch-by-branch against the original: same order, same key→action mapping,
+every `preventDefault()` in the same place, and the type-in early return still
+first. `handlePreRevealKey` returns `true` unconditionally when not revealed,
+matching the original's unconditional `return` after that block — the one place
+a "handled" convention could have silently changed behaviour.
 
 **Depends on:** Step 10 — edits the same file; must run after it, never beside it.
 
