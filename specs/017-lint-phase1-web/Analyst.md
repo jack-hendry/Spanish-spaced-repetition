@@ -276,6 +276,60 @@ throughout; no unattended autofix run is planned anywhere in this phase.
   actioned here: CLAUDE.md reserves `--apply` for a human who has decided to
   rotate. **Needs a decision before this branch can be pushed.**
 
-## 9. Retrospective
+## 9. Acceptance criteria — walked 2026-08-29
 
-*(filled in before archiving)*
+| # | Criterion | Result |
+|---|---|---|
+| 1 | Config carries D1–D3 + worktrees ignore, each with *why* | **Pass.** Four comment blocks in `eslint.config.mjs`. |
+| 2 | `INVENTORY.md` re-baselined, Phase 2 widening recorded | **Pass**, after one correction — first pass fabricated the per-file table. Now carries both baseline and post-calibration columns, two reconciliation lines, the 16-file Phase 2 list, and the `npm install` warning. |
+| 3 | `npm run lint` reports zero for every §6 batch directory | **Pass.** Enumerated by file: the only 24 remaining are the 7 Phase 2 files. |
+| 4 | `lint:ci` exists, covers what this spec cleaned, exits 0 | **Pass.** 13 paths, exit 0. |
+| 5 | `ci.yml` runs `lint:ci` in the `lint` job | **Pass.** Added alongside the ruff steps; comment names both linters and the Phase 2/4 boundary. |
+| 6 | No Phase 2 file modified | **Pass.** `git diff --name-only 64c7e4c^..HEAD \| grep -E '<phase-2 pattern>'` returns nothing, re-run at Steps 8 and 13. |
+| 7 | 280 tests, build, `format:check` green | **Pass.** 71 server + 209 web at every checkpoint, first step to last. |
+| 8 | Behaviour-preserving, exceptions recorded | **Pass.** No fix was forced; two were corrected when the prescribed form was wrong (`review.ts:135`, `daily-limits.ts`). |
+| 9 | `ROADMAP.md` ticked, Phase 2's revised scope noted | **Pass.** Both Phase 1 boxes ticked; Phase 2 gains a 16-file scope item; six dated Discovered entries. |
+
+Final: `web/src` **152 → 24**, `server/src` **102 → 41** (calibration only,
+untouched otherwise). Phase 1's own surface: **121 → 0**.
+
+## 10. Retrospective
+
+**Did `Analyst.md` catch anything not thought about up front?** Yes, and it is
+the reason this spec exists in the shape it does. The plan was supposed to be
+"fix 121 violations in batches". Re-deriving the inventory first turned up that
+139 of 254 violations repo-wide were rule miscalibration rather than defects,
+and that one rule (`eqeqeq`) made a *behaviour-breaking* edit the compliant
+one — in `pause.service.ts`, a file the roadmap's scheduling quarantine did not
+cover because Phase 0's attribution rule was textual rather than behavioural.
+Batching straight into the work would have shipped that bug. The calibration
+pass removed more violations than all four code batches combined, with no code
+edited.
+
+**Did anything in `tasks.md` turn out wrong during coding?** Three things, all
+in the harden pass rather than the plan's structure:
+
+- **R8 was wrong twice** (→ R12). It prescribed an annotation that cannot work —
+  TypeScript narrows a `const` to its initializer's type — and rested on a false
+  premise: it claimed a guard was live when the loop above it made the guard
+  unreachable. It had read the comment *documenting* the invariant and concluded
+  the invariant was violated. Two of the harden pass's four "confirmed" verdicts
+  did not survive execution, which is the most useful thing to know about that
+  document.
+- **The `lint:ci` Done-when was vacuous.** `npm run lint:ci; echo $?` exits 0
+  whether or not the step adds its paths, because the gate only lints what its
+  script names. Step 9 reported a truthful `exit=0` having skipped the edit
+  entirely.
+- **Line-number anchoring** was caught *before* execution (R1) and would
+  otherwise have broken Step 10's 14 edits in one file.
+
+**The pattern worth carrying forward.** Every defect that mattered was found by
+re-deriving the artifact — re-running the lint, reading the diff, grepping the
+script — and none by reading a green report. Four times an executor reported all
+checks passing over work that was wrong: a fabricated inventory table, a skipped
+`lint:ci` edit, a hand-rolled mock type that silenced `no-unsafe-*` while
+removing the drift-detection it existed for, and seven misleading `!`
+assertions. In each case the *number* was correct. The two defects the
+executors themselves caught were both cases where a step said "if the number
+does not match, stop and report rather than adjusting" — that instruction was
+worth more than any check in the file.

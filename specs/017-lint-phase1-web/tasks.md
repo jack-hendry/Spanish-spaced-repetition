@@ -946,7 +946,19 @@ If `npx eslint web/src` reports anything outside the seven known Phase 2 files
 
 **Model:** top-level
 
-**Status:** not started
+**Status:** done (2026-08-29). All nine §7 criteria walked and recorded in
+`Analyst.md` §9 with actual results — all pass. `ROADMAP.md`: both Phase 1
+boxes ticked, Phase 2 gains its 16-file scope item, six dated Discovered
+entries. `AD-020`, `L-013`, `L-014` in `specs/STATE.md` with bodies in
+`specs/LESSONS.md` (written during the run, per STATE.md Rule 6). Retrospective
+filled in at `Analyst.md` §10. `data/spanish/` clean — never touched. Run
+marker removed from root `STATE.md`.
+
+**One criterion cannot pass here:** `python3 tools/state_rotate.py --check`
+fails — `specs/STATE.md` is over its 300-line budget and was already at ~290
+before this spec's three entries. `AD-014`/`AD-015`/`AD-016` are due, freeing 37
+lines. Not actioned: CLAUDE.md reserves `--apply` for a human who has decided to
+rotate. **The push gate will refuse this branch until that happens.**
 
 **Depends on:** Step 13.
 
