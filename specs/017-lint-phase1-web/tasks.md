@@ -800,7 +800,32 @@ remaining count.
 
 **Model:** haiku
 
-**Status:** not started
+**Status:** done (2026-08-29, after one correction). `npx eslint
+web/src/app/features/review` **exit 0**; web tests **209 passed**; build
+succeeds; `npx eslint web/src` **38 → 24**, and all 24 remaining are in Phase 2
+files — **Phase 1's surface is clean**. `lint:ci` exit 0 with
+`web/src/app/features/review` present in the script (both checks, per the
+standing rule).
+
+**Required a second pass — and the count was right both times.** The first
+attempt hit 24 while doing two things wrong, neither visible in any number:
+
+1. It replaced `ReturnType<typeof vi.spyOn>` with a hand-rolled
+   `{ mock: { calls: unknown[][] }; mockRestore(): void }`. That compiles and
+   silences `no-unsafe-*`, but types `mock.calls[0][1]` as `unknown`, so a
+   change to `Sm2Scheduler.prototype.answer`'s signature would leave
+   `expect(...).toBe('good')` passing against a stale contract — exactly the
+   drift §5.1 kept the rule on to catch. The rule was satisfied and its purpose
+   removed. Corrected to
+   `MockInstance<typeof Sm2Scheduler.prototype.answer>`.
+2. It changed `x?.textContent?.trim()` to `x?.textContent!.trim()` in seven
+   places while writing `li.textContent.replace(...)` — no assertion — in an
+   eighth. The eighth disproves the other seven: `textContent` is non-nullish
+   to the type checker here, so the `!` only misleads a reader about
+   nullability. All eight now consistent, zero `textContent!` remaining.
+
+Both were caught by reading the diff, not the counts. The executor reported a
+summary rather than the requested `git diff` on both passes.
 
 **Depends on:** Step 11 — must not run until `review.ts` is final, so a spec
 edit is never blamed for an implementation change.
