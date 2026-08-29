@@ -883,7 +883,18 @@ yours).
 
 **Model:** haiku
 
-**Status:** not started
+**Status:** done (2026-08-29). `lint:ci` exit 0 over all 13 consolidated Phase 1
+paths; `npx eslint web/src` **24**, `server/src` **41** (untouched); build
+succeeds; `npm run test` **71 + 209 = 280**; `format:check` clean; nothing under
+`data/spanish/`.
+
+The decisive check — enumerating every remaining violation by file — returns
+**exactly the 7 expected Phase 2 files** and no others:
+`collection.store.ts` 3, `heatmap.spec.ts` 1, `pause-shift.ts` 1,
+`pause.service.spec.ts` 13, `pause.service.ts` 4, `scheduling/scheduler-factory.ts`
+1, `scheduling/sm2.spec.ts` 1 = 24. Re-run independently by the orchestrator.
+The `ci.yml` lint-job comment now names both linters and records the Phase
+2/Phase 4 boundary.
 
 **Depends on:** Steps 5–12.
 

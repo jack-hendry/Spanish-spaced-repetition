@@ -17,7 +17,7 @@
     "format:check": "prettier --check \"web/src/**/*.{ts,html,css,scss}\" \"server/src/**/*.ts\"",
     "lint": "eslint .",
     "lint:json": "eslint . --format json",
-    "lint:ci": "eslint web/src/app/core/models web/src/app/core/templating web/src/app/core/api.service.ts web/src/app/core/daily-limits.ts web/src/app/features/stats web/src/app/shared web/src/app/features/browser web/src/app/features/options web/src/main.ts web/src/app/app.ts web/src/app/app.spec.ts web/src/app/features/deck-list web/src/app/features/review"
+    "lint:ci": "eslint web/src/main.ts web/src/app/app.ts web/src/app/app.spec.ts web/src/app/core/models web/src/app/core/templating web/src/app/core/api.service.ts web/src/app/core/daily-limits.ts web/src/app/shared web/src/app/features/browser web/src/app/features/deck-list web/src/app/features/options web/src/app/features/review web/src/app/features/stats"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
