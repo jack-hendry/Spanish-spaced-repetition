@@ -537,7 +537,25 @@ breakdown from `npx eslint web/src --format json` before continuing.
 
 **Model:** haiku
 
-**Status:** not started
+**Status:** done (2026-08-28). `npx eslint` exits 0 on all three paths; web
+tests **209 passed**; build succeeds; `lint:ci` exit 0; `npx eslint web/src`
+**60 → 53**, exactly the 7 this step owns — verified by the orchestrator.
+
+**Deviation, accepted.** The step said to delete the `?` and keep the property
+access. In the four spec-file cases the executor deleted the `?` *and* added a
+`!` on the binding (`querySelector(...)!`, `rows.find(...)!`). Permitted —
+`no-non-null-assertion` is off in specs by D3 — and an improvement rather than
+a shortcut: `btn?.click()` in a test means "click it if it exists", so a broken
+selector makes the test pass **vacuously**, whereas `btn!.click()` throws. This
+is D3's own stated rationale ("`x!.y` in a test *is* an assertion and fails
+loudly when wrong") applied where the step's wording had not anticipated it.
+
+The `no-misused-promises` fix replaced `pauseService.resume.mockImplementation(…)`
+with a direct `pauseService.resume = vi.fn(async () => …)`. Checked by the
+orchestrator: `pauseService` is a plain object literal supplied via
+`useValue`, the component resolves `.resume` at call time, `setup()` rebuilds
+it per test, and this test asserts on `btn.disabled` rather than on the spy —
+so replacing the spy loses no assertion.
 
 **Depends on:** Step 1.
 
