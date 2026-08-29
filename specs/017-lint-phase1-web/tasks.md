@@ -48,6 +48,14 @@ Run `npm install` once in the worktree root, then confirm
   heading exists says nothing about the numbers beneath it. Where a step gives
   you measured values, use them verbatim — do not re-derive or adjust them.
   (L-012, which has now recurred once.)
+- **A check that passes whether or not you did the work is not evidence.**
+  `npm run lint:ci` exits 0 regardless of whether you added your paths to the
+  script, because it only lints what the script names — running it proves
+  nothing about the files you just cleaned. Whenever a step asks you to extend
+  `lint:ci`, verify with **both** `npm run lint:ci` *and*
+  `grep -o 'web/src[^ "]*' package.json | sort`, and confirm your new paths
+  appear in the second. Step 9 reported a truthful `exit=0` having skipped the
+  extension entirely.
 
 ---
 
@@ -557,6 +565,14 @@ orchestrator: `pauseService` is a plain object literal supplied via
 it per test, and this test asserts on `btn.disabled` rather than on the spy —
 so replacing the spy loses no assertion.
 
+**Required a second pass.** The first attempt skipped the final Done-when item
+— extending `lint:ci` — while truthfully reporting `npm run lint:ci` → exit 0.
+The gate only lints the paths its script names, so it passes whether or not the
+step adds its own; running it proved nothing about the files just cleaned. The
+orchestrator caught it by `grep`-ing `package.json` rather than trusting the
+exit code. All 12 paths now present. This is why the standing rules now require
+both checks, and why Step 12's Done when was rewritten the same way.
+
 **Depends on:** Step 1.
 
 **Files**
@@ -780,7 +796,10 @@ drifted. Type them properly rather than suppressing.
 - `npx eslint web/src/app/features/review` exits **0**.
 - `npm run test -w web` passes with 209 tests.
 - `npm run build` succeeds.
-- Add `web/src/app/features/review` to `lint:ci`; `npm run lint:ci` exits 0.
+- Add `web/src/app/features/review` to `lint:ci`, then verify with **both**
+  `npm run lint:ci` (exit 0) **and** `grep -o 'web/src[^ "]*' package.json | sort`
+  showing `web/src/app/features/review` in the list. The first check alone
+  passes even if you skip the edit — see the standing rules.
 
 **If blocked**
 If typing a mock at L198/L263/L304/L613/L632 cascades into more than ~5 further
