@@ -86,8 +86,8 @@ export class Review {
   readonly deckName = computed(() => {
     const id = this.deckId();
     if (id === 'all') return 'All decks';
-    const deck = id ? this.store.deckById(id) : undefined;
-    return deck ? deck.name.split('::').pop()! : 'Study';
+    const deck = id != null && id !== '' ? this.store.deckById(id) : undefined;
+    return deck?.name.split('::').pop() ?? 'Study';
   });
 
   /** True when scheduling is paused. */
@@ -122,26 +122,30 @@ export class Review {
       const isRevealed = this.revealed();
       const host = this.questionHost()?.nativeElement;
 
-      if (!s?.isListeningFront || isRevealed || !host) {
+      if (s?.isListeningFront !== true || isRevealed || !host) {
         return;
       }
 
       const audios = Array.from(host.querySelectorAll('audio'));
       if (audios.length === 0) return;
 
-      const detachers: Array<() => void> = [];
+      const detachers: (() => void)[] = [];
       const playAt = (i: number): void => {
-        const el = audios[i];
+        const el = audios.at(i);
         if (!el) return;
         // Autoplay may be blocked by the browser; the visible `controls` stay
         // as the fallback, so a rejection here is expected and silent.
-        el.play().catch(() => {});
+        el.play().catch(() => undefined);
       };
       audios.forEach((el, i) => {
         if (i === audios.length - 1) return; // nothing to chain after the last clip
-        const onEnded = () => playAt(i + 1);
+        const onEnded = () => {
+          playAt(i + 1);
+        };
         el.addEventListener('ended', onEnded);
-        detachers.push(() => el.removeEventListener('ended', onEnded));
+        detachers.push(() => {
+          el.removeEventListener('ended', onEnded);
+        });
       });
       playAt(0);
 
@@ -162,14 +166,16 @@ export class Review {
   }
 
   private ctx(): ReviewContext {
-    const coll = this.store.collection()!;
+    const coll = this.store.collection();
+    if (!coll) throw new Error('ctx() called before collection loaded');
     return { now: Date.now(), today: todayNumber(coll) };
   }
 
   private async init(): Promise<void> {
     if (this.store.decks().length === 0) await this.store.load();
     const id = this.deckId();
-    const started = id === 'all' ? this.queue.startAll() : id ? this.queue.start(id) : false;
+    const started =
+      id === 'all' ? this.queue.startAll() : id != null && id !== '' ? this.queue.start(id) : false;
     if (!started) {
       this.loading.set(false);
       this.finished.set(true);
@@ -207,7 +213,8 @@ export class Review {
       ord: card.ord,
     });
 
-    const opts = this.queue.options!;
+    const opts = this.queue.options;
+    if (!opts) throw new Error('loadNext() called before queue started');
     const preview = SchedulerFactory.for(opts).preview(card, opts, ctx);
 
     this.revealed.set(false);
@@ -258,7 +265,8 @@ export class Review {
     if (!current || this.busy()) return;
     this.busy.set(true);
     try {
-      const opts = this.queue.options!;
+      const opts = this.queue.options;
+      if (!opts) return;
       const timeMs = Date.now() - this.answerStart;
       const { card: next, revlog } = SchedulerFactory.for(opts).answer(
         current.card,
@@ -308,7 +316,7 @@ export class Review {
         this.reveal();
       } else if (e.key === 'Escape') {
         e.preventDefault();
-        (e.target as HTMLElement | null)?.blur?.();
+        (e.target as HTMLElement | null)?.blur();
       }
       return;
     }

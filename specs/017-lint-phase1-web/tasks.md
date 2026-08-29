@@ -630,7 +630,27 @@ guarding a genuinely absent DOM node), leave that occurrence and report it.
 
 **Model:** haiku
 
-**Status:** not started
+**Status:** done (2026-08-28, after one correction). `npx eslint review.ts` →
+**exactly 1 problem**, the `complexity` error on `onKey` that Step 11 owns; web
+tests **209 passed**; build succeeds; `npx eslint web/src` **53 → 39**, exactly
+the 14 this step owns — verified by the orchestrator, which also read the full
+diff.
+
+**Required a second pass, and the fault was the plan's.** The prescribed L135
+fix (`const el: HTMLAudioElement | undefined = audios[i]`) cannot work —
+TypeScript narrows a `const` to its initializer's type, discarding the widening
+annotation — and the premise behind it was also false: the guard is unreachable,
+not live. Corrected to `audios.at(i)`, whose signature returns `T | undefined`.
+See CriticReview R12. The executor applied the instruction faithfully, got 41
+instead of 39, and reported the mismatch rather than deleting the guard to move
+the number.
+
+Two judgement calls in the diff, both checked and both sound: `rate()` uses an
+early `return` for the missing-`options` case while `loadNext()` throws — the
+asymmetry is correct (`rate()` is a user-triggered handler, `loadNext()` is
+internal), and `rate()`'s `try` has a `finally { this.busy.set(false) }`, so the
+early return cannot leave the UI locked. `onKey`'s complexity fell 19 → 18 as a
+side effect of the `?.blur?.()` → `?.blur()` fix, which removed a branch.
 
 **Depends on:** Step 1.
 
@@ -673,12 +693,24 @@ standing rule. The numbering below is by topic, not execution order.
    const detachers: (() => void)[] = [];
    ```
 5. L135 (both rules): `audios` is `HTMLAudioElement[]`, so `audios[i]` types as
-   non-nullable and ESLint calls the `if (!el) return;` guard dead — but the
-   guard is live at runtime, because the `ended` handler calls
-   `playAt(i + 1)` with `i + 1 === audios.length`. Make the type honest instead
-   of removing the guard: change the binding to
-   `const el: HTMLAudioElement | undefined = audios[i];` and leave
-   `if (!el) return;` exactly as it is. Do **not** delete the guard.
+   non-nullable and ESLint calls the `if (!el) return;` guard dead. Change the
+   **indexing call**, not the annotation:
+
+   ```ts
+   const el = audios.at(i);
+   ```
+
+   and leave `if (!el) return;` exactly as it is. Do **not** delete the guard.
+
+   `Array.prototype.at` returns `T | undefined` by signature (ES2022; the
+   target is ES2022), so the guard becomes live to the type checker on the
+   strength of the API. Behaviour is identical for `i >= 0`.
+
+   **Do not try `const el: HTMLAudioElement | undefined = audios[i];`** — an
+   earlier revision of this step prescribed exactly that and it does not work:
+   TypeScript narrows a `const` to the type of its initializer, so the widening
+   annotation is discarded at the use site and both rules still fire. See
+   CriticReview R12.
 6. L138 (`no-empty-function`): the line is `el.play().catch(() => {});`, and
    the comment above it already explains the no-op. A comment does **not**
    satisfy this rule (that is `no-empty`, a different rule), so give the arrow

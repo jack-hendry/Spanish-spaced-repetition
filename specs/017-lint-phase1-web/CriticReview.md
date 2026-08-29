@@ -5,12 +5,18 @@ implementation step. Per `specs/TEMPLATE.md`: every step that assumes a type, a
 signature or a value defined elsewhere had that file opened and the assumption
 confirmed, rather than the plan merely being re-read for internal consistency.
 
-11 findings. **R1–R4 were plan defects that would have broken a step**; R5–R8
+12 findings. **R1–R4 were plan defects that would have broken a step**; R5–R8
 are confirmations that removed a hedge from the plan; R9 is an environment
 prerequisite the plan did not state; R10 pins the baseline every step's
-*Done when* compares against. **R11 was found during execution, not in this
-pass, and is the most serious**: the baseline "correction" this spec opened with
-was itself wrong. R9 turned out to be its cause.
+*Done when* compares against.
+
+**R11 and R12 were found during execution, not in this pass, and both are
+failures of this document.** R11: the baseline "correction" this spec opened
+with was itself wrong (R9 turned out to be its cause). R12: R8's "confirmed"
+verdict was wrong about both the fix and the premise it rested on. Two of the
+four confirmations in this pass therefore did not hold — worth weighing before
+trusting a *confirmed* label here. Both were surfaced by an executor reporting a
+mismatch honestly rather than forcing the expected number.
 
 ---
 
@@ -122,6 +128,10 @@ honest and both violations clear **without deleting a real guard** — which is
 what a naive reading of "unnecessary condition" would have done. Step 10 states
 "do not delete the guard" explicitly for this reason.
 
+> **R8 was wrong on both counts. Superseded by R12 below.** The annotation does
+> not clear the violations, and the guard is not live. Left in place rather than
+> rewritten, because the reasoning failure is the interesting part.
+
 ## R9 — the worktree needs `npm install` before any web step *(environment, added)*
 
 `npm run test -w web` fails in a fresh worktree with `Could not find the
@@ -225,3 +235,50 @@ test that fails if two unrelated key branches are swapped. Step 11 mitigates by
 forbidding any change to key→action mapping and requiring
 `git diff review.spec.ts` to be empty, but a reordering that happens to keep all
 current tests green would survive. That is the step to review by hand.
+
+## R12 — R8's prescribed fix does not work, and its premise was false *(defect, found during execution)*
+
+Step 10 executed cleanly on 12 of its 14 violations. The two at `review.ts:135`
+survived, and the executor reported that plainly instead of forcing them —
+correct behaviour, and the second time this run that an executor's honest
+mismatch report caught a planning error (see R11).
+
+R8 was wrong twice.
+
+**Wrong about the fix.** `const el: HTMLAudioElement | undefined = audios[i];`
+does not make the guard live. TypeScript's control-flow analysis narrows a
+`const` to the type of its *initializer*, and `audios[i]` is `HTMLAudioElement`
+without `noUncheckedIndexedAccess`. The declared annotation is discarded at the
+use site, typescript-eslint reads the narrowed type, and both rules fire
+exactly as before. An explicit widening annotation cannot defeat narrowing —
+`unknown` aside, TypeScript treats the initializer as the better information.
+
+**Wrong about the premise.** R8 asserted the guard was live "because the
+`ended` handler calls `playAt(i + 1)` with `i + 1 === audios.length`". It
+cannot. The `forEach` immediately above it skips the final element for exactly
+that reason:
+
+```ts
+audios.forEach((el, i) => {
+  if (i === audios.length - 1) return; // nothing to chain after the last clip
+  const onEnded = () => { playAt(i + 1); };
+```
+
+so `i + 1 <= audios.length - 1` always, and the other call site, `playAt(0)`, is
+protected by the `audios.length === 0` early return above it. ESLint was right:
+the guard is unreachable. R8 read the comment that *documents* the invariant and
+concluded the invariant was violated.
+
+This is the mirror image of the `template-renderer.ts:63` case in Step 5, where
+the guard genuinely was live and the type genuinely was lying. Both present as
+`no-unnecessary-condition`; only reading the call sites distinguishes them. That
+they occur one step apart in the same spec is the argument against ever treating
+this rule as mechanical.
+
+**Fix applied:** `audios.at(i)` instead of `audios[i]`. `Array.prototype.at`
+returns `T | undefined` by signature, so the guard becomes live to the type
+checker on the strength of the API rather than an annotation the compiler
+discards; behaviour is identical, and the defensive guard survives a future edit
+to the `forEach` condition that would make it reachable again. Deleting the
+guard was the alternative and is what ESLint literally asks for; keeping it at
+zero cost is the better trade in a closure whose call sites can change.
