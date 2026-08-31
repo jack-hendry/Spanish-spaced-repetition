@@ -383,3 +383,45 @@ Practical: a step that should change a script or config path must assert on that
 path's *text*, using `grep` or a node snippet. A step that should change a
 `Done when` assertion must still run the check and watch it pass, to catch the
 case where the implementation changed but the check did not.
+
+**L-016 — A harden pass must re-derive, not re-reason: an unexecuted prescription is a hypothesis.**
+(2026-08-31, `specs/019-lint-phase3-server` §10, and the reason Phase 3's method
+section exists) Phase 3's own `Analyst.md` draft specified the fix for a
+`no-unnecessary-condition` violation at `routes/index.ts:175` as
+`const firstExisting: Card | undefined = existing[0]`, so the `??` fallbacks
+below it would stop reading as dead code. Applied, the file went from **2
+violations to 4**: TypeScript narrows a `const` to its initializer's type
+regardless of the annotation, so the `?.` then drew "Unnecessary optional chain
+on a non-nullish value" on top of the original complaints.
+
+Two things make this worth a headline rather than a footnote.
+
+First, **it was a repeat.** Phase 1's retrospective already records the identical
+wall — "R8 … prescribed an annotation that cannot work — TypeScript narrows a
+`const` to its initializer's type" — and Phase 1 had already found and used the
+working instrument in this very repo: `.at(0)`, which is typed `T | undefined`
+(`review.ts:135`). Careful reasoning by a large model reproduced a known-bad
+answer that the project had already paid to learn once. Reading the lesson did
+not prevent re-deriving the mistake; running the code refuted it in under a
+minute.
+
+Second, **the failure was silent in the direction that matters.** The wrong fix
+still compiled and still passed all 280 tests. Only the violation *count* moved,
+and it moved the wrong way — which a step reporting "applied the prescribed fix"
+would not have surfaced, because the prescription itself was the defect.
+
+The rule: a harden pass earns its name by *executing* every claim it marks
+CONFIRMED — apply the edit, compile it, run the checker, revert — not by
+re-reading the plan for internal consistency. Phase 1 shipped four "confirmed"
+harden verdicts of which two did not survive execution; Phase 2 switched to
+running its three risky claims and had no step rewritten; Phase 3 executed all
+41 fixes before `tasks.md` was written and again had no step rewritten, while
+catching this defect in its own draft. The cost is minutes. The alternative is
+discovering it in an executor's hands, where a plausible-but-wrong prescription
+reads as executor error rather than planner error.
+
+Corollary for delegated runs: prescribing already-executed code turns each step
+into transcription rather than design, which is what makes a small model a safe
+executor for work this delicate. Keep the verified diff around as the
+cross-check, and delete it before archiving — it is a working artifact, and at
+22 KB it would trip the 20 KB archive gate.

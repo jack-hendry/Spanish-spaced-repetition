@@ -11,7 +11,7 @@ describe('fresh seed', () => {
   let dir: string | undefined;
 
   afterEach(() => {
-    if (dir) rmSync(dir, { recursive: true, force: true });
+    if (dir != null) rmSync(dir, { recursive: true, force: true });
     dir = undefined;
   });
 

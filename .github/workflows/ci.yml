@@ -46,8 +46,8 @@ jobs:
     # Ruff and ESLint linting gates. Ruff is scoped to tools/state_rotate.py —
     # see the SCOPE comment in ruff.toml for why the content pipeline
     # (scrape.py, tools/convert_apkg.py) is not linted yet. ESLint's `lint:ci`
-    # now gates all of `web/src` (Phases 1 and 2 complete); `server/src` is the
-    # remaining surface and joins at Phase 3; the full-repo ESLint gate is Phase 4.
+    # now gates both `web/src` and `server/src` (Phases 1–3 complete); the
+    # full-repo ESLint gate for the repo root and tools/ is Phase 4.
     # TypeScript formatting is checked in the `tests` job (`npm run format:check`, Prettier).
     runs-on: ubuntu-latest
     steps:

@@ -56,7 +56,7 @@ export function buildRouter(store: FileStore, opts: { allowImport?: boolean } = 
   r.post('/collection/resume', async (req, res) => {
     const { expectedPausedAt, cardUpdates } = req.body as {
       expectedPausedAt: number;
-      cardUpdates: { id: string; due: number }[];
+      cardUpdates?: { id: string; due: number }[];
     };
     const coll = store.getCollection();
 
@@ -90,7 +90,10 @@ export function buildRouter(store: FileStore, opts: { allowImport?: boolean } = 
   r.get('/cards', (req, res) => {
     const deckId = req.query.deckId as string | undefined;
     const cards = store.getCards();
-    res.json(deckId ? cards.filter((c) => c.deckId === deckId) : cards);
+    // `!= null` alone is not equivalent here: `?deckId=` yields `''`, which the
+    // truthy test sent down the "all cards" branch. No card has an empty
+    // deckId, so dropping the `!== ''` would return [] instead.
+    res.json(deckId != null && deckId !== '' ? cards.filter((c) => c.deckId === deckId) : cards);
   });
 
   r.patch('/cards/:id', (req, res) => {
@@ -110,7 +113,7 @@ export function buildRouter(store: FileStore, opts: { allowImport?: boolean } = 
   // Convenience for the review loop: persist the updated card and append its
   // revlog entry in one round-trip.
   r.post('/review', async (req, res) => {
-    const { card, revlog } = req.body as { card: Card; revlog: RevlogEntry };
+    const { card, revlog } = req.body as { card: Card; revlog?: RevlogEntry };
     const cards = store.getCards();
     const idx = cards.findIndex((c) => c.id === card.id);
     if (idx === -1) return res.status(404).json({ error: 'card not found' });
@@ -172,7 +175,11 @@ export function buildRouter(store: FileStore, opts: { allowImport?: boolean } = 
     if (noteType) {
       const cards = store.getCards();
       const existing = cards.filter((c) => c.noteId === updated.id);
-      const deck = deckId ?? existing[0]?.deckId ?? store.getDecks()[0]?.id ?? '';
+      // `.at(0)` rather than `[0]`: without `noUncheckedIndexedAccess` an array
+      // index types as non-optional, so the `??` fallbacks read as dead code.
+      // They are live — `existing` is empty for a note's first card and
+      // `getDecks()` is empty on a fresh store.
+      const deck = deckId ?? existing.at(0)?.deckId ?? store.getDecks().at(0)?.id ?? '';
       ({ cards: built, removedIds } = reconcileNoteCards(
         updated,
         noteType,

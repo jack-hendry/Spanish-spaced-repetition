@@ -14,7 +14,7 @@ describe('basicAuth middleware', () => {
     await new Promise<void>((resolve) => {
       server = app.listen(0, () => {
         const addr = server.address();
-        const port = addr && typeof addr === 'object' ? addr.port : 3000;
+        const port = addr != null && typeof addr === 'object' ? addr.port : 3000;
         baseUrl = `http://localhost:${port}`;
         resolve();
       });
@@ -23,7 +23,9 @@ describe('basicAuth middleware', () => {
 
   afterAll(async () => {
     await new Promise<void>((resolve) => {
-      server.close(() => resolve());
+      server.close(() => {
+        resolve();
+      });
     });
   });
 
@@ -76,15 +78,21 @@ describe('basicAuth middleware', () => {
     app2.use(basicAuth('u', 'p:x'));
     app2.get('/x', (req, res) => res.status(200).json({}));
     await new Promise<void>((resolve) => {
-      const server2 = app2.listen(0, async () => {
-        const addr = server2.address();
-        const port2 = addr && typeof addr === 'object' ? addr.port : 3000;
-        const encoded = Buffer.from('u:p:x').toString('base64');
-        const res = await fetch(`http://localhost:${port2}/x`, {
-          headers: { authorization: `Basic ${encoded}` },
-        });
-        expect(res.status).toBe(200);
-        server2.close(() => resolve());
+      // `listen`'s callback is void-returning, so the async work is an
+      // explicitly-voided IIFE rather than an async listener.
+      const server2 = app2.listen(0, () => {
+        void (async () => {
+          const addr = server2.address();
+          const port2 = addr != null && typeof addr === 'object' ? addr.port : 3000;
+          const encoded = Buffer.from('u:p:x').toString('base64');
+          const res = await fetch(`http://localhost:${port2}/x`, {
+            headers: { authorization: `Basic ${encoded}` },
+          });
+          expect(res.status).toBe(200);
+          server2.close(() => {
+            resolve();
+          });
+        })();
       });
     });
   });

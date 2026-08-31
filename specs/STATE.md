@@ -150,32 +150,7 @@ is enough; the cost is that renaming a deck recolours it.
 
 **AD-015 — `GET /api/health` is anonymous, and is the only such route.** → moved to `STATE-ARCHIVE.md`
 
-**AD-017 — A worktree is removed when its branch merges, and any pre-existing
-worktree is checked against its own `HEAD` before anything is committed from
-it.** (2026-08-27, discovered while resuming `specs/014-spec-continuity`)
-`worktree-spec-memory-tracking` was merged into `feature/SSD-habit-tracker-algined`
-(PR #5) and on into `main` (PR #6), but the worktree was kept. Its branch ref
-moved to the merge commit `9cb0e05` without the checkout being refreshed, so
-the index and working tree stayed byte-identical to `228360b` — the pre-013
-state. `git status` there showed a 24-file phantom revert, including staged
-deletions of `server/src/app.ts`, `server/src/config.ts`,
-`server/src/middleware/auth.ts` and all of
-`specs/archive/2026-08-27-013-server-hardening/`. A commit from that worktree
-would have landed as a clean revert of everything AD-011–AD-015 describe.
-Two rules, because one does not cover the other: **(1)** when a branch merges,
-`git worktree remove` it — not `rm -rf`, which leaves `.git/worktrees/<name>/`
-behind and a phantom row in `git worktree list` until someone runs `prune`;
-`git worktree unlock` first if it is locked — then `git branch -d` the branch
-too, since removing a worktree leaves its ref behind and `-d` refuses if it
-turns out not to be merged. **(2)** on entering any worktree
-this session did not just create, `git diff --cached --quiet` must succeed
-before anything is committed from it. The creation side needs no rule:
-`worktree.baseRef` is unset, so `EnterWorktree` already branches from
-`origin/main`. Note that merging is the *occasion*, not the mechanism — a
-moving ref is — so rule (2) is what covers the unmerged case, and it is not
-hypothetical: this same worktree branched from `30d1eea` and sat there while
-`011c0c0` landed on the sibling branch, stale-based long before PR #5. See
-L-010.
+**AD-017 — A worktree is removed when its branch merges, and any pre-existing worktree is checked against its own `HEAD` before anything is committed from it.** → moved to `STATE-ARCHIVE.md`
 
 **AD-018 — ESLint is adopted, report-only, with the full ruleset from day one;
 the CI gate is deferred to a directory-at-a-time rollout.** (2026-08-28,
@@ -280,6 +255,7 @@ already covered is clean; the change is asserted on script text, not behavior
 - **L-013** — A type-aware linter in a tree with no dependencies installed reports a smaller number, not an error.
 - **L-014** — A lint rule can make the behaviour-changing edit the compliant one.
 - **L-015** — A gate's exit code cannot verify a change to the gate's own scope.
+- **L-016** — A harden pass must re-derive, not re-reason: an unexecuted prescription is a hypothesis.
 
 ## Quick Tasks
 
@@ -297,3 +273,4 @@ already covered is clean; the change is asserted on script text, not behavior
 | 2026-08-26 | `AUDIT-2026-08-26-src.md` B6: study sessions ignored `collection.defaultDeckOptionsId`, using array position 0 instead | Medium. Added `CollectionStore.defaultDeckOptions()` (`web/src/app/core/collection.store.ts`), resolving through `collection.defaultDeckOptionsId` and falling back to `deckOptions()[0]` only when that id doesn't resolve; both call sites in `study-queue.service.ts` (`start()`'s fallback, `startAll()`) now use it. Surfaced a latent gap while fixing: `start()` used `opts` without null-checking it (masked before because untyped array indexing let `DeckOptions | undefined` through as `DeckOptions`) — added the same `if (!opts) { session = null; return false; }` guard `startAll()` already had. Added 4 regression tests across `collection.store.spec.ts` and `study-queue.service.spec.ts`; the web-tests ones verified red via `git stash` (compile error, since the new method didn't exist pre-fix). 209 web tests green, `ng build` clean. |
 | 2026-08-27 | Gate 5: `**Status:**` on every `tasks.md` step is now enforced | Small, infrastructure (same treatment as the harness port above — a gate is not a feature). `scripts/clean-table-check.sh` grew a fifth gate: every `### Step ` in a changed `specs/*/tasks.md` must carry a `**Status:**` line. Checked **per step** via `awk`, not by total count, so N status lines bunched into one step cannot satisfy a file with N steps. Runs on every push over only the `tasks.md` files that push touched; `specs/archive/**` is exempt (finished history — enforcing there would make every archive move a retrofit), and a stepless `T001`-format file passes. Closes the follow-up `specs/014-spec-continuity` left open (AD-016, and the Discovered note in its `Analyst.md`); `specs/TEMPLATE.md` no longer says "no hook runs this check yet". Regression matrix in `scripts/clean-table-check.test.sh` (8 cases, throwaway repo per case), wired into CI's `hooks` job; verified red against `main`'s pre-gate script — the 3 catch-the-violation cases fail there, the 5 guard cases pass in both. |
 | 2026-08-27 | **Closed:** `specs/archive/2026-08-27-013-server-hardening/tasks.md` had 15 steps and 0 `**Status:**` lines | Found while building the gate above; was never blocking (archive-exempt). Root cause: `**Status:**` had been appended to the same line as `**Model:**` (`**Model:** haiku · **Status:** done (...)`), so gate 5's `awk` — which only matches a line *starting* with `**Status:**` — never saw it. Fixed by splitting each of the 15 combined lines into two, matching `specs/TEMPLATE.md`'s convention. No content change, no re-verification needed (the spec was already done). |
+| 2026-08-31 | **Open:** the colon-password auth test hangs instead of failing | Found during `specs/019-lint-phase3-server` Step 3 and deliberately **not** fixed there (scope discipline — a test-quality bug, not a lint fix). In the middleware auth test, the `password containing a colon → 200` case runs its assertions inside a `listen` callback that nothing awaits, so if the status assertion throws, the enclosing `new Promise` never resolves and the test times out rather than reporting the assertion. Phase 3's `no-misused-promises` fix preserved this exactly (voided IIFE — behaviour-preserving by design). Proper fix: take `reject` from the promise executor and call it from a `catch`, so a failed assertion fails the test with its own message. Small. |

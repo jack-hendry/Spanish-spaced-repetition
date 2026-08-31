@@ -27,16 +27,21 @@ async function main(): Promise<void> {
     console.log(`[server] serving app: ${config.staticDir ?? '(not built)'}`);
   });
 
-  // Flush debounced writes on shutdown so no review is lost.
-  const shutdown = async () => {
-    await store.flushAll();
-    server.close(() => process.exit(0));
+  // Flush debounced writes on shutdown so no review is lost. The listener must
+  // be void-returning (`process.on` does not await it), so the async work is an
+  // explicitly-voided IIFE rather than an async listener.
+  const shutdown = () => {
+    void (async () => {
+      await store.flushAll();
+      server.close(() => process.exit(0));
+    })();
   };
+
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
 }
 
-main().catch((err) => {
+main().catch((err: unknown) => {
   console.error('[server] fatal:', err);
   process.exit(1);
 });
