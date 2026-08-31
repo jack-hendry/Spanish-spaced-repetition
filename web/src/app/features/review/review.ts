@@ -86,8 +86,8 @@ export class Review {
   readonly deckName = computed(() => {
     const id = this.deckId();
     if (id === 'all') return 'All decks';
-    const deck = id ? this.store.deckById(id) : undefined;
-    return deck ? deck.name.split('::').pop()! : 'Study';
+    const deck = id != null && id !== '' ? this.store.deckById(id) : undefined;
+    return deck?.name.split('::').pop() ?? 'Study';
   });
 
   /** True when scheduling is paused. */
@@ -122,26 +122,30 @@ export class Review {
       const isRevealed = this.revealed();
       const host = this.questionHost()?.nativeElement;
 
-      if (!s?.isListeningFront || isRevealed || !host) {
+      if (s?.isListeningFront !== true || isRevealed || !host) {
         return;
       }
 
       const audios = Array.from(host.querySelectorAll('audio'));
       if (audios.length === 0) return;
 
-      const detachers: Array<() => void> = [];
+      const detachers: (() => void)[] = [];
       const playAt = (i: number): void => {
-        const el = audios[i];
+        const el = audios.at(i);
         if (!el) return;
         // Autoplay may be blocked by the browser; the visible `controls` stay
         // as the fallback, so a rejection here is expected and silent.
-        el.play().catch(() => {});
+        el.play().catch(() => undefined);
       };
       audios.forEach((el, i) => {
         if (i === audios.length - 1) return; // nothing to chain after the last clip
-        const onEnded = () => playAt(i + 1);
+        const onEnded = () => {
+          playAt(i + 1);
+        };
         el.addEventListener('ended', onEnded);
-        detachers.push(() => el.removeEventListener('ended', onEnded));
+        detachers.push(() => {
+          el.removeEventListener('ended', onEnded);
+        });
       });
       playAt(0);
 
@@ -162,14 +166,16 @@ export class Review {
   }
 
   private ctx(): ReviewContext {
-    const coll = this.store.collection()!;
+    const coll = this.store.collection();
+    if (!coll) throw new Error('ctx() called before collection loaded');
     return { now: Date.now(), today: todayNumber(coll) };
   }
 
   private async init(): Promise<void> {
     if (this.store.decks().length === 0) await this.store.load();
     const id = this.deckId();
-    const started = id === 'all' ? this.queue.startAll() : id ? this.queue.start(id) : false;
+    const started =
+      id === 'all' ? this.queue.startAll() : id != null && id !== '' ? this.queue.start(id) : false;
     if (!started) {
       this.loading.set(false);
       this.finished.set(true);
@@ -207,7 +213,8 @@ export class Review {
       ord: card.ord,
     });
 
-    const opts = this.queue.options!;
+    const opts = this.queue.options;
+    if (!opts) throw new Error('loadNext() called before queue started');
     const preview = SchedulerFactory.for(opts).preview(card, opts, ctx);
 
     this.revealed.set(false);
@@ -258,7 +265,8 @@ export class Review {
     if (!current || this.busy()) return;
     this.busy.set(true);
     try {
-      const opts = this.queue.options!;
+      const opts = this.queue.options;
+      if (!opts) return;
       const timeMs = Date.now() - this.answerStart;
       const { card: next, revlog } = SchedulerFactory.for(opts).answer(
         current.card,
@@ -296,40 +304,50 @@ export class Review {
     }
   }
 
-  onKey(e: KeyboardEvent): void {
-    if (this.finished() || this.loading()) return;
-    // While the user is typing an answer, only Enter (submit) and Escape (blur)
-    // are shortcuts — every other key, including '-', is answer text and must
-    // reach the input rather than triggering suspend/navigate.
+  /** Handle keys while typing an answer: Enter reveals, Escape blurs, others pass through. */
+  private handleTypeInKey(e: KeyboardEvent): boolean {
     const typingAnswer = (this.state()?.isTypeIn ?? false) && !this.revealed();
-    if (typingAnswer) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        this.reveal();
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        (e.target as HTMLElement | null)?.blur?.();
-      }
-      return;
+    if (!typingAnswer) return false;
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      this.reveal();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      (e.target as HTMLElement | null)?.blur();
     }
+    return true;
+  }
+
+  /** Handle navigation (Escape → home) and suspend ('-') keys. */
+  private handleNavigationAndSuspendKey(e: KeyboardEvent): boolean {
     if (e.key === 'Escape') {
       e.preventDefault();
       void this.router.navigateByUrl('/');
-      return;
+      return true;
     }
     if (e.key === '-') {
       e.preventDefault();
       void this.suspend();
-      return;
+      return true;
     }
-    if (!this.revealed()) {
-      // Non-type-in cards reveal on Space or Enter.
-      if (e.key === ' ' || e.key === 'Enter') {
-        e.preventDefault();
-        this.reveal();
-      }
-      return;
+    return false;
+  }
+
+  /** Handle pre-reveal keys: Space/Enter reveal, others stop processing. */
+  private handlePreRevealKey(e: KeyboardEvent): boolean {
+    if (this.revealed()) return false;
+
+    // Non-type-in cards reveal on Space or Enter.
+    if (e.key === ' ' || e.key === 'Enter') {
+      e.preventDefault();
+      this.reveal();
     }
+    return true; // Stop processing other handlers when not revealed.
+  }
+
+  /** Handle rating keys: 1-4 or Space/Enter to rate. */
+  private handleRatingKey(e: KeyboardEvent): void {
     const idx = ['1', '2', '3', '4'].indexOf(e.key);
     if (idx >= 0) {
       e.preventDefault();
@@ -338,5 +356,13 @@ export class Review {
       e.preventDefault();
       void this.rate('good');
     }
+  }
+
+  onKey(e: KeyboardEvent): void {
+    if (this.finished() || this.loading()) return;
+    if (this.handleTypeInKey(e)) return;
+    if (this.handleNavigationAndSuspendKey(e)) return;
+    if (this.handlePreRevealKey(e)) return;
+    this.handleRatingKey(e);
   }
 }

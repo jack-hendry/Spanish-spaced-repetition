@@ -153,3 +153,48 @@ any file under `core/scheduling/`, plus `collection.store.*` and
 `study-queue.service.*` — the glob, not just the `.ts`.** Under that reading
 the table above is exact.
 
+## Re-baseline (2026-08-28, Phase 1)
+
+**IMPORTANT:** These counts only reproduce from a tree with `node_modules` installed. Measured from a fresh worktree without them, type-aware rules silently stop firing and the total comes back 249 — plausible, reproducible, and wrong. **Run `npm install` before measuring; a tree without `node_modules` under-reports by 5 in `web/src`.**
+
+The original inventory recorded 254 total violations (152 `web/src` + 102 `server/src`) as of `origin/main` @ 66b1d70. After Step 1's calibration to the ESLint ruleset, that baseline has been re-verified and confirmed.
+
+### Post-calibration violations by phase
+
+Step 1 (calibration) and the widening of Phase 2's attribution rule (documented below) result in the following re-distribution:
+
+| Phase | Baseline | After calibration | After Phase 2 reassignment |
+|---|---|---|---|
+| Phase 1 | 121 | — | **50** |
+| Phase 2 | 31 | — | **24** |
+| Phase 3 | 102 | 41 | 41 |
+| Total | 254 | 115 | 115 |
+
+(`web/src` post-calibration total is 74; the Phase 1 / Phase 2 split of that 74 appears in the last column.)
+
+### Second widening of the attribution rule
+
+The Phase 2 attribution rule was initially: files under `core/scheduling/`, plus `collection.store.*` and `study-queue.service.*`. Applied mechanically, this gave 10 files / 31 violations. As documented in the section above ("One deliberate widening"), the spec widened it during execution to include test files (`*.spec.ts`) of Phase 2 subjects.
+
+The rule now widens again. CLAUDE.md's task-sizing language states that anything touching `card.due` or day-number math is **at least** Large regardless of file count. This enlarges the Phase 2 surface to include files whose lint hits are directly about card scheduling arithmetic:
+
+| File | Baseline | After calibration |
+|---|---|---|
+| `core/pause.service.spec.ts` | 19 | 13 |
+| `core/pause.service.ts` | 8 | 4 |
+| `core/stats.ts` | 2 | 0 |
+| `core/pause-shift.ts` | 1 | 1 |
+| `core/heatmap.ts` | 1 | 0 |
+| `core/heatmap.spec.ts` | 1 | 1 |
+| **Reassigned subtotal** | **32** | **19** |
+
+Note: `core/pause-shift.ts`'s single violation is the `coll.pausedAt!` non-null assertion, guarding a `card.due` calculation. Additionally, `core/stats.ts` and `core/heatmap.ts` have **zero** violations after calibration and are reassigned for their content — both perform `card.due` and day-number arithmetic — not for their lint hits. This exemplifies why Phase 2 owns files rather than violation counts.
+
+These six files move entirely into Phase 2. The reassignment is a reporting change, not remediation; Phase 2 will review these files for correctness, not work down the residual lint hits.
+
+**Reconciliation against the headline numbers:**
+- Baseline decomposition: Phase 1 121 − 32 = 89; Phase 2 31 + 32 = 63.
+- After calibration: Phase 1 50 + Phase 2 24 = 74 = the `web/src` post-calibration total.
+
+**Phase 2's file list is now 16 files, not 10.** Phase 0 did count all six — its totals are correct and unchanged — but attributed them to Phase 1, because its attribution rule was textual (`core/scheduling/` plus two named files) rather than behavioural. The ROADMAP's Phase 2 checkpoint must reflect this expansion before Phase 2 opens.
+

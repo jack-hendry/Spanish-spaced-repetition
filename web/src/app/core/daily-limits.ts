@@ -11,7 +11,8 @@ const EMPTY = (day: number): DeckDaily => ({ day, newStudied: 0, reviewStudied: 
 
 /** A deck's tally for `today`, treating a stale tally as zero. */
 export function dailyForToday(deck: Deck, today: number): DeckDaily {
-  return deck.daily && deck.daily.day === today ? deck.daily : EMPTY(today);
+  const daily = deck.daily;
+  return daily?.day === today ? daily : EMPTY(today);
 }
 
 /** Whether answering this card (in its pre-answer queue) spends a daily slot. */

@@ -99,12 +99,12 @@ describe('App', () => {
     const rows = Array.from(compiled.querySelectorAll('.row'));
     expect(rows.length).toBe(2);
 
-    const french = rows.find((r) => r.textContent?.includes('French'));
-    expect(french?.querySelectorAll('.count').length).toBe(0);
+    const french = rows.find((r) => r.textContent.includes('French'))!;
+    expect(french.querySelectorAll('.count').length).toBe(0);
 
-    const spanish = rows.find((r) => r.textContent?.includes('Spanish'));
-    expect(spanish?.querySelectorAll('.count').length).toBe(1);
-    expect(spanish?.querySelector('.count--new')?.textContent).toBe('1');
+    const spanish = rows.find((r) => r.textContent.includes('Spanish'))!;
+    expect(spanish.querySelectorAll('.count').length).toBe(1);
+    expect(spanish.querySelector('.count--new')?.textContent).toBe('1');
   });
 
   it('marks the Decks tab active on the default route', async () => {

@@ -23,7 +23,7 @@ interface RenderCtx {
 
 /** A field counts as "empty" (for conditionals) if blank after stripping tags. */
 function isEmpty(value: string | undefined): boolean {
-  if (!value) return true;
+  if (value == null || value === '') return true;
   return value.replace(/<[^>]*>/g, '').trim() === '';
 }
 
@@ -60,7 +60,7 @@ function applyFilter(filter: string, field: string, whole: string, ctx: RenderCt
     case 'text':
       return value;
     default:
-      return ctx.fields[field] !== undefined ? value : whole;
+      return Object.hasOwn(ctx.fields, field) ? value : whole;
   }
 }
 

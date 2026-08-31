@@ -67,10 +67,10 @@ describe('DeckList pause toggle', () => {
     fixture.detectChanges();
 
     const el = fixture.nativeElement as HTMLElement;
-    const btn = el.querySelector<HTMLButtonElement>('.pause-toggle');
-    expect(btn?.textContent?.trim()).toBe('Pause scheduling');
+    const btn = el.querySelector<HTMLButtonElement>('.pause-toggle')!;
+    expect(btn.textContent.trim()).toBe('Pause scheduling');
 
-    btn?.click();
+    btn.click();
     fixture.detectChanges();
     await flush();
 
@@ -84,10 +84,10 @@ describe('DeckList pause toggle', () => {
     fixture.detectChanges();
 
     const el = fixture.nativeElement as HTMLElement;
-    const btn = el.querySelector<HTMLButtonElement>('.pause-toggle');
-    expect(btn?.textContent?.trim()).toBe('Resume scheduling');
+    const btn = el.querySelector<HTMLButtonElement>('.pause-toggle')!;
+    expect(btn.textContent.trim()).toBe('Resume scheduling');
 
-    btn?.click();
+    btn.click();
     fixture.detectChanges();
     await flush();
 
@@ -101,12 +101,11 @@ describe('DeckList pause toggle', () => {
     fixture.detectChanges();
 
     let resolveResume!: () => void;
-    pauseService.resume.mockImplementation(
-      () =>
-        new Promise<void>((resolve) => {
-          resolveResume = resolve;
-        }),
-    );
+    pauseService.resume = vi.fn(async () => {
+      return new Promise<void>((resolve) => {
+        resolveResume = resolve;
+      });
+    });
 
     const el = fixture.nativeElement as HTMLElement;
     const btn = el.querySelector<HTMLButtonElement>('.pause-toggle')!;

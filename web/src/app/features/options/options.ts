@@ -81,7 +81,7 @@ export class Options {
   private async init(): Promise<void> {
     if (this.store.deckOptions().length === 0) await this.store.load();
     const id = this.optionsId();
-    const opts = id ? this.store.deckOptionsById(id) : undefined;
+    const opts = id != null && id !== '' ? this.store.deckOptionsById(id) : undefined;
     if (!opts) {
       this.notFound.set(true);
       this.loading.set(false);
@@ -148,7 +148,8 @@ export class Options {
 
   /** Build the patch from the current form state, preserving untouched fields. */
   private buildPatch(): Partial<DeckOptions> {
-    const o = this.original!;
+    const o = this.original;
+    if (!o) throw new Error('buildPatch() called before init() resolved options');
     const learning = parseSteps(this.learningSteps());
     const relearning = parseSteps(this.relearningSteps());
     return {

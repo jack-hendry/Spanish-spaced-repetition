@@ -16,6 +16,7 @@ export default tseslint.config(
       'specs/**',
       'tools/**',
       'eslint.config.mjs',
+      '.claude/worktrees/**', // a stale worktree is a second copy of the repo and gets linted as one
     ],
   },
   {
@@ -39,7 +40,8 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-vars': 'error',
       '@typescript-eslint/strict-boolean-expressions': 'error',
       complexity: ['error', 15],
-      eqeqeq: ['error', 'always'],
+      '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
+      eqeqeq: ['error', 'always', { null: 'ignore' }],
     },
   },
   {
@@ -62,7 +64,8 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-vars': 'error',
       '@typescript-eslint/strict-boolean-expressions': 'error',
       complexity: ['error', 15],
-      eqeqeq: ['error', 'always'],
+      '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
+      eqeqeq: ['error', 'always', { null: 'ignore' }],
       // These four are angular-conventions, made mechanical.
       '@angular-eslint/prefer-standalone': 'error',
       '@angular-eslint/prefer-inject': 'error',
@@ -109,6 +112,27 @@ export default tseslint.config(
   {
     files: ['web/src/app/**/*.html'],
     extends: [...angular.configs.templateRecommended],
-    rules: {},
+    rules: {
+      // same idiom as eqeqeq below; the template rule is configured separately
+      '@angular-eslint/template/eqeqeq': ['error', { allowNullOrUndefined: true }],
+    },
+  },
+  {
+    // Test-only relaxations. Each of these rules has a premise that does not
+    // hold in a spec: `x!.y` in a test IS an assertion and fails loudly when
+    // wrong, `unbound-method` fires on spy references, `() => {}` is a stub,
+    // a stub component is a class with no members, and an `async` test with
+    // no `await` is normal. Rules whose premise DOES still hold in a test --
+    // no-unsafe-*, no-explicit-any, no-unnecessary-condition,
+    // strict-boolean-expressions, eqeqeq -- stay on deliberately (Analyst.md
+    // D3 and §5.1).
+    files: ['**/*.spec.ts', '**/*.test.ts'],
+    rules: {
+      '@typescript-eslint/no-non-null-assertion': 'off',
+      '@typescript-eslint/unbound-method': 'off',
+      '@typescript-eslint/no-empty-function': 'off',
+      '@typescript-eslint/no-extraneous-class': 'off',
+      '@typescript-eslint/require-await': 'off',
+    },
   },
 );

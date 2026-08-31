@@ -25,7 +25,7 @@ export function renderCloze(text: string, activeOrd: number, reveal: boolean): s
   return text.replace(CLOZE_RE, (_whole, num: string, content: string, hint?: string) => {
     if (Number(num) !== activeOrd) return content;
     if (reveal) return `<span class="cloze">${content}</span>`;
-    const placeholder = hint ? `[${hint}]` : '[...]';
+    const placeholder = hint != null && hint !== '' ? `[${hint}]` : '[...]';
     return `<span class="cloze">${placeholder}</span>`;
   });
 }

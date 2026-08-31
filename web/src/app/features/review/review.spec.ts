@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, provideRouter } from '@angular/router';
 import { Component } from '@angular/core';
 import { of } from 'rxjs';
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach, type MockInstance } from 'vitest';
 
 import { Review } from './review';
 import { CollectionStore } from '../../core/collection.store';
@@ -138,7 +138,7 @@ describe('Review', () => {
     options: DeckOptions | null;
   };
   let apiFake: { submitReview: ReturnType<typeof vi.fn> };
-  let answerSpy: ReturnType<typeof vi.spyOn>;
+  let answerSpy: MockInstance<typeof Sm2Scheduler.prototype.answer>;
 
   /** One known card is served the first time next() is called; null after. */
   function seedQueueOneCard(c: Card = card()): void {
@@ -227,7 +227,7 @@ describe('Review', () => {
       expect(buttons.length).toBe(4);
       for (const btn of buttons) {
         expect(btn.disabled).toBe(true);
-        expect(btn.querySelector('.rate__ivl')?.textContent?.trim().length).toBeGreaterThan(0);
+        expect(btn.querySelector('.rate__ivl')?.textContent.trim().length).toBeGreaterThan(0);
       }
     });
 
@@ -343,21 +343,21 @@ describe('Review', () => {
       const fixture = await createReview();
       const el = fixture.nativeElement as HTMLElement;
       const breadcrumb = el.querySelector('.breadcrumb');
-      expect(breadcrumb?.textContent?.trim()).toBe('Spanish · Chapter 1');
+      expect(breadcrumb?.textContent.trim()).toBe('Spanish · Chapter 1');
     });
 
     it('shows the note-type kind uppercased in the chip', async () => {
       const fixture = await createReview();
       const el = fixture.nativeElement as HTMLElement;
       const chip = el.querySelector('.chip');
-      expect(chip?.textContent?.trim().toUpperCase()).toBe('CLOZE');
+      expect(chip?.textContent.trim().toUpperCase()).toBe('CLOZE');
     });
 
     it('shows the three legend counts', async () => {
       const fixture = await createReview();
       const el = fixture.nativeElement as HTMLElement;
       const items = Array.from(el.querySelectorAll('.legend__item')).map((li) =>
-        li.textContent?.replace(/\s+/g, ' ').trim(),
+        li.textContent.replace(/\s+/g, ' ').trim(),
       );
       expect(items).toContain('New 3');
       expect(items).toContain('Learning 1');
@@ -368,7 +368,7 @@ describe('Review', () => {
       const fixture = await createReview();
       const el = fixture.nativeElement as HTMLElement;
       const hint = el.querySelector('.helper');
-      expect(hint?.textContent?.trim()).toBe(
+      expect(hint?.textContent.trim()).toBe(
         'space to flip · 1–4 to grade · esc to exit · − suspend',
       );
     });
@@ -610,18 +610,19 @@ describe('Review', () => {
     it('renders "All done" message when finished and not paused', async () => {
       // Unpaused finished session: collection.pausedAt is null
       queueFake.next.mockReturnValue(null);
-      (storeFake.collection as any) = () => ({
-        dayCutoffHour: 4,
-        created: Date.now() - 30 * 86_400_000,
-        pausedAt: null,
-      });
+      (storeFake.collection as () => { dayCutoffHour: number; created: number; pausedAt: null }) =
+        () => ({
+          dayCutoffHour: 4,
+          created: Date.now() - 30 * 86_400_000,
+          pausedAt: null,
+        });
 
       const fixture = await createReview();
       const el = fixture.nativeElement as HTMLElement;
       const doneBlock = el.querySelector('.done');
       expect(doneBlock).toBeTruthy();
-      expect(doneBlock?.querySelector('h2')?.textContent?.trim()).toBe('All done');
-      expect(doneBlock?.querySelector('p')?.textContent?.trim()).toBe(
+      expect(doneBlock?.querySelector('h2')?.textContent.trim()).toBe('All done');
+      expect(doneBlock?.querySelector('p')?.textContent.trim()).toBe(
         'No more cards due in this deck right now.',
       );
     });
@@ -629,17 +630,18 @@ describe('Review', () => {
     it('renders "Scheduling is paused" message when finished and paused', async () => {
       // Paused finished session: collection.pausedAt is set
       queueFake.next.mockReturnValue(null);
-      (storeFake.collection as any) = () => ({
-        dayCutoffHour: 4,
-        created: Date.now() - 30 * 86_400_000,
-        pausedAt: Date.now(),
-      });
+      (storeFake.collection as () => { dayCutoffHour: number; created: number; pausedAt: number }) =
+        () => ({
+          dayCutoffHour: 4,
+          created: Date.now() - 30 * 86_400_000,
+          pausedAt: Date.now(),
+        });
 
       const fixture = await createReview();
       const el = fixture.nativeElement as HTMLElement;
       const pausedBlock = el.querySelector('.paused');
       expect(pausedBlock).toBeTruthy();
-      expect(pausedBlock?.textContent?.trim()).toContain('Scheduling is paused');
+      expect(pausedBlock?.textContent.trim()).toContain('Scheduling is paused');
     });
   });
 });

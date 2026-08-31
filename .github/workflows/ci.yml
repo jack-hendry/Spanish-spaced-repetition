@@ -43,14 +43,23 @@ jobs:
           BEFORE_SHA: ${{ github.event.before }}
 
   lint:
-    # Scoped to tools/state_rotate.py -- see the SCOPE comment in ruff.toml for
-    # why the content pipeline (scrape.py, tools/convert_apkg.py) is not linted
-    # yet. TypeScript formatting is checked in the `tests` job (`npm run
-    # format:check`, Prettier); an ESLint pass for web/ and server/ is still a
-    # separate, undecided step.
+    # Ruff and ESLint linting gates. Ruff is scoped to tools/state_rotate.py —
+    # see the SCOPE comment in ruff.toml for why the content pipeline
+    # (scrape.py, tools/convert_apkg.py) is not linted yet. ESLint's `lint:ci`
+    # gates the Phase 1 directories cleaned so far and grows per batch, mirroring
+    # ruff.toml's include; core/scheduling/ and the six card.due files
+    # (pause-shift, pause.service, heatmap, stats, collection.store,
+    # study-queue.service) are Phase 2 and join at that phase; the full-repo
+    # ESLint gate is Phase 4. TypeScript formatting is checked in the `tests`
+    # job (`npm run format:check`, Prettier).
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -59,6 +68,7 @@ jobs:
       - run: pip install ruff==0.16.4
       - run: ruff check .
       - run: ruff format --check tools/state_rotate.py
+      - run: npm run lint:ci
 
   hooks:
     # The delegation hook is a regex heuristic over shell command strings. A

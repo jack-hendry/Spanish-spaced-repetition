@@ -139,53 +139,16 @@ is enough; the cost is that renaming a deck recolours it.
 
 **AD-010 — A stale persisted `card.left` is clamped once, at the source, by one shared helper — not guarded at each call site.** → moved to `STATE-ARCHIVE.md`
 
-**AD-016 — `tasks.md` steps carry a mandatory `**Status:**` field, and durable
-findings are promoted into `STATE.md` as they happen, not saved for archive
-time.** (2026-08-27, `specs/014-spec-continuity`) Motivated by resuming
-`specs/013-server-hardening` mid-run: with no per-step marker, resuming after
-a session runs out of budget meant re-deriving progress from scratch —
-grepping the codebase for what each step should have created, one step at a
-time (~10 tool calls before any real work could resume). `specs/TEMPLATE.md`
-now documents `**Status:** not started | in progress | done (<date>,
-<evidence>)`, mandatory like `Model:`, with the same shape of grep-based gate
-documented (not yet hooked up — a follow-up). A resuming session trusts the
-marker to find *where* to resume, then re-verifies only that one boundary
-step's Done-when — the checkpoint pattern at single-step grain instead of
-every-4-steps. Paired with Rule 6 (above, in "Rules for this file"): the
-Archive ritual's step 2 changed from "add the `AD`/`L` entries" to "confirm
-they're already here," because `specs/013-server-hardening/CriticReview.md`
-already held real, verified decisions that would have been invisible to any
-future session had that spec been abandoned before archiving — see
-`specs/014-spec-continuity/Analyst.md` §1 for the concrete incident. Archived
-2026-08-27 to `specs/archive/2026-08-27-014-spec-continuity/` — this entry
-and `L-009` below were already recorded before the archive move, confirming
-Rule 6 rather than adding anything new at archive time.
+**AD-016 — `tasks.md` steps carry a mandatory `** → moved to `STATE-ARCHIVE.md`
 **AD-011 — Hardening is the default; `DEV_MODE=1` is the only opt-out.** → moved to `STATE-ARCHIVE.md`
 
 **AD-012 — A hardened server with no credentials refuses to boot.** → moved to `STATE-ARCHIVE.md`
 
 **AD-013 — `express.json` is mounted *after* auth, deliberately.** → moved to `STATE-ARCHIVE.md`
 
-**AD-014 — `POST /api/import` is not registered when hardened, rather than
-gated behind a check.** (2026-08-27, `specs/013-server-hardening`, §2.6)
-`buildRouter(store, { allowImport })` defaults to `false` and registers the route
-only when explicitly opted in; `createApp` passes
-`allowImport: !config.hardened`. The route calls `runImport` →
-`store.replaceAll(...)`, a whole-store rewrite with no undo, and there is no
-legitimate reason to run it against a deployed instance — imports happen on the
-desktop, against the desktop's data dir. A route that does not exist cannot be
-reached by a mistake, a bug, or a leaked credential, and its 404 is
-indistinguishable from any other unknown path, so it does not advertise that a
-gated admin route exists.
+**AD-014 — `POST /api/import` is not registered when hardened, rather than gated behind a check.** → moved to `STATE-ARCHIVE.md`
 
-**AD-015 — `GET /api/health` is anonymous, and is the only such route.**
-(2026-08-27, `specs/013-server-hardening`, §2.2) Registered before every piece of
-hardening middleware. Fly's HTTP health checks cannot present credentials, and a
-check that 401s marks the machine unhealthy forever. It returns exactly
-`{ ok: true }` and must never be extended to report store contents, counts,
-versions or paths — it leaks liveness and nothing else. This is the one
-deliberate hole in "auth in front of everything", recorded as such rather than
-buried. Worth revisiting at Phase 1 whether a Fly **TCP** check would close it.
+**AD-015 — `GET /api/health` is anonymous, and is the only such route.** → moved to `STATE-ARCHIVE.md`
 
 **AD-017 — A worktree is removed when its branch merges, and any pre-existing
 worktree is checked against its own `HEAD` before anything is committed from
@@ -254,6 +217,33 @@ instead of trading against it. Generalises: when a spec produces something later
 work depends on, ask which folder's lifetime matches the artifact's, and put it
 there — the spec folder is for the spec's own reasoning.
 
+**AD-020 — A lint ruleset is calibrated against the codebase before it is
+enforced; loosening on evidence is part of adoption, not a retreat from it.**
+(2026-08-28, `specs/017-lint-phase1-web`, Phase 1 of
+`specs/015-typescript-lint-rollout`, D1–D4) Phase 0 adopted the **full** ruleset
+report-only, so Phase 1's first act is calibration, not remediation: sort every
+violation class into *the code is wrong* or *the rule is miscalibrated here*.
+Three of 25 rules were the latter and carried 139 of 254 violations. `eqeqeq` →
+`{ null: 'ignore' }` (every hit was the `x != null` idiom; the compliant fix is
+a live bug — L-014). `restrict-template-expressions` → `{ allowNumber: true }`
+(all 43 hits were `${aNumber}`; `strictTypeChecked` sets `allowNumber: false`,
+typescript-eslint's own default is `true`). Five rules off for `*.spec.ts` only,
+each whose premise fails in a test. Result: 254 → 115, no code edited, four
+directories immediately gateable.
+
+What keeps this from being score-gaming is the counter-example:
+`strict-boolean-expressions` was **not** relaxed though it would have cleared 11
+more free — the roadmap names it, its hits are genuine, and one
+(`review.ts:135`) was a real finding. The test is whether the change makes the
+rule describe this codebase's conventions more accurately, or just makes the
+number smaller.
+
+Corollary: **calibration is global, a phase's file list is not.** The same edits
+drop Phase 2 31 → 5 with no scheduling file reviewed. A relaxation removes a
+*report*, not a defect — but it removes the prompt to look, so Phase 2 keeps its
+full list (widened to 16 files, see AD-018) and reviews files, not residual
+hits; recorded in `INVENTORY.md` so the drop never reads as progress.
+
 ## Blockers
 
 (none open)
@@ -272,6 +262,8 @@ there — the spec folder is for the spec's own reasoning.
 - **L-010** — A stale worktree's `git status` is indistinguishable from deliberate deletions.
 - **L-011** — An acceptance check that forbids a required change teaches the executor to delete the requirement.
 - **L-012** — A total that reconciles says nothing about how it was decomposed.
+- **L-013** — A type-aware linter in a tree with no dependencies installed reports a smaller number, not an error.
+- **L-014** — A lint rule can make the behaviour-changing edit the compliant one.
 
 ## Quick Tasks
 
