@@ -234,6 +234,28 @@ from the script cannot prove the gate's scope changed, only that everything it
 already covered is clean; the change is asserted on script text, not behavior
 (see L-015).
 
+**AD-022 — Phase 4 closed `specs/015-typescript-lint-rollout/ROADMAP.md`: the
+CI gate is now the full repo (`eslint .`), and `eslint.config.mjs`/
+`tools/shoot.mjs` were clean the moment they got a ruleset at all.**
+(2026-08-31, `specs/020-lint-phase4-full-gate/`, all 5 steps completed)
+`lint:ci` moved from `eslint web/src server/src` to `eslint .`. The only two
+JS/TS-family files at the repo root and in `tools/` — previously excluded by
+name in `eslint.config.mjs`'s own `ignores` array — got a new config block
+(`js.configs.recommended` plus four hand-declared Node globals; no
+type-checked preset applies since neither file is covered by any
+`tsconfig.json`) and carried **zero** violations under it, so this phase was
+pure CI-gate config, not remediation. 280 tests, the build, and
+`format:check` unchanged throughout. Of the roadmap's four inherited open
+questions, one is now a closed decision rather than deferred work:
+`web/src/index.html` stays outside the gate because it is the Angular CLI's
+static host shell (no bindings, no directives), not a component template —
+`angular-eslint`'s `templateRecommended` ruleset, which the existing
+`web/src/app/**/*.html` glob applies, has nothing in it to check there. The
+other three (`noUncheckedIndexedAccess`, test-file
+`no-unsafe-*`/`no-explicit-any`, `templateAccessibility`) remain
+deliberately open — no new evidence surfaced in this phase to reopen any of
+them.
+
 ## Blockers
 
 (none open)

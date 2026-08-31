@@ -14,8 +14,6 @@ export default tseslint.config(
       '**/.angular/**',
       'data/**',
       'specs/**',
-      'tools/**',
-      'eslint.config.mjs',
       '.claude/worktrees/**', // a stale worktree is a second copy of the repo and gets linted as one
     ],
   },
@@ -133,6 +131,20 @@ export default tseslint.config(
       '@typescript-eslint/no-empty-function': 'off',
       '@typescript-eslint/no-extraneous-class': 'off',
       '@typescript-eslint/require-await': 'off',
+    },
+  },
+  {
+    // Plain Node scripts — no tsconfig covers them, so no type-checked
+    // preset applies; recommended plus the Node globals they actually use.
+    files: ['eslint.config.mjs', 'tools/*.mjs'],
+    extends: [js.configs.recommended],
+    languageOptions: {
+      globals: {
+        process: 'readonly',
+        console: 'readonly',
+        fetch: 'readonly',
+        AbortSignal: 'readonly',
+      },
     },
   },
 );
