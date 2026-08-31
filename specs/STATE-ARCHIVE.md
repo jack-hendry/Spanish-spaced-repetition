@@ -157,6 +157,33 @@ future session had that spec been abandoned before archiving — see
 and `L-009` below were already recorded before the archive move, confirming
 Rule 6 rather than adding anything new at archive time.
 
+**AD-017 — A worktree is removed when its branch merges, and any pre-existing
+worktree is checked against its own `HEAD` before anything is committed from
+it.** (2026-08-27, discovered while resuming `specs/014-spec-continuity`)
+`worktree-spec-memory-tracking` was merged into `feature/SSD-habit-tracker-algined`
+(PR #5) and on into `main` (PR #6), but the worktree was kept. Its branch ref
+moved to the merge commit `9cb0e05` without the checkout being refreshed, so
+the index and working tree stayed byte-identical to `228360b` — the pre-013
+state. `git status` there showed a 24-file phantom revert, including staged
+deletions of `server/src/app.ts`, `server/src/config.ts`,
+`server/src/middleware/auth.ts` and all of
+`specs/archive/2026-08-27-013-server-hardening/`. A commit from that worktree
+would have landed as a clean revert of everything AD-011–AD-015 describe.
+Two rules, because one does not cover the other: **(1)** when a branch merges,
+`git worktree remove` it — not `rm -rf`, which leaves `.git/worktrees/<name>/`
+behind and a phantom row in `git worktree list` until someone runs `prune`;
+`git worktree unlock` first if it is locked — then `git branch -d` the branch
+too, since removing a worktree leaves its ref behind and `-d` refuses if it
+turns out not to be merged. **(2)** on entering any worktree
+this session did not just create, `git diff --cached --quiet` must succeed
+before anything is committed from it. The creation side needs no rule:
+`worktree.baseRef` is unset, so `EnterWorktree` already branches from
+`origin/main`. Note that merging is the *occasion*, not the mechanism — a
+moving ref is — so rule (2) is what covers the unmerged case, and it is not
+hypothetical: this same worktree branched from `30d1eea` and sat there while
+`011c0c0` landed on the sibling branch, stale-based long before PR #5. See
+L-010.
+
 ## Blockers
 
 (nothing rotated yet)

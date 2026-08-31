@@ -198,6 +198,41 @@ These six files move entirely into Phase 2. The reassignment is a reporting chan
 
 **Phase 2's file list is now 16 files, not 10.** Phase 0 did count all six — its totals are correct and unchanged — but attributed them to Phase 1, because its attribution rule was textual (`core/scheduling/` plus two named files) rather than behavioural. The ROADMAP's Phase 2 checkpoint must reflect this expansion before Phase 2 opens.
 
+## Final (2026-08-31, Phase 3 complete)
+
+Every phase has landed. Measured with `node_modules` installed (see the
+2026-08-28 warning above — a tree without them under-reports):
+
+| Workspace | Baseline | After calibration | Final |
+|---|---|---|---|
+| `web/src` | 152 | 74 | **0** |
+| `server/src` | 102 | 41 | **0** |
+| **Total** | **254** | **115** | **0** |
+
+Phase attribution, closed out:
+
+| Phase | Spec | Surface | Result |
+|---|---|---|---|
+| 0 | `016-lint-audit` | audit only, no code | baseline 254 recorded |
+| 1 | `017-lint-phase1-web` | non-scheduling `web/src` | 121 → 0 (139 of the 254 removed repo-wide by calibration alone) |
+| 2 | `018-lint-phase2-scheduling` | `core/scheduling/` + adjacent, 24 files | 24 → 0 |
+| 3 | `019-lint-phase3-server` | `server/src`, 11 files | 41 → 0 |
+
+**Phase 3's 11 files** (post-calibration counts): `import/transform.ts` 10,
+`routes/index.ts` 6, `app.ts` 5, `middleware/auth.test.ts` 5,
+`app.integration.test.ts` 3, `index.ts` 3, `middleware/auth.ts` 3,
+`routes/notes.integration.test.ts` 2, `routes/resume.integration.test.ts` 2,
+`import/cli.ts` 1, `store/seed.test.ts` 1.
+
+The five files Phase 0 attributed to Phase 3 that calibration alone took to
+zero — including `store/file-store.ts`, the roadmap's "extra care" file — were
+never edited. They are gated now regardless, because the gate names the
+directory rather than a list of remediated files (Phase 2's D6, carried into
+Phase 3's D3).
+
+**The gate is `eslint web/src server/src`.** Phase 4 owns what is left: the
+repo root, `tools/`, and `web/src/index.html`.
+
 ## Phase 2 exit (2026-08-31)
 
 Phase 2 completed all 14 steps, fixing violations across the seven scheduling-core files carrying them. Final counts:

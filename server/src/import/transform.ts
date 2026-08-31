@@ -24,7 +24,9 @@ const NOTE_TYPES_BY_ID = new Map(buildSeedNoteTypes().map((nt) => [nt.id, nt]));
 /** Map a book's optional `noteType` hint to a seeded note type id. */
 function resolveNoteType(hint: string | undefined): NoteType {
   const id = hint === 'spanish2both' ? NOTE_TYPE_IDS.spanish2both : NOTE_TYPE_IDS.spanish2;
-  return NOTE_TYPES_BY_ID.get(id)!;
+  const noteType = NOTE_TYPES_BY_ID.get(id);
+  if (!noteType) throw new Error(`seed note type missing: ${id}`);
+  return noteType;
 }
 
 export interface ScrapedCard {
@@ -79,12 +81,12 @@ const IMAGE_RE = /\.(jpe?g|png|gif|webp|svg)$/i;
 
 /** A value is usable media only if it's a clean http(s) URL (no junk text). */
 function isUrl(v: string | null | undefined): v is string {
-  return !!v && /^https?:\/\/\S+$/.test(v) && !/\s/.test(v);
+  return v != null && v !== '' && /^https?:\/\/\S+$/.test(v) && !/\s/.test(v);
 }
 
 /** A site-relative media path served by the app (e.g. "/media/foo.mp3"). */
 function isLocalMedia(v: string | null | undefined): v is string {
-  return !!v && /^\/media\/\S+$/.test(v) && !/\s/.test(v);
+  return v != null && v !== '' && /^\/media\/\S+$/.test(v) && !/\s/.test(v);
 }
 
 function mediaImage(url: string | null): string {
@@ -100,7 +102,8 @@ function mediaAudio(url: string | null): string {
 
 interface DeckRegistry {
   byName: Map<string, Deck>;
-  order: string[];
+  /** Insertion order. Holds the decks themselves so it cannot drift from `byName`. */
+  order: Deck[];
 }
 
 /**
@@ -115,23 +118,96 @@ function nextNewPosition(cards: Card[]): number {
   return max + 1;
 }
 
+/**
+ * Build the note for one scraped card. `guid` is the identity hash — see the
+ * header comment; `prior` preserves the existing note's id and creation time so
+ * re-import reconciles in place.
+ */
+function buildNote(
+  sc: ScrapedCard,
+  guid: string,
+  prior: Note | undefined,
+  noteTypeId: string,
+  now: number,
+): Note {
+  return {
+    id: prior?.id ?? 'n' + guid,
+    noteTypeId,
+    fields: {
+      SideA: sc.SideA ?? '',
+      SideAAudio: mediaAudio(sc.SideAAudio),
+      SideAImage: mediaImage(sc.SideAImage),
+      SideB: sc.SideB ?? '',
+      SideBAudio: mediaAudio(sc.SideBAudio),
+      SideBImage: mediaImage(sc.SideBImage),
+    },
+    tags: [],
+    created: prior?.created ?? now,
+    modified: now,
+    guid,
+  };
+}
+
+/**
+ * Build one card for a note. An existing card keeps ALL its scheduling state
+ * (`due`, `queue`, `type`, `reps`, `ease`, `interval`, FSRS fields) and only has
+ * its placement refreshed; a fresh card gets the standard "new" defaults, with
+ * `due` as its position in the new-card queue (see `scheduling-domain`).
+ * The caller advances `newCardPosition` only when a fresh card is built.
+ */
+function buildCard(
+  cardId: string,
+  priorCard: Card | undefined,
+  noteId: string,
+  deckId: string,
+  ord: number,
+  now: number,
+  newCardPosition: number,
+): Card {
+  if (priorCard) {
+    // Preserve scheduling state; only refresh placement.
+    return { ...priorCard, noteId, deckId, ord, modified: now };
+  }
+  return {
+    id: cardId,
+    noteId,
+    deckId,
+    ord,
+    type: 'new',
+    queue: 'new',
+    due: newCardPosition,
+    reps: 0,
+    lapses: 0,
+    left: 0,
+    lastReviewed: null,
+    created: now,
+    modified: now,
+    ease: 2500,
+    interval: 0,
+    stability: null,
+    difficulty: null,
+  };
+}
+
 /** Ensure a deck (and all its ancestors) exists; return its id. */
 function ensureDeck(
   reg: DeckRegistry,
   fullName: string,
   existingByName: Map<string, Deck>,
 ): string {
-  if (reg.byName.has(fullName)) return reg.byName.get(fullName)!.id;
+  const cached = reg.byName.get(fullName);
+  if (cached) return cached.id;
 
   const parts = fullName.split(DECK_SEP);
   let parentId: string | null = null;
   let acc = '';
   for (let i = 0; i < parts.length; i++) {
     acc = i === 0 ? parts[0] : acc + DECK_SEP + parts[i];
-    if (!reg.byName.has(acc)) {
+    let deck = reg.byName.get(acc);
+    if (!deck) {
       // Reuse existing id (and collapsed state) so re-import is stable.
       const prior = existingByName.get(acc);
-      const deck: Deck = {
+      deck = {
         id: prior?.id ?? 'd' + hash(acc),
         name: acc,
         parentId,
@@ -139,11 +215,12 @@ function ensureDeck(
         collapsed: prior?.collapsed ?? false,
       };
       reg.byName.set(acc, deck);
-      reg.order.push(acc);
+      reg.order.push(deck);
     }
-    parentId = reg.byName.get(acc)!.id;
+    parentId = deck.id;
   }
-  return reg.byName.get(fullName)!.id;
+  // `parts` always has at least one element, so the loop always assigns.
+  return parentId ?? '';
 }
 
 export function transformBooks(
@@ -174,70 +251,26 @@ export function transformBooks(
     const templateByOrd = new Map(noteType.templates.map((t) => [t.ord, t]));
 
     const walk = (node: ScrapedNode, ancestorPath: string[]): void => {
-      const carriesCards = Array.isArray(node.cards) && node.cards.length > 0;
-
-      if (carriesCards) {
+      if (Array.isArray(node.cards) && node.cards.length > 0) {
         // Collapse this node into its parent: the deck is the ancestor path.
         const deckName = ancestorPath.length > 0 ? ancestorPath.join(DECK_SEP) : rootTitle;
         const deckId = ensureDeck(reg, deckName, existingDecksByName);
 
-        for (const sc of node.cards!) {
+        for (const sc of node.cards) {
           const guid = hash(`${book.slug}:${sc.Card_ID}`);
           const prior = existingNotesByGuid.get(guid);
-          const noteId = prior?.id ?? 'n' + guid;
-
-          const note: Note = {
-            id: noteId,
-            noteTypeId: noteType.id,
-            fields: {
-              SideA: sc.SideA ?? '',
-              SideAAudio: mediaAudio(sc.SideAAudio),
-              SideAImage: mediaImage(sc.SideAImage),
-              SideB: sc.SideB ?? '',
-              SideBAudio: mediaAudio(sc.SideBAudio),
-              SideBImage: mediaImage(sc.SideBImage),
-            },
-            tags: [],
-            created: prior?.created ?? now,
-            modified: now,
-            guid,
-          };
+          const note = buildNote(sc, guid, prior, noteType.id, now);
           notes.push(note);
 
           for (const ord of ords) {
-            const cardId = 'c' + guid + '-' + ord;
+            const cardId = `c${guid}-${ord}`;
             const priorCard = existingCardsById.get(cardId);
             const cardDeckId = templateByOrd.get(ord)?.deckId ?? deckId;
-            if (priorCard) {
-              // Preserve scheduling state; only refresh placement.
-              cards.push({
-                ...priorCard,
-                noteId,
-                deckId: cardDeckId,
-                ord,
-                modified: now,
-              });
-            } else {
-              cards.push({
-                id: cardId,
-                noteId,
-                deckId: cardDeckId,
-                ord,
-                type: 'new',
-                queue: 'new',
-                due: newCardPosition++,
-                reps: 0,
-                lapses: 0,
-                left: 0,
-                lastReviewed: null,
-                created: now,
-                modified: now,
-                ease: 2500,
-                interval: 0,
-                stability: null,
-                difficulty: null,
-              });
-            }
+            cards.push(
+              buildCard(cardId, priorCard, note.id, cardDeckId, ord, now, newCardPosition),
+            );
+            // Only a freshly-built card consumes a new-queue position.
+            if (!priorCard) newCardPosition++;
           }
         }
       }
@@ -252,7 +285,7 @@ export function transformBooks(
     walk(book.root, []);
   }
 
-  const decks = reg.order.map((name) => reg.byName.get(name)!);
+  const decks = [...reg.order];
   // The Listening deck is never an ancestor-path deck (it's not derived from
   // any book's menu tree), so it would otherwise be silently dropped here —
   // decks.json is fully replaced by this function's output. Carry it through

@@ -24,16 +24,25 @@ function unauthorized(res: Response): void {
 export function basicAuth(expectedUser: string, expectedPassword: string): RequestHandler {
   return (req: Request, res: Response, next) => {
     const [scheme, encoded] = (req.get('authorization') ?? '').split(' ');
-    if (!encoded || scheme.toLowerCase() !== 'basic') return unauthorized(res);
+    if (!encoded || scheme.toLowerCase() !== 'basic') {
+      unauthorized(res);
+      return;
+    }
 
     const decoded = Buffer.from(encoded, 'base64').toString('utf8');
     const sep = decoded.indexOf(':');
-    if (sep === -1) return unauthorized(res);
+    if (sep === -1) {
+      unauthorized(res);
+      return;
+    }
 
     // Both comparisons always run — no short-circuit between them.
     const userOk = safeEqual(decoded.slice(0, sep), expectedUser);
     const passOk = safeEqual(decoded.slice(sep + 1), expectedPassword);
-    if (!(userOk && passOk)) return unauthorized(res);
+    if (!(userOk && passOk)) {
+      unauthorized(res);
+      return;
+    }
 
     next();
   };

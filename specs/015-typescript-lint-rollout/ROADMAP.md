@@ -114,11 +114,26 @@ Everything Phase 0 flagged under the first non-negotiable above.
 
 Same batching approach as Phase 1, applied to `server/src/`.
 
-- [ ] Batch plan TBD, same caveat as Phase 1 — size against Phase 0's
+- [x] Batch plan TBD, same caveat as Phase 1 — size against Phase 0's
       inventory, not a guess made now.
-- [ ] Extra care flag (not a Large-task trigger, just attention) on
+      → Executed as `specs/019-lint-phase3-server/`. 41 violations, 11 files,
+      seven code steps sized by concern rather than by directory: autofix (13),
+      scattered source (5), scattered test (7), `routes/index.ts` (6),
+      `transform.ts` mechanical (9), `transform.ts` complexity (1), plus a
+      corpus-equivalence proof step that changed no production code.
+- [x] Extra care flag (not a Large-task trigger, just attention) on
       `store/file-store.ts` — debounced writes, atomic temp-file+rename —
       don't let a mechanical lint fix change write timing or ordering.
+      → **Discharged by not editing it.** Phase 1's calibration had already
+      taken it to zero violations, so no fix touched it. Recorded rather than
+      left silent, since "the flag never fired" and "the flag was ignored" look
+      identical afterwards.
+
+**Phase 3 is done** (2026-08-31). `server/src` 41 → 0; the repo total across
+both workspaces is **0**. `lint:ci` is now `eslint web/src server/src`. 280
+tests unchanged from the spec's first step to its last, and the importer
+refactor was proven byte-identical over the real 3,638-card corpus rather than
+on the strength of its 9 unit tests.
 
 ## Phase 4 — Full gate
 
@@ -126,8 +141,24 @@ Same batching approach as Phase 1, applied to `server/src/`.
       incremental `include`-list scoping and gate the full ruleset on every
       push, the same way `ci.yml`'s Python `lint` job already gates
       `tools/state_rotate.py`.
-- [ ] Confirm zero known violations remain across both workspaces before
-      flipping this on.
+- [x] Confirm zero known violations remain across both workspaces before
+      flipping this on. → **Confirmed 2026-08-31**: `web/src` 0 (Phase 2),
+      `server/src` 0 (Phase 3).
+
+**What Phase 4 inherits**, now that both workspaces are clean:
+
+- The **repo root and `tools/`** — the only surface `lint:ci` still does not
+  name. `npm run lint` (`eslint .`) already covers it report-only.
+- **`web/src/index.html`** — outside the config's `web/src/app/**/*.html`
+  template glob (Phase 2's finding).
+- **`noUncheckedIndexedAccess` is off** (`server/tsconfig.json`). Four of Phase
+  3's violations existed *only* because an out-of-bounds array index is typed
+  as present; `.at(0)` fixed them one site at a time, the flag would fix the
+  class. Re-types every array index in both workspaces, so it is its own spec.
+- **`no-unsafe-*` / `no-explicit-any` in test files** stay ON, unresolved from
+  Phase 1 §5.1. Phase 3 inherited none of this debt — `server/src` had zero of
+  those — so it is entirely a `web/` question.
+- **`templateAccessibility`** — excluded from the Phase 0 ruleset by design.
 
 ## Discovered (append here as we find things)
 
@@ -190,3 +221,32 @@ Same batching approach as Phase 1, applied to `server/src/`.
 - (2026-08-31) **`web/src/index.html` is outside ESLint's reach.** The config's
   template glob is `web/src/app/**/*.html`. The root `index.html` is not
   covered. Not closed in Phase 2; a candidate for Phase 4.
+- (2026-08-31) **Phase 3 landed as `specs/019-lint-phase3-server/`.**
+  `server/src` 41 → 0; repo total 0; `lint:ci` is now
+  `eslint web/src server/src`. 280 tests unchanged throughout.
+- (2026-08-31) **The prediction in the 2026-08-29 note held exactly.**
+  `server/src` did have 4 `no-unnecessary-condition` traps, and all four were
+  the "type is lying" kind rather than the "guard is genuinely dead" kind:
+  three `req.body as {...}` casts asserting more than an untrusted client can
+  send, and one array-index chain that `noUncheckedIndexedAccess` being off
+  types as always-present. Every one was fixed by narrowing the type, never by
+  deleting the guard. The `/collection/resume` case is the sharpest: deleting
+  its `?? []` would throw mid-loop with `card.due` already mutated in memory.
+- (2026-08-31) **A harden pass must re-derive, not re-reason (L-016).** Phase
+  3's own Analyst draft prescribed a fix that cannot work — a
+  `const x: T | undefined = arr[0]` annotation, which TypeScript narrows back
+  to the initializer's type — and applying it took the file from 2 violations
+  to 4. Phase 1 had already recorded that exact wall (its R8/R12) and the repo
+  already contained the working instrument (`.at(0)`, from `review.ts:135`).
+  Reasoning reproduced a known-bad answer; running it refuted it in under a
+  minute. Every one of Phase 3's 41 fixes was consequently executed and
+  reverted *before* `tasks.md` was written, and no step needed rewriting during
+  the run.
+- (2026-08-31) **`eslint --fix` output is prettier-dirty.** 13 of Phase 3's 41
+  were autofixable (all one rule). The fixer emits `{ f(); return; }` on one
+  line and `npm run format:check` then fails on exactly the files `--fix`
+  touched. A step that verifies only ESLint reports success over a tree that
+  fails CI — so autofix must be followed by `npm run format` in the same step.
+- (2026-08-31) **Deleting `?? []` from a `card.due` writer is a data-loss bug,
+  not a style change** — recorded because the lint rule actively recommends it
+  and only reading the call site distinguishes the cases.

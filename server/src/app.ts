@@ -22,9 +22,15 @@ import type { FileStore } from './store/file-store.js';
  * local verification runs over http://localhost.
  */
 const forceHttps: RequestHandler = (req, res, next) => {
-  if (req.secure || req.get('x-forwarded-proto') === 'https') return next();
+  if (req.secure || req.get('x-forwarded-proto') === 'https') {
+    next();
+    return;
+  }
   const host = req.get('host') ?? '';
-  if (host.startsWith('localhost') || host.startsWith('127.0.0.1')) return next();
+  if (host.startsWith('localhost') || host.startsWith('127.0.0.1')) {
+    next();
+    return;
+  }
   res.redirect(308, `https://${host}${req.originalUrl}`);
 };
 
@@ -94,7 +100,7 @@ export function createApp(store: FileStore, config: ServerConfig): express.Expre
 
   // Serve the built Angular app (web/dist/web/browser). Absent in dev, where
   // the Angular dev server on :4200 proxies /api and /media here instead.
-  if (config.staticDir) {
+  if (config.staticDir != null) {
     const staticDir = config.staticDir;
     app.use(express.static(staticDir, { index: false, dotfiles: 'deny' }));
 
@@ -102,8 +108,14 @@ export function createApp(store: FileStore, config: ServerConfig): express.Expre
     // 404. Written as middleware because Express 5 rejects the bare '*' route
     // pattern this would otherwise use.
     app.use((req, res, next) => {
-      if (req.method !== 'GET' && req.method !== 'HEAD') return next();
-      if (req.path.startsWith('/api/') || req.path.startsWith('/media/')) return next();
+      if (req.method !== 'GET' && req.method !== 'HEAD') {
+        next();
+        return;
+      }
+      if (req.path.startsWith('/api/') || req.path.startsWith('/media/')) {
+        next();
+        return;
+      }
       res.sendFile(join(staticDir, 'index.html'));
     });
   }

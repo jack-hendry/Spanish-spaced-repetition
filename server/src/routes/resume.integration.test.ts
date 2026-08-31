@@ -23,10 +23,12 @@ let server: ReturnType<express.Express['listen']>;
 let base: string;
 
 async function api(path: string, init?: RequestInit): Promise<Response> {
-  return fetch(`${base}${path}`, {
-    ...init,
-    headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) },
-  });
+  // `Headers` rather than an object spread: `HeadersInit` includes `string[][]`,
+  // which spreads into an object as numeric indices. Caller-supplied headers
+  // still win, as they did when they were spread last.
+  const headers = new Headers(init?.headers);
+  if (!headers.has('content-type')) headers.set('content-type', 'application/json');
+  return fetch(`${base}${path}`, { ...init, headers });
 }
 
 function card(over: Partial<Card> & Pick<Card, 'id'>): Card {
@@ -84,7 +86,11 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await store.flushAll();
-  await new Promise<void>((r) => server.close(() => r()));
+  await new Promise<void>((r) =>
+    server.close(() => {
+      r();
+    }),
+  );
   rmSync(dir, { recursive: true, force: true });
 });
 
