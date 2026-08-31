@@ -2,10 +2,9 @@ import { todayNumber } from './collection.store';
 import type { Card, Collection } from './models';
 
 /**
- * Given the collection (with a non-null `pausedAt`) and the current set of
- * cards, computes the absolute `due` values every eligible card should be
- * written to on resume, so studying continues as if no time passed while
- * paused.
+ * Computes the absolute `due` values every eligible card should be written to
+ * on resume, given the pause start time and current set of cards, so studying
+ * continues as if no time passed while paused.
  *
  * Pure function — no I/O, no mutation of `cards`. Rule is selected by
  * `card.type` (never `card.queue`), per the scheduling-domain invariant:
@@ -14,9 +13,9 @@ import type { Card, Collection } from './models';
 export function computeResumeCardUpdates(
   coll: Collection,
   cards: Card[],
+  pausedAt: number,
   resumedAt: number,
 ): { id: string; due: number }[] {
-  const pausedAt = coll.pausedAt!;
   const dayDelta = todayNumber(coll, resumedAt) - todayNumber(coll, pausedAt);
   const msDelta = resumedAt - pausedAt;
 

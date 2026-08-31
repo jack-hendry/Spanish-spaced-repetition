@@ -263,7 +263,7 @@ describe('Sm2Scheduler — steps shortened mid-learning (audit B1)', () => {
     const relearning = card({ type: 'relearning', queue: 'learning', left: 3, interval: 3 });
     const dflt = opts();
 
-    const cases: Array<{ subject: Card; options: DeckOptions; stepCount: number }> = [
+    const cases: { subject: Card; options: DeckOptions; stepCount: number }[] = [
       { subject: learning, options: shortSteps([1]), stepCount: 1 },
       { subject: learning, options: shortSteps([1, 10]), stepCount: 2 },
       // relearning indexes lapse.steps, not new.steps

@@ -7,14 +7,12 @@ const sm2 = new Sm2Scheduler();
 const fsrs = new FsrsScheduler();
 
 /** Returns the scheduler strategy selected by the deck options. */
-export class SchedulerFactory {
-  static for(opts: DeckOptions): Scheduler {
-    switch (opts.scheduler) {
-      case 'fsrs':
-        return fsrs;
-      case 'sm2':
-      default:
-        return sm2;
-    }
+export function schedulerFor(opts: DeckOptions): Scheduler {
+  switch (opts.scheduler) {
+    case 'fsrs':
+      return fsrs;
+    case 'sm2':
+    default:
+      return sm2;
   }
 }

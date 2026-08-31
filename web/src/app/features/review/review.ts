@@ -14,7 +14,7 @@ import { map } from 'rxjs';
 
 import { CollectionStore, todayNumber } from '../../core/collection.store';
 import type { Card, Note, NoteType } from '../../core/models';
-import { SchedulerFactory } from '../../core/scheduling/scheduler-factory';
+import { schedulerFor } from '../../core/scheduling/scheduler-factory';
 import {
   RATINGS,
   type Rating,
@@ -215,7 +215,7 @@ export class Review {
 
     const opts = this.queue.options;
     if (!opts) throw new Error('loadNext() called before queue started');
-    const preview = SchedulerFactory.for(opts).preview(card, opts, ctx);
+    const preview = schedulerFor(opts).preview(card, opts, ctx);
 
     this.revealed.set(false);
     this.typed.set('');
@@ -268,7 +268,7 @@ export class Review {
       const opts = this.queue.options;
       if (!opts) return;
       const timeMs = Date.now() - this.answerStart;
-      const { card: next, revlog } = SchedulerFactory.for(opts).answer(
+      const { card: next, revlog } = schedulerFor(opts).answer(
         current.card,
         rating,
         opts,

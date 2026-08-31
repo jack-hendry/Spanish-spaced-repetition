@@ -44,10 +44,10 @@ export class PauseService {
    */
   async resume(): Promise<void> {
     const coll = this.store.collection();
-    if (!coll || coll.pausedAt == null) return;
+    if (coll?.pausedAt == null) return;
     const pausedAt = coll.pausedAt;
 
-    const cardUpdates = computeResumeCardUpdates(coll, this.store.cards(), Date.now());
+    const cardUpdates = computeResumeCardUpdates(coll, this.store.cards(), pausedAt, Date.now());
     const payload: ResumePayload = { expectedPausedAt: pausedAt, cardUpdates };
 
     // Snapshot the absolute payload before the POST so an interrupted resume is
@@ -65,7 +65,7 @@ export class PauseService {
    */
   async recoverOnLoad(): Promise<void> {
     const coll = this.store.collection();
-    if (!coll || coll.pausedAt == null) return;
+    if (coll?.pausedAt == null) return;
 
     const raw = localStorage.getItem(this.storageKey(coll.pausedAt));
     if (raw == null) return;
@@ -89,7 +89,10 @@ export class PauseService {
     if (payload.cardUpdates.length) {
       const byId = new Map(payload.cardUpdates.map((u) => [u.id, u.due]));
       this.store.cards.update((cards) =>
-        cards.map((c) => (byId.has(c.id) ? { ...c, due: byId.get(c.id)! } : c)),
+        cards.map((c) => {
+          const due = byId.get(c.id);
+          return due === undefined ? c : { ...c, due };
+        }),
       );
     }
 
@@ -97,6 +100,6 @@ export class PauseService {
   }
 
   private storageKey(pausedAt: number): string {
-    return KEY_PREFIX + pausedAt;
+    return `${KEY_PREFIX}${pausedAt}`;
   }
 }

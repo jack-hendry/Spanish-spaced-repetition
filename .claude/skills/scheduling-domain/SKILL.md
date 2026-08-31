@@ -205,3 +205,13 @@ Two specifics worth keeping:
   `cards.json` as `null` on the next debounced save. The audit's "silently
   disappears from the queue forever" is the right severity for the wrong reason
   — check the fallback branch before repeating that claim.
+
+### 2026-08-31 — Heatmap buckets key by calendar date shifted by `dayCutoffHour`, not by `todayNumber`
+
+(`specs/018-lint-phase2-scheduling`, D7 review pass finding, specs/archive/2026-07-14-007-heatmap-date-off-by-one)
+
+The guidance in this skill's main section says: "Any 'per day' feature (limits, unburying, heatmap buckets, forecast) must go through `todayNumber`, never through calendar dates." The live heatmap implementation (`core/heatmap.ts`, `heatDateKey`/`buildHeatGrid`) deliberately does the opposite: it keys buckets by **local calendar date** shifted by `dayCutoffHour`, *not* by `todayNumber`. That is correct and is exactly what spec 007 fixed — `heatmap.spec.ts`'s regression test states it: "Calendar-date keying must not depend on `created` at all."
+
+The trap: `todayNumber` anchors on `collection.created`'s time-of-day, which pushed a same-day review made just after midnight into the next cell when the cutoff hour was 4am. The heatmap deliberately avoids that anchor, shifting only by the cutoff hour, not by the creation timestamp.
+
+**Corrected rule:** use day numbers (via `todayNumber`) for scheduling mechanics (limits, due comparisons, forecast); use calendar dates (shifted by `dayCutoffHour`) for the heatmap's visual calendar cells. The distinction is mechanical: `todayNumber` is for comparisons that must respect creation time; calendar date is for a user-facing grid that must respect their local clock.

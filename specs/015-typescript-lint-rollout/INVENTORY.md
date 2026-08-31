@@ -198,3 +198,15 @@ These six files move entirely into Phase 2. The reassignment is a reporting chan
 
 **Phase 2's file list is now 16 files, not 10.** Phase 0 did count all six — its totals are correct and unchanged — but attributed them to Phase 1, because its attribution rule was textual (`core/scheduling/` plus two named files) rather than behavioural. The ROADMAP's Phase 2 checkpoint must reflect this expansion before Phase 2 opens.
 
+## Phase 2 exit (2026-08-31)
+
+Phase 2 completed all 14 steps, fixing violations across the seven scheduling-core files carrying them. Final counts:
+
+| Workspace | Phase 1 → Phase 2 | Phase 2 exit |
+|-----------|---|---|
+| `web/src` | 24 | **0** |
+| `server/src` | 41 | **41** (unchanged) |
+| **Total** | **65** | **41** |
+
+All of `web/src` is now gateable via a single directory path `eslint web/src` in CI, replacing the incremental 13-path list from Phase 1. Notably, Phase 2's file list expanded to **24 files, not 16** as initially stated in the roadmap. The difference: the attribution glob `core/scheduling/*` plus named files owns 24 files total; only 7 of those carried violations. Phase 2 reviews files, not residual lint hits, so the other 17 zero-violation files are confirmed clean and gated as part of the `web/src` gate. The roadmap's 16-file number was the count of files that *ever carried a violation* (10 from Phase 0, plus 6 reassigned by Phase 1); this inventory now records the correct count that the glob actually owns.
+
