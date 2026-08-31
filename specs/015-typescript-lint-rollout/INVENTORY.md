@@ -233,6 +233,20 @@ Phase 3's D3).
 **The gate is `eslint web/src server/src`.** Phase 4 owns what is left: the
 repo root, `tools/`, and `web/src/index.html`.
 
+## Phase 4 exit (2026-08-31)
+
+The gate is now `eslint .` (`npm run lint:ci`, `.github/workflows/ci.yml`'s
+`lint` job) — the repo root and `tools/` joined `web/src`/`server/src`,
+bringing the incremental path-list scoping to an end. `eslint.config.mjs` and
+`tools/shoot.mjs` (the only two JS/TS-family files at those paths) are now
+linted for real, under `js.configs.recommended` plus four hand-declared Node
+globals — both carried **zero** violations once given a ruleset at all.
+`web/src/index.html` stays out of the gate by deliberate decision, not by
+omission: it is the Angular CLI's static host shell, not a component
+template, so `angular-eslint`'s `templateRecommended` config has nothing in
+it to check. Full detail and the other three closed/still-open scope
+questions: `specs/020-lint-phase4-full-gate/Analyst.md`.
+
 ## Phase 2 exit (2026-08-31)
 
 Phase 2 completed all 14 steps, fixing violations across the seven scheduling-core files carrying them. Final counts:

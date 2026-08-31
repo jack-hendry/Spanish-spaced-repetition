@@ -17,7 +17,7 @@
     "format:check": "prettier --check \"web/src/**/*.{ts,html,css,scss}\" \"server/src/**/*.ts\"",
     "lint": "eslint .",
     "lint:json": "eslint . --format json",
-    "lint:ci": "eslint web/src server/src"
+    "lint:ci": "eslint ."
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

@@ -137,13 +137,34 @@ on the strength of its 9 unit tests.
 
 ## Phase 4 — Full gate
 
-- [ ] Once every directory in `web/` and `server/` is clean, drop the
+- [x] Once every directory in `web/` and `server/` is clean, drop the
       incremental `include`-list scoping and gate the full ruleset on every
       push, the same way `ci.yml`'s Python `lint` job already gates
       `tools/state_rotate.py`.
+      → Executed as `specs/020-lint-phase4-full-gate/`. `lint:ci` is now
+      `eslint .` (was `eslint web/src server/src`); `ci.yml`'s comment
+      updated to match.
 - [x] Confirm zero known violations remain across both workspaces before
       flipping this on. → **Confirmed 2026-08-31**: `web/src` 0 (Phase 2),
       `server/src` 0 (Phase 3).
+
+**Phase 4 is done** (2026-08-31). `lint:ci` gates the whole repo (`eslint .`)
+with zero violations, closing out `specs/015-typescript-lint-rollout/`.
+Remediation was zero-diff: `eslint.config.mjs` and `tools/shoot.mjs` — the
+only two JS/TS-family files at the repo root and in `tools/` — were the sole
+newly-covered files, and both were clean the moment they were given a
+ruleset (`js.configs.recommended` plus four hand-declared Node globals; no
+type-checked preset applies since neither is covered by any `tsconfig.json`).
+280 tests, the build, and `format:check` all unchanged. Of the four open
+questions this phase inherited: **`web/src/index.html` is now a closed
+decision** — it stays outside the gate because it is the Angular CLI's
+static host shell, not a component template, and `angular-eslint`'s
+template ruleset has nothing in it to check there. `noUncheckedIndexedAccess`
+and the test-file `no-unsafe-*`/`no-explicit-any` question remain
+deliberately open, unchanged from Phases 1 and 3 — no new evidence surfaced
+here to reopen either. `templateAccessibility` remains excluded by Phase 0's
+original design, also unchanged. Full reasoning:
+`specs/020-lint-phase4-full-gate/Analyst.md`.
 
 **What Phase 4 inherits**, now that both workspaces are clean:
 
