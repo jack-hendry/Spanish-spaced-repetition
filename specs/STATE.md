@@ -244,6 +244,21 @@ drop Phase 2 31 → 5 with no scheduling file reviewed. A relaxation removes a
 full list (widened to 16 files, see AD-018) and reviews files, not residual
 hits; recorded in `INVENTORY.md` so the drop never reads as progress.
 
+**AD-021 — Phase 2 (scheduling-core lint fixes) changed no ESLint rule and
+added no `eslint-disable` comments; the CI gate widened from 13 paths to a
+single directory.** (2026-08-31, `specs/018-lint-phase2-scheduling/`, all 14
+steps completed) Phase 2 was pure remediation: 24 violations across 7 files
+fixed by hand, no rule or calibration modified. Of its 17 zero-violation files,
+the **five** doing `card.due`/day-number arithmetic were read against
+`scheduling-domain` (2 docs/dead-code findings, recorded not fixed); the other
+12 were confirmed clean and gated, not audited. The CI gate
+`npm run lint:ci` moved from an incremental path list in `package.json` to
+`eslint web/src` — which also picks up nine files Phase 1 never gated (they were
+clean from the start and never had violations to remediate). A green exit code
+from the script cannot prove the gate's scope changed, only that everything it
+already covered is clean; the change is asserted on script text, not behavior
+(see L-015).
+
 ## Blockers
 
 (none open)
@@ -264,6 +279,7 @@ hits; recorded in `INVENTORY.md` so the drop never reads as progress.
 - **L-012** — A total that reconciles says nothing about how it was decomposed.
 - **L-013** — A type-aware linter in a tree with no dependencies installed reports a smaller number, not an error.
 - **L-014** — A lint rule can make the behaviour-changing edit the compliant one.
+- **L-015** — A gate's exit code cannot verify a change to the gate's own scope.
 
 ## Quick Tasks
 

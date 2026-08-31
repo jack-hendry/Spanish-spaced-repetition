@@ -355,3 +355,31 @@ part of adopting a linter, not a retreat from it — and it is much cheaper
 before the rule is enforced than after a batch has "fixed" 40 sites. Where a
 rule must stay strict and its hits are genuine, that is exactly the finding
 worth having; the point is to know which of the two you have.
+
+**L-015 — A gate's exit code cannot verify a change to the gate's own scope.**
+(2026-08-31, `specs/017-lint-phase1-web` Step 9 and `specs/018-lint-phase2-scheduling`
+Step 12) Phase 1, Step 9, widened the ESLint gate from `features/` branches to a
+13-path list covering all of Phase 1. The step ran `npm run lint:ci` to verify,
+got exit 0, and reported success. What it could not see: everything the gate
+already covered was clean, so `exit 0` proved nothing about whether the *new*
+code was reachable at all. The step's "Done when" had to assert on the script's
+**text** (`grep -c "features/browse" package.json → 0`) to prove the old paths
+were gone.
+
+Phase 2, Step 12, faced the same situation: replace 13 paths with `eslint
+web/src`, also to pick up nine never-gated clean files. Again, `npm run lint:ci
+→ exit 0` is compatible with both "the scope expanded correctly" and "I made
+no change". Again, the solution was text assertion: `node -e "process.exit(require('./package.json').scripts['lint:ci'] === 'eslint web/src' ? 0 : 1)"`.
+
+The general rule: when a step widens the scope of a gate or checker, the gate's
+own exit code cannot prove the widening happened — it can only prove everything
+within scope is clean. Verify the scope itself by reading or computing the
+config, not by waiting for the exit code to tell you the scope changed. Where
+both the scope and the contents must be checked, check the scope first: a scope
+assertion has nothing to fall back on if it is wrong, but a content assertion
+can at least pass over the wrong scope and alert you.
+
+Practical: a step that should change a script or config path must assert on that
+path's *text*, using `grep` or a node snippet. A step that should change a
+`Done when` assertion must still run the check and watch it pass, to catch the
+case where the implementation changed but the check did not.

@@ -205,7 +205,7 @@ export class CollectionStore {
    */
   defaultDeckOptions(): DeckOptions | undefined {
     const id = this.collection()?.defaultDeckOptionsId;
-    return (id && this.deckOptionsById(id)) || this.deckOptions()[0];
+    return (id != null ? this.deckOptionsById(id) : undefined) ?? this.deckOptions()[0];
   }
 
   /** Replace a deck-options group in the local cache after it's been saved. */
@@ -224,7 +224,10 @@ export class CollectionStore {
   /** Patch a set of cards' queue in the local cache by id. */
   private setQueues(updates: Map<string, Card['queue']>): void {
     this.cards.update((cards) =>
-      cards.map((c) => (updates.has(c.id) ? { ...c, queue: updates.get(c.id)! } : c)),
+      cards.map((c) => {
+        const queue = updates.get(c.id);
+        return queue === undefined ? c : { ...c, queue };
+      }),
     );
   }
 

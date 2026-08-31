@@ -65,7 +65,8 @@ describe('buildHeatGrid', () => {
   it('maps review days into cell counts and heat levels', () => {
     const coll = collection();
     // 12 reviews on Jan 1, 2024 (noon) -> level 2 (10-19).
-    const reviewTimestamps = Array(12).fill(new Date(2024, 0, 1, 12).getTime());
+    const jan1Noon = new Date(2024, 0, 1, 12).getTime();
+    const reviewTimestamps = Array.from({ length: 12 }, () => jan1Noon);
 
     const grid = buildHeatGrid(reviewTimestamps, coll, 2024);
     const jan1Cell = grid.weeks

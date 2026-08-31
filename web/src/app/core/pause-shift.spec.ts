@@ -47,7 +47,7 @@ describe('computeResumeCardUpdates', () => {
     const c = card({ id: 'r1', type: 'review', queue: 'review', due: 100, interval: 5 });
     const resumedAt = 130 * DAY;
 
-    const updates = computeResumeCardUpdates(coll, [c], resumedAt);
+    const updates = computeResumeCardUpdates(coll, [c], 100 * DAY, resumedAt);
 
     expect(updates).toEqual([{ id: 'r1', due: 130 }]);
     const shifted = updates[0].due;
@@ -63,7 +63,7 @@ describe('computeResumeCardUpdates', () => {
     const resumedAt = pausedAt + 3_600_000; // resumed 1 hour (3,600,000 ms) later
     const msDelta = resumedAt - pausedAt;
 
-    const updates = computeResumeCardUpdates(coll, [c], resumedAt);
+    const updates = computeResumeCardUpdates(coll, [c], pausedAt, resumedAt);
 
     expect(updates).toEqual([{ id: 'l1', due: originalDue + msDelta }]);
     // Sanity: this would fail if `due` were mistakenly treated as epoch seconds
@@ -78,7 +78,7 @@ describe('computeResumeCardUpdates', () => {
     const b = card({ id: 'b', type: 'review', queue: 'review', due: 105 });
     const resumedAt = 130 * DAY;
 
-    const updates = computeResumeCardUpdates(coll, [a, b], resumedAt);
+    const updates = computeResumeCardUpdates(coll, [a, b], 100 * DAY, resumedAt);
     const byId = Object.fromEntries(updates.map((u) => [u.id, u.due]));
 
     expect(byId['a']).toBe(130);
@@ -92,7 +92,7 @@ describe('computeResumeCardUpdates', () => {
     const suspended = card({ id: 'susp', type: 'review', queue: 'suspended', due: 100 });
     const resumedAt = 130 * DAY;
 
-    const updates = computeResumeCardUpdates(coll, [normal, suspended], resumedAt);
+    const updates = computeResumeCardUpdates(coll, [normal, suspended], 100 * DAY, resumedAt);
     const byId = Object.fromEntries(updates.map((u) => [u.id, u.due]));
 
     expect(byId['susp']).toBe(byId['norm']);
@@ -104,7 +104,7 @@ describe('computeResumeCardUpdates', () => {
     const n = card({ id: 'new1', type: 'new', queue: 'new', due: 3 });
     const resumedAt = 130 * DAY;
 
-    const updates = computeResumeCardUpdates(coll, [n], resumedAt);
+    const updates = computeResumeCardUpdates(coll, [n], 100 * DAY, resumedAt);
 
     expect(updates).toEqual([]);
     expect(updates.find((u) => u.id === 'new1')).toBeUndefined();
@@ -118,7 +118,12 @@ describe('computeResumeCardUpdates', () => {
     const learning = card({ id: 'l', type: 'learning', queue: 'learning', due: pausedAt });
     const relearning = card({ id: 're', type: 'relearning', queue: 'learning', due: pausedAt });
 
-    const updates = computeResumeCardUpdates(coll, [review, learning, relearning], resumedAt);
+    const updates = computeResumeCardUpdates(
+      coll,
+      [review, learning, relearning],
+      pausedAt,
+      resumedAt,
+    );
 
     expect(updates).toEqual([]);
   });

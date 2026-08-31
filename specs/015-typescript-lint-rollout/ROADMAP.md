@@ -96,17 +96,19 @@ file edited, verified mechanically at each checkpoint.
 
 Everything Phase 0 flagged under the first non-negotiable above.
 
-- [ ] Its own `Analyst.md` + `tasks.md` + harden round, sized Large
+- [x] Its own `Analyst.md` + `tasks.md` + harden round, sized Large
       regardless of how few files or how mechanical the fixes look.
-- [ ] **Scope widened by Phase 1: 16 files, not 10.** Six files that compute or
+- [x] **Scope widened by Phase 1: 16 files, not 10.** Six files that compute or
       write `card.due` were reassigned out of Phase 1 — `core/pause-shift.ts`,
       `core/pause.service.ts` (+spec), `core/heatmap.ts` (+spec),
       `core/stats.ts`. Two of them (`stats.ts`, `heatmap.ts`) now carry **zero**
       violations and still belong here, which is the whole point: Phase 2 owns
       files, not residual lint hits.
-- [ ] No autofixer run unattended here — every change reviewed against the
+- [x] No autofixer run unattended here — every change reviewed against the
       invariants in `.claude/skills/scheduling-domain` (day-number math,
       permille ease, dual SM-2/FSRS state, `card.due` overloading).
+
+**Phase 2 is done** (2026-08-31). `web/src` 24 → 0, all 14 steps executed. `server/src` unchanged at 41. The whole `web/src` directory is now gateable; CI gate moves from a 13-path list to `eslint web/src`. Total violations across both workspaces: 254 → 41 (Phase 1 + Phase 2 combined).
 
 ## Phase 3 — `server/` batches
 
@@ -174,3 +176,17 @@ Same batching approach as Phase 1, applied to `server/src/`.
   `no-explicit-any` remain ON in test files (Analyst.md §5.1). Phase 1 typed its
   mocks rather than relaxing them; `pause.service.spec.ts` still carries 13 such
   violations and is Phase 2's to type.
+- (2026-08-31) **Phase 2's file list is 24, not 16.** The roadmap's 16 counted
+  files that had carried violations; the attribution glob
+  (`core/scheduling/*` plus named files) owns 24. Recorded in `INVENTORY.md`;
+  "Phase 2 owns files, not residual lint hits" was already the stated principle.
+- (2026-08-31) **Nine clean `web/src` files were never gated by Phase 1.**
+  Batches were sized by violation count, so `app.config.ts`, `app.html`,
+  `app.routes.ts`, `core/deck-color.*`, `core/lifecycle.*`, `core/search.*` (6
+  files, 9 with specs) never joined `lint:ci` despite being clean. An
+  incremental allow-list grown by remediation silently omits what never needed
+  remediating — a pattern-level warning for Phase 3. Swept up by D6 (gate
+  `web/src` wholesale).
+- (2026-08-31) **`web/src/index.html` is outside ESLint's reach.** The config's
+  template glob is `web/src/app/**/*.html`. The root `index.html` is not
+  covered. Not closed in Phase 2; a candidate for Phase 4.
