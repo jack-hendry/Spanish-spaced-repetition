@@ -152,29 +152,7 @@ is enough; the cost is that renaming a deck recolours it.
 
 **AD-017 — A worktree is removed when its branch merges, and any pre-existing worktree is checked against its own `HEAD` before anything is committed from it.** → moved to `STATE-ARCHIVE.md`
 
-**AD-018 — ESLint is adopted, report-only, with the full ruleset from day one;
-the CI gate is deferred to a directory-at-a-time rollout.** (2026-08-28,
-`specs/016-lint-audit`, Phase 0 of `specs/015-typescript-lint-rollout`)
-**Supersedes the 2026-08-28 Quick Tasks position** ("ESLint was considered and
-deliberately skipped: both tsconfigs already run `strict: true`, so `tsc`
-covers most of what a linter would catch"). That reasoning holds for the
-*general TypeScript* half and is why this is not urgent — it does not hold for
-the house-style half, which is the gap that reopened the question: `strict:
-true` cannot check a single rule in `.claude/skills/angular-conventions`, and
-those are the rules a model reaching for training-data Angular is most likely
-to break. One root flat config (`eslint.config.mjs`), dependencies and scripts
-at the root, following the Prettier precedent set the same day. Not wired into
-`ci.yml`: a directory joins the gate once it is already clean, never before —
-the same `include`-list discipline `ruff.toml` uses, for the same reason, that
-a job red from its first run teaches everyone to ignore it. Baseline: **254
-violations across 51 files**, attributed to Phase 1 (121), Phase 2 (31) and
-Phase 3 (102), summing exactly. Notably **140 of the 254 are in test files**,
-so whether to relax type-checked rules for `*.spec.ts`/`*.test.ts` is a real
-decision Phases 1 and 3 now get to make with a number in hand rather than by
-default. Two upgrade constraints fell out and are recorded in the roadmap's
-Discovered log: the root must pin `typescript` (an unconstrained
-`typescript: "*"` peer from `angular-eslint` otherwise resolves to 7.x), and no
-`typescript-eslint` release supports TypeScript 7 yet.
+**AD-018 — ESLint is adopted, report-only, with the full ruleset from day one; the CI gate is deferred to a directory-at-a-time rollout.** → moved to `STATE-ARCHIVE.md`
 
 **AD-019 — A spec's durable artifact lives in the folder that outlives the
 spec, not in the spec folder.** (2026-08-28, `specs/016-lint-audit` D6) The
@@ -194,8 +172,8 @@ there — the spec folder is for the spec's own reasoning.
 
 **AD-020 — A lint ruleset is calibrated against the codebase before it is
 enforced; loosening on evidence is part of adoption, not a retreat from it.**
-(2026-08-28, `specs/017-lint-phase1-web`, Phase 1 of
-`specs/015-typescript-lint-rollout`, D1–D4) Phase 0 adopted the **full** ruleset
+(2026-08-28, `archive/2026-08-31-017-lint-phase1-web`, Phase 1 of
+`archive/2026-08-31-015-typescript-lint-rollout`, D1–D4) Phase 0 adopted the **full** ruleset
 report-only, so Phase 1's first act is calibration, not remediation: sort every
 violation class into *the code is wrong* or *the rule is miscalibrated here*.
 Three of 25 rules were the latter and carried 139 of 254 violations. `eqeqeq` →
@@ -221,7 +199,7 @@ hits; recorded in `INVENTORY.md` so the drop never reads as progress.
 
 **AD-021 — Phase 2 (scheduling-core lint fixes) changed no ESLint rule and
 added no `eslint-disable` comments; the CI gate widened from 13 paths to a
-single directory.** (2026-08-31, `specs/018-lint-phase2-scheduling/`, all 14
+single directory.** (2026-08-31, `archive/2026-08-31-018-lint-phase2-scheduling/`, all 14
 steps completed) Phase 2 was pure remediation: 24 violations across 7 files
 fixed by hand, no rule or calibration modified. Of its 17 zero-violation files,
 the **five** doing `card.due`/day-number arithmetic were read against
@@ -234,10 +212,10 @@ from the script cannot prove the gate's scope changed, only that everything it
 already covered is clean; the change is asserted on script text, not behavior
 (see L-015).
 
-**AD-022 — Phase 4 closed `specs/015-typescript-lint-rollout/ROADMAP.md`: the
+**AD-022 — Phase 4 closed `specs/archive/2026-08-31-015-typescript-lint-rollout/ROADMAP.md`: the
 CI gate is now the full repo (`eslint .`), and `eslint.config.mjs`/
 `tools/shoot.mjs` were clean the moment they got a ruleset at all.**
-(2026-08-31, `specs/020-lint-phase4-full-gate/`, all 5 steps completed)
+(2026-08-31, `archive/2026-08-31-020-lint-phase4-full-gate/`, all 5 steps completed)
 `lint:ci` moved from `eslint web/src server/src` to `eslint .`. The only two
 JS/TS-family files at the repo root and in `tools/` — previously excluded by
 name in `eslint.config.mjs`'s own `ignores` array — got a new config block
@@ -255,6 +233,18 @@ other three (`noUncheckedIndexedAccess`, test-file
 `no-unsafe-*`/`no-explicit-any`, `templateAccessibility`) remain
 deliberately open — no new evidence surfaced in this phase to reopen any of
 them.
+
+**AD-023 — Phase 3's `no-unnecessary-condition` sites in `server/src` were
+all "type is lying," never "guard is dead," and the importer refactor was
+proven byte-identical over the real corpus rather than trusted on its unit
+tests.** (2026-08-31, `archive/2026-08-31-019-lint-phase3-server/`, all 11
+steps) `server/src` 41 → 0; repo-wide 254 → 0 across all four phases. All
+four `no-unnecessary-condition` violations were fixed by narrowing types
+(three `req.body` casts, one array-index chain `noUncheckedIndexedAccess`
+being off types as always-present), never by deleting a guard.
+`import/transform.ts`'s complexity fix (`walk` split into
+`buildNote`/`buildCard`) was verified by negative-controlled differential
+testing over the real 3,638-card corpus, not by its 9 unit tests alone.
 
 ## Blockers
 
@@ -295,4 +285,4 @@ them.
 | 2026-08-26 | `AUDIT-2026-08-26-src.md` B6: study sessions ignored `collection.defaultDeckOptionsId`, using array position 0 instead | Medium. Added `CollectionStore.defaultDeckOptions()` (`web/src/app/core/collection.store.ts`), resolving through `collection.defaultDeckOptionsId` and falling back to `deckOptions()[0]` only when that id doesn't resolve; both call sites in `study-queue.service.ts` (`start()`'s fallback, `startAll()`) now use it. Surfaced a latent gap while fixing: `start()` used `opts` without null-checking it (masked before because untyped array indexing let `DeckOptions | undefined` through as `DeckOptions`) — added the same `if (!opts) { session = null; return false; }` guard `startAll()` already had. Added 4 regression tests across `collection.store.spec.ts` and `study-queue.service.spec.ts`; the web-tests ones verified red via `git stash` (compile error, since the new method didn't exist pre-fix). 209 web tests green, `ng build` clean. |
 | 2026-08-27 | Gate 5: `**Status:**` on every `tasks.md` step is now enforced | Small, infrastructure (same treatment as the harness port above — a gate is not a feature). `scripts/clean-table-check.sh` grew a fifth gate: every `### Step ` in a changed `specs/*/tasks.md` must carry a `**Status:**` line. Checked **per step** via `awk`, not by total count, so N status lines bunched into one step cannot satisfy a file with N steps. Runs on every push over only the `tasks.md` files that push touched; `specs/archive/**` is exempt (finished history — enforcing there would make every archive move a retrofit), and a stepless `T001`-format file passes. Closes the follow-up `specs/014-spec-continuity` left open (AD-016, and the Discovered note in its `Analyst.md`); `specs/TEMPLATE.md` no longer says "no hook runs this check yet". Regression matrix in `scripts/clean-table-check.test.sh` (8 cases, throwaway repo per case), wired into CI's `hooks` job; verified red against `main`'s pre-gate script — the 3 catch-the-violation cases fail there, the 5 guard cases pass in both. |
 | 2026-08-27 | **Closed:** `specs/archive/2026-08-27-013-server-hardening/tasks.md` had 15 steps and 0 `**Status:**` lines | Found while building the gate above; was never blocking (archive-exempt). Root cause: `**Status:**` had been appended to the same line as `**Model:**` (`**Model:** haiku · **Status:** done (...)`), so gate 5's `awk` — which only matches a line *starting* with `**Status:**` — never saw it. Fixed by splitting each of the 15 combined lines into two, matching `specs/TEMPLATE.md`'s convention. No content change, no re-verification needed (the spec was already done). |
-| 2026-08-31 | **Open:** the colon-password auth test hangs instead of failing | Found during `specs/019-lint-phase3-server` Step 3 and deliberately **not** fixed there (scope discipline — a test-quality bug, not a lint fix). In the middleware auth test, the `password containing a colon → 200` case runs its assertions inside a `listen` callback that nothing awaits, so if the status assertion throws, the enclosing `new Promise` never resolves and the test times out rather than reporting the assertion. Phase 3's `no-misused-promises` fix preserved this exactly (voided IIFE — behaviour-preserving by design). Proper fix: take `reject` from the promise executor and call it from a `catch`, so a failed assertion fails the test with its own message. Small. |
+| 2026-08-31 | **Open:** the colon-password auth test hangs instead of failing | Found during `specs/archive/2026-08-31-019-lint-phase3-server` Step 3 and deliberately **not** fixed there (scope discipline — a test-quality bug, not a lint fix). In the middleware auth test, the `password containing a colon → 200` case runs its assertions inside a `listen` callback that nothing awaits, so if the status assertion throws, the enclosing `new Promise` never resolves and the test times out rather than reporting the assertion. Phase 3's `no-misused-promises` fix preserved this exactly (voided IIFE — behaviour-preserving by design). Proper fix: take `reject` from the promise executor and call it from a `catch`, so a failed assertion fails the test with its own message. Small. |

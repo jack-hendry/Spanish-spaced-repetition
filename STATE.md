@@ -29,30 +29,14 @@ blocked; with a stale marker every direct edit is blocked.
 **finished and archived** (`specs/archive/2026-08-27-013-server-hardening/`,
 `specs/archive/2026-08-27-014-spec-continuity/`).
 
+The TypeScript lint rollout (`specs/archive/2026-08-31-015-typescript-lint-rollout/`)
+is **finished, all four phases (016 audit, 017 web, 018 scheduling, 019
+server, 020 full gate) landed and archived** (2026-08-31). Repo-wide
+violations 254 → 0; `lint:ci` gates the full repo (`eslint .`). See AD-018
+through AD-023, L-011 through L-016.
+
 `specs/010-day-rollover-anchoring/` is next in line: has `Analyst.md` +
 `CriticReview.md`, awaiting `tasks.md`.
 
 Format while a run is in progress: `<spec> — step N of M` (see
 `specs/TEMPLATE.md`'s `Status:` field convention, AD-016).
-
-## Current work
-
-`specs/016-lint-audit/` — Phase 0 of the TypeScript lint rollout — is
-**finished**, all 12 steps plus a mid-run Step 4b. Not yet archived. Baseline
-recorded in `specs/015-typescript-lint-rollout/INVENTORY.md`; see AD-018,
-AD-019, L-011, L-012.
-
-`specs/017-lint-phase1-web/` — Phase 1 — is **finished**, all 14 steps
-(2026-08-29). `web/src` 152 → 24, the 24 being exactly the seven Phase 2 files;
-280 tests unchanged; `npm run lint:ci` gating 13 paths in CI. Not yet archived.
-See AD-020, L-013, L-014.
-
-**Blocked before push:** `specs/STATE.md` is over its 300-line budget, so
-`tools/state_rotate.py --check` fails and the pre-push gate refuses. `AD-014`,
-`AD-015`, `AD-016` are due for rotation (37 lines). Needs a human to run
-`python3 tools/state_rotate.py --apply` — no hook or session does that for you.
-
-Phase 2 is next, and its scope is now **16 files, not 10** — see the Phase 2
-section of the roadmap.
-
-`specs/010-day-rollover-anchoring/` remains next in line.
