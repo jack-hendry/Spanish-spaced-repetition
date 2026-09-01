@@ -208,7 +208,7 @@ Two specifics worth keeping:
 
 ### 2026-08-31 — Heatmap buckets key by calendar date shifted by `dayCutoffHour`, not by `todayNumber`
 
-(`specs/018-lint-phase2-scheduling`, D7 review pass finding, specs/archive/2026-07-14-007-heatmap-date-off-by-one)
+(`specs/archive/2026-08-31-018-lint-phase2-scheduling`, D7 review pass finding, specs/archive/2026-07-14-007-heatmap-date-off-by-one)
 
 The guidance in this skill's main section says: "Any 'per day' feature (limits, unburying, heatmap buckets, forecast) must go through `todayNumber`, never through calendar dates." The live heatmap implementation (`core/heatmap.ts`, `heatDateKey`/`buildHeatGrid`) deliberately does the opposite: it keys buckets by **local calendar date** shifted by `dayCutoffHour`, *not* by `todayNumber`. That is correct and is exactly what spec 007 fixed — `heatmap.spec.ts`'s regression test states it: "Calendar-date keying must not depend on `created` at all."
 

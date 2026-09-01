@@ -184,6 +184,30 @@ hypothetical: this same worktree branched from `30d1eea` and sat there while
 `011c0c0` landed on the sibling branch, stale-based long before PR #5. See
 L-010.
 
+**AD-018 — ESLint is adopted, report-only, with the full ruleset from day one;
+the CI gate is deferred to a directory-at-a-time rollout.** (2026-08-28,
+`specs/016-lint-audit`, Phase 0 of `specs/015-typescript-lint-rollout`)
+**Supersedes the 2026-08-28 Quick Tasks position** ("ESLint was considered and
+deliberately skipped: both tsconfigs already run `strict: true`, so `tsc`
+covers most of what a linter would catch"). That reasoning holds for the
+*general TypeScript* half and is why this is not urgent — it does not hold for
+the house-style half, which is the gap that reopened the question: `strict:
+true` cannot check a single rule in `.claude/skills/angular-conventions`, and
+those are the rules a model reaching for training-data Angular is most likely
+to break. One root flat config (`eslint.config.mjs`), dependencies and scripts
+at the root, following the Prettier precedent set the same day. Not wired into
+`ci.yml`: a directory joins the gate once it is already clean, never before —
+the same `include`-list discipline `ruff.toml` uses, for the same reason, that
+a job red from its first run teaches everyone to ignore it. Baseline: **254
+violations across 51 files**, attributed to Phase 1 (121), Phase 2 (31) and
+Phase 3 (102), summing exactly. Notably **140 of the 254 are in test files**,
+so whether to relax type-checked rules for `*.spec.ts`/`*.test.ts` is a real
+decision Phases 1 and 3 now get to make with a number in hand rather than by
+default. Two upgrade constraints fell out and are recorded in the roadmap's
+Discovered log: the root must pin `typescript` (an unconstrained
+`typescript: "*"` peer from `angular-eslint` otherwise resolves to 7.x), and no
+`typescript-eslint` release supports TypeScript 7 yet.
+
 ## Blockers
 
 (nothing rotated yet)
