@@ -81,3 +81,8 @@ jobs:
       # invisible to clean-table-gate, which only ever runs the script against
       # this repo's own already-compliant history.
       - run: ./scripts/clean-table-check.test.sh
+      # archive_spec.py moves and deletes spec content. Its quiet failure modes
+      # -- a dry run that writes, a prune that takes an unnamed section, a file
+      # reported clean while still over the push gate's 20 KB cap -- surface
+      # only as a refused push or a silently half-gone spec.
+      - run: ./tools/archive_spec.test.sh
