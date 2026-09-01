@@ -118,6 +118,9 @@ pip install pre-commit && pre-commit install --hook-type pre-push   # one-time p
 Without that, the clean-table pre-push hook is not installed and pushes are not checked.
 
 ```bash
+python3 tools/archive_spec.py <spec-dir>          # ritual steps 3+4: plan the archive move (dry run)
+python3 tools/archive_spec.py <spec-dir> --apply  # …and perform it; prints the STATE.md checklist
+./tools/archive_spec.test.sh                      # regression matrix for the above
 bash scripts/clean-table-check.sh                 # run the four push gates by hand
 RANGE_OVERRIDE=main..HEAD scripts/clean-table-check.sh   # test them over any range
 python3 tools/state_rotate.py --check             # is specs/STATE.md over its ~300-line budget?
