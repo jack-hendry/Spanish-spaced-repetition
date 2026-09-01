@@ -269,6 +269,7 @@ testing over the real 3,638-card corpus, not by its 9 unit tests alone.
 - **L-015** — A gate's exit code cannot verify a change to the gate's own scope.
 - **L-016** — A harden pass must re-derive, not re-reason: an unexecuted prescription is a hypothesis.
 - **L-017** — Token cost is a function of *when* a payload lands, not how big the task is.
+- **L-017** — Token cost is a function of *when* a payload lands, not how big the task is.
 
 ## Quick Tasks
 
