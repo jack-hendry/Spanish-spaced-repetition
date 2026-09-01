@@ -425,3 +425,88 @@ into transcription rather than design, which is what makes a small model a safe
 executor for work this delicate. Keep the verified diff around as the
 cross-check, and delete it before archiving — it is a working artifact, and at
 22 KB it would trip the 20 KB archive gate.
+
+**L-017 — Token cost is a function of *when* a payload lands, not how big the
+task is.** (2026-08-31, `tools/session_report.py`) The prompting question was
+why small tasks with small output sometimes burn tokens fast. Measuring the 24
+transcripts for this repo answered it: **283.6M input tokens against 1.3M of
+output — 99.5% of everything spent was the transcript being re-sent, turn after
+turn.** The largest session re-read a mean of 249k tokens across 291 turns.
+
+That inverts the intuition the cost *feels* like it should follow. A task is not
+expensive because it is large; it is expensive because of where it sits. A
+trivial `git status` at turn 250 costs the same 249k re-read as a hard refactor
+at turn 250, and an `ls` at turn 2 that dumps 8k tokens is not an 8k mistake --
+it is re-read by every turn that follows, so it cost 2.3M. Hence *carry cost*
+(`delta * turns_remaining`) as the metric worth ranking by: it is the only view
+in which the cheap-looking early mistakes appear at their real size. In the
+worst session, 19 turns that each added >=3k carried 19.3M between them, 27% of
+the session; the fixed floor (system prompt + `CLAUDE.md` + tool schemas) was
+47k re-read 291 times = 13.6M, another 19%.
+
+**The measurement trap, which is the real lesson.** A single assistant message
+is written to the transcript as *several* JSONL records -- one per content
+block, each repeating the same `message.id` and the same usage block. Counting
+records therefore counts blocks, not turns. This corrupted the first version of
+the tool in two directions at once, and both were believable:
+
+  * Turn counts and totals inflated by ~60% (one session read as 491 turns /
+    118.5M; it is 291 turns / 72.4M), because duplicated usage was summed once
+    per block.
+  * Parallel tool calls became *structurally invisible* -- no single record ever
+    holds two `tool_use` blocks -- producing the confident, wrong headline that
+    batching had never once occurred in 1,731 turns across 17 days and 8 CLI
+    versions. Grouped by `message.id`, the real rate is **8%**, ranging from 0%
+    to 82% per session, with the longest sessions clustering near 0%.
+
+The false version was more striking than the truth and pointed at the same
+remedy, which is exactly why it survived a first reading. It was caught only
+because a claim about *my own* behaviour ("nothing was ever batched") could be
+checked against a session where batching had demonstrably just happened.
+Prefer that kind of check: a metric about behaviour you can independently
+observe is falsifiable in a way an aggregate over someone else's history is not.
+
+Two smaller traps in the same data, both of which produce confident nonsense:
+`<synthetic>` turns (interrupts, harness errors) carry a *zeroed* usage block,
+so a naive delta reads the next turn as having added the entire session in one
+step -- that one false event claimed 50.7M of carry cost. And a cache re-prime
+after an idle gap (the 1h prompt-cache TTL lapsing) looks exactly like a huge
+payload unless `cache_read == 0` is checked, which blames a coffee break on
+whichever tool ran last. Those re-primes are real money -- up to 358k rebuilt at
+creation rates, dearer than read -- so finish or `/clear` before walking away.
+
+What the tool deliberately does **not** report is a "you could have saved N"
+figure for batching. A transcript cannot distinguish a missed batch from
+genuinely sequential work -- read before edit, edit before test -- so that
+number would assert an unmeasured ratio. The earlier draft of this lesson quoted
+28%; it was arithmetic on an assumption, not a measurement, and it is gone.
+
+The method still generalises: the measurement pass needed no model at all.
+Feeding a 2.8 MB transcript to an agent to find this would cost ~700k tokens per
+session analysed -- spending the resource to discover how the resource is spent.
+Measure with a script; spend model attention on the report, and on checking the
+script against something you can see with your own eyes.
+
+**Two follow-on findings, 2026-09-01.** First, *the floor is the wrong thing to
+look at*, and the 19% figure above invites the wrong reaction. `CLAUDE.md` is
+only ~4.2k of that ~47k (9%); the rest is the harness's own system prompt, tool
+schemas and skill listing, which swings 32k–64k between sessions on the same day
+with the same `CLAUDE.md`. More to the point, floor x turns is not addressable at
+all: a cleared session still re-reads its floor every turn. Only the spend
+*above* the floor can be moved, so the actionable numbers are the fat-payload
+share and the idle re-primes -- never "shrink the prompt".
+
+Second, *batching decays within a session*, which decides what to do about it.
+Measured first-third against last-third across every session over 60 turns: 41
+batched turns in the first thirds, 8 in the last, over comparable call counts
+(403 vs 378). All six sessions that batch at all decline; two never batch. Task
+mix explains part of the between-session spread (Pearson r = -0.42 against
+edit+write share -- exploratory reads parallelise, sequential edit/test does not)
+but cannot explain a monotonic within-session decline in six of six. The tempting
+remedy was a `CLAUDE.md` line telling the model to batch. That is the one
+intervention the finding argues against: the system prompt already carries that
+instruction, and adding more instruction text -- re-read every turn, inside the
+very context whose growth tracks the decay -- treats a context-length problem
+with more context. The lever that survives is the one that needs no compliance at
+all: shorter sessions. `specs/SESSION-HYGIENE.md` is the operator-facing form of
+this, kept out of context deliberately.

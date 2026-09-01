@@ -14,9 +14,13 @@
 # task, not a side effect of adding CI. Doing it the other way round -- landing
 # a lint job that is red from its first run -- teaches everyone to ignore it.
 # See the Quick Tasks row in `specs/STATE.md`.
+#
+# `tools/archive_spec.py` and `tools/session_report.py` were each added here on
+# the day they were written: a new file starts with no legacy violations, so
+# including it costs nothing and stops it becoming a further exception later.
 target-version = "py39"
 line-length = 100
-include = ["tools/state_rotate.py", "tools/archive_spec.py"]
+include = ["tools/state_rotate.py", "tools/archive_spec.py", "tools/session_report.py"]
 
 [lint]
 # E/F: pyflakes + pycodestyle errors. I: import order. B: bugbear (mutable
