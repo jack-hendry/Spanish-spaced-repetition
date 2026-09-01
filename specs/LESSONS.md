@@ -271,7 +271,7 @@ of a part. The habit that catches all three cases is the same one: make the
 artifact demonstrate what it does, instead of reasoning about what it ought to
 say.
 
-**Recurrence (2026-08-28, `specs/017-lint-phase1-web` Step 2 — same file, same
+**Recurrence (2026-08-28, `specs/archive/2026-08-31-017-lint-phase1-web` Step 2 — same file, same
 defect, one spec later.)** The executor re-baselining `INVENTORY.md` produced a
 correct headline table (121/31 → 50/24) over a six-file decomposition it had
 never measured: `pause.service.spec.ts` 5 against 13 actual, `heatmap.ts` 1
@@ -293,7 +293,7 @@ writes numbers at all, give it the measured values in the step and forbid
 adjustment, rather than asking it to derive them.
 
 **L-013 — A type-aware linter in a tree with no dependencies installed reports a
-smaller number, not an error.** (2026-08-28, `specs/017-lint-phase1-web`,
+smaller number, not an error.** (2026-08-28, `specs/archive/2026-08-31-017-lint-phase1-web`,
 CriticReview R11) Phase 1 opened by re-deriving Phase 0's baseline rather than
 trusting it. Run from a fresh `EnterWorktree` checkout, `npx eslint` reported
 **249** where the inventory said **254**, and the five-violation gap sat in two
@@ -329,7 +329,7 @@ had `git status` on the original checkout been read as disproof rather than
 explained away, the wrong story would have died on day one.
 
 **L-014 — A lint rule can make the behaviour-changing edit the compliant one.**
-(2026-08-28, `specs/017-lint-phase1-web`, Analyst.md §1c, D1) `eqeqeq:
+(2026-08-28, `specs/archive/2026-08-31-017-lint-phase1-web`, Analyst.md §1c, D1) `eqeqeq:
 ['error', 'always']` flagged nine sites across `pause.service.ts`, `app.ts`,
 `review.ts`, `deck-list.ts` and `deck-list.html`. Every one of them was
 `coll.pausedAt != null` or `== null` — the deliberate idiom that matches null
@@ -357,8 +357,8 @@ rule must stay strict and its hits are genuine, that is exactly the finding
 worth having; the point is to know which of the two you have.
 
 **L-015 — A gate's exit code cannot verify a change to the gate's own scope.**
-(2026-08-31, `specs/017-lint-phase1-web` Step 9 and `specs/018-lint-phase2-scheduling`
-Step 12) Phase 1, Step 9, widened the ESLint gate from `features/` branches to a
+(2026-08-31, `specs/archive/2026-08-31-017-lint-phase1-web` Step 9 and
+`specs/archive/2026-08-31-018-lint-phase2-scheduling` Step 12) Phase 1, Step 9, widened the ESLint gate from `features/` branches to a
 13-path list covering all of Phase 1. The step ran `npm run lint:ci` to verify,
 got exit 0, and reported success. What it could not see: everything the gate
 already covered was clean, so `exit 0` proved nothing about whether the *new*
@@ -385,7 +385,7 @@ path's *text*, using `grep` or a node snippet. A step that should change a
 case where the implementation changed but the check did not.
 
 **L-016 — A harden pass must re-derive, not re-reason: an unexecuted prescription is a hypothesis.**
-(2026-08-31, `specs/019-lint-phase3-server` §10, and the reason Phase 3's method
+(2026-08-31, `specs/archive/2026-08-31-019-lint-phase3-server` §10, and the reason Phase 3's method
 section exists) Phase 3's own `Analyst.md` draft specified the fix for a
 `no-unnecessary-condition` violation at `routes/index.ts:175` as
 `const firstExisting: Card | undefined = existing[0]`, so the `??` fallbacks
