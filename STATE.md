@@ -35,8 +35,20 @@ server, 020 full gate) landed and archived** (2026-08-31). Repo-wide
 violations 254 → 0; `lint:ci` gates the full repo (`eslint .`). See AD-018
 through AD-023, L-011 through L-016.
 
-`specs/010-day-rollover-anchoring/` is next in line: has `Analyst.md` +
-`CriticReview.md`, awaiting `tasks.md`.
+`specs/010-day-rollover-anchoring/` is **code-complete, not yet archived**
+(2026-09-01). `Analyst.md` was rewritten against the current tree, hardened in
+two rounds recorded in `CriticReview.md`, and all 8 `tasks.md` steps are done.
+`todayNumber` now counts local calendar days from the study day of
+`collection.created`; 216 web tests (was 209) and 71 server tests green, build
+and `lint:ci` clean, `data/spanish/` and `server/` untouched. See AD-024, L-018.
+
+`specs/STATE.md` was rotated on 2026-09-02 (`state_rotate.py --apply`): AD-019
+and AD-020 moved to `specs/STATE-ARCHIVE.md` leaving one-line stubs, 326 -> 287
+lines, back under the ~300-line budget.
+
+One thing left: the spec is **not yet archived** — ritual steps 3+4
+(`python3 tools/archive_spec.py specs/010-day-rollover-anchoring --apply`)
+still to run, together with a `specs/STATE.md` change in the same push.
 
 Format while a run is in progress: `<spec> — step N of M` (see
 `specs/TEMPLATE.md`'s `Status:` field convention, AD-016).

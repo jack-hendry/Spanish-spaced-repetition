@@ -154,48 +154,9 @@ is enough; the cost is that renaming a deck recolours it.
 
 **AD-018 — ESLint is adopted, report-only, with the full ruleset from day one; the CI gate is deferred to a directory-at-a-time rollout.** → moved to `STATE-ARCHIVE.md`
 
-**AD-019 — A spec's durable artifact lives in the folder that outlives the
-spec, not in the spec folder.** (2026-08-28, `specs/016-lint-audit` D6) The
-lint inventory is written to `specs/015-typescript-lint-rollout/INVENTORY.md`
-— the *roadmap's* folder — rather than to the spec that produced it. Two
-reasons, and the second is the reusable one. First, Phases 1–4 consume it, so
-its lifetime is the initiative's, not this spec's. Second, **the archive
-ritual's 20 KB gate collides with exactly this class of artifact**: a detailed
-inventory is valuable *because* it is detailed, and `scripts/clean-table-check.sh`
-refuses a push adding any file over 20 KB under `specs/archive/`. Putting it in
-the spec folder would have forced a summarise pass over the one file whose
-value is its detail, at archive time, by someone who no longer remembers which
-rows mattered. Keeping it outside the archiving folder removes the conflict
-instead of trading against it. Generalises: when a spec produces something later
-work depends on, ask which folder's lifetime matches the artifact's, and put it
-there — the spec folder is for the spec's own reasoning.
+**AD-019 — A spec's durable artifact lives in the folder that outlives the spec, not in the spec folder.** → moved to `STATE-ARCHIVE.md`
 
-**AD-020 — A lint ruleset is calibrated against the codebase before it is
-enforced; loosening on evidence is part of adoption, not a retreat from it.**
-(2026-08-28, `archive/2026-08-31-017-lint-phase1-web`, Phase 1 of
-`archive/2026-08-31-015-typescript-lint-rollout`, D1–D4) Phase 0 adopted the **full** ruleset
-report-only, so Phase 1's first act is calibration, not remediation: sort every
-violation class into *the code is wrong* or *the rule is miscalibrated here*.
-Three of 25 rules were the latter and carried 139 of 254 violations. `eqeqeq` →
-`{ null: 'ignore' }` (every hit was the `x != null` idiom; the compliant fix is
-a live bug — L-014). `restrict-template-expressions` → `{ allowNumber: true }`
-(all 43 hits were `${aNumber}`; `strictTypeChecked` sets `allowNumber: false`,
-typescript-eslint's own default is `true`). Five rules off for `*.spec.ts` only,
-each whose premise fails in a test. Result: 254 → 115, no code edited, four
-directories immediately gateable.
-
-What keeps this from being score-gaming is the counter-example:
-`strict-boolean-expressions` was **not** relaxed though it would have cleared 11
-more free — the roadmap names it, its hits are genuine, and one
-(`review.ts:135`) was a real finding. The test is whether the change makes the
-rule describe this codebase's conventions more accurately, or just makes the
-number smaller.
-
-Corollary: **calibration is global, a phase's file list is not.** The same edits
-drop Phase 2 31 → 5 with no scheduling file reviewed. A relaxation removes a
-*report*, not a defect — but it removes the prompt to look, so Phase 2 keeps its
-full list (widened to 16 files, see AD-018) and reviews files, not residual
-hits; recorded in `INVENTORY.md` so the drop never reads as progress.
+**AD-020 — A lint ruleset is calibrated against the codebase before it is enforced; loosening on evidence is part of adoption, not a retreat from it.** → moved to `STATE-ARCHIVE.md`
 
 **AD-021 — Phase 2 (scheduling-core lint fixes) changed no ESLint rule and
 added no `eslint-disable` comments; the CI gate widened from 13 paths to a
@@ -246,6 +207,37 @@ being off types as always-present), never by deleting a guard.
 `buildNote`/`buildCard`) was verified by negative-controlled differential
 testing over the real 3,638-card corpus, not by its 9 unit tests alone.
 
+**AD-024 — Day numbers are local calendar days from the study day of
+`created`, and the one-day reinterpretation of persisted values was accepted
+rather than migrated.** (2026-09-01, `010-day-rollover-anchoring`, all 8 steps)
+`todayNumber` no longer subtracts `collection.created` as a raw epoch instant —
+that anchored the daily rollover to `created`'s *time of day* (14:20:35 local
+on the live store) instead of `dayCutoffHour`:00, which is why the daily
+new-card allowance would not renew. It is now
+`studyDayIndex(now) - studyDayIndex(created)`, where `studyDayIndex` shifts by
+local **wall-clock** hours and reads the resulting calendar date, so day 0 is
+the study day containing `created` and the boundary is exactly
+`dayCutoffHour`:00 on every date, DST included. Three consequences worth
+keeping: (1) **nothing on disk was rewritten** — no `card.due`, no
+`collection.created`, no migration, no schema bump; the correction is purely a
+change in where the boundaries fall, and the resulting <=1-day reinterpretation
+of persisted values is the accepted cost. Adding an origin offset to keep
+today's integer stable was explicitly rejected, since that would preserve the
+stale `deck.daily.day` match and leave the bug unfixed. (2) The two schemes
+differ **only** inside a daily window from `dayCutoffHour`:00 to `created`'s
+time-of-day (04:00:00-14:20:35 here); outside it they are equal, so the whole
+transition is a no-op unless the app is first opened inside that window.
+Measured on the live store at the time of the change: day 68 -> 69, one deck's
+`daily {day: 68, newStudied: 20}` tally discarded (the fix), 84 of 611 review
+cards surfacing early once, and one extra `unburyForNewDay` pass over 78
+`schedBuried` cards. (3) `heatDateKey` was deliberately **not** touched — it
+shifts by absolute hours, so over all of 2026 the two place their boundaries
+differently on exactly 4 minutes, all on the two DST-transition days. That
+divergence is documented in the code and in `scheduling-domain`; consolidating
+the two schemes behind one helper is left as a separate task. This closes the
+work 007 deferred (its Open question 1 and its non-goal "changing `todayNumber`
+itself"). See **L-018**.
+
 ## Blockers
 
 (none open)
@@ -269,7 +261,7 @@ testing over the real 3,638-card corpus, not by its 9 unit tests alone.
 - **L-015** — A gate's exit code cannot verify a change to the gate's own scope.
 - **L-016** — A harden pass must re-derive, not re-reason: an unexecuted prescription is a hypothesis.
 - **L-017** — Token cost is a function of *when* a payload lands, not how big the task is.
-- **L-017** — Token cost is a function of *when* a payload lands, not how big the task is.
+- **L-018** — A whole test suite can pass under both the right and the wrong definition of a shared primitive.
 
 ## Quick Tasks
 
@@ -292,3 +284,4 @@ testing over the real 3,638-card corpus, not by its 9 unit tests alone.
 | 2026-08-31 | `tools/session_report.py`: attribute a session's token spend | Small, tooling. Reads the JSONL transcripts under `~/.claude/projects/<munged-cwd>/` and reports where a session's tokens went. Across this repo's 24 sessions: **283.6M input against 1.3M output — 99.5% of all tokens are the transcript re-sent every turn.** Central metric is *carry cost*: context per turn is exact in the transcript (`input + cache_read + cache_creation`), so a payload's delta times the turns following it is what it really cost. Deliberately not an agent — feeding a 2.8 MB transcript to a model costs ~700k tokens to learn you should have piped something through `head`. **Three attribution traps found and fixed while building it**, the third only because the user pushed back: `<synthetic>` turns carry a zeroed usage block; a cache re-prime after an idle gap is the 1h TTL lapsing, not context growing; and one assistant message is written as *several* JSONL records sharing a `message.id`, so per-record counting inflated turns ~60% and made parallel tool calls invisible, yielding a confident and false "batching never happens" (real rate 8%, range 0–82%). Lint-clean, added to `ruff.toml`'s `include`. See **L-017**. |
 | 2026-09-01 | `specs/SESSION-HYGIENE.md` + `CLAUDE.md` piping rule — acting on L-017 | Small, docs. L-017 measured where the tokens go; this puts each half where its audience will meet it (the AD-009 split, applied to a third audience — the operator). **Human-facing** `specs/SESSION-HYGIENE.md`: the do/don't list, the `/clear` rule with the worked `29500212` example (4 prompts across 3.5 days, 291 turns, spanning specs 015/017/018/019 — the last 9 turns each carried 358k of dead phase-1 lint context after "I have merged and closed the PR"), and the three ratios worth watching. Deliberately *not* referenced from anywhere the agent reads, so it costs nothing per turn. **Agent-facing** one `CLAUDE.md` bullet, the piping rule only. **Two things deliberately not done and why:** no batching instruction — the system prompt already carries one and batching decays *within* a session (41 batched turns across first thirds vs 8 across last thirds, 6/6 declining), so more instruction text re-read inside the growing context is the least likely fix; and no `PreToolUse` hook yet — a hook that blocks forces a retry, and a retry is a full context re-read, so it can cost more than it saves. **Open:** if the re-measure in a week still shows fat payloads, build that hook *warn-only* and re-measure again. Also fixed while here: `tools/session_report.py` still printed a "batching half the single-call turns would save N%" figure that a transcript cannot support (it cannot tell a missed batch from genuinely sequential work); it now reports the rate only. |
 | 2026-09-01 | `SessionEnd` hook + `session_report.py --append-log`: record token metrics per session | Small, tooling. Transcripts are deleted after `cleanupPeriodDays` (30 by default), so every measurement behind L-017 and `specs/SESSION-HYGIENE.md` is unreproducible next month — the log is the durable half. The hook (in **`.claude/settings.local.json`**, gitignored: personal telemetry, not a project contract like the delegation hooks in `settings.json`) pipes `session_id` into the tool and appends one compact JSON row to `~/.claude/token-logs/spanish-srs.ndjson`. Runs outside the model's context, so it costs **zero tokens**. Rows carry *ratios* (`fat_payload_share`, `batch_rate`) not just raw sizes, because raw size tracks task length and is not comparable across sessions. `--append-log` is idempotent (skips a session already logged at that turn count) and exits 0 with no output when nothing matches, so the same command doubles as a backfill — necessary because `SessionEnd` only fires on a clean exit, and a killed terminal writes nothing. Backfilled 35 existing sessions. **CI was considered and rejected:** transcripts live in `~/.claude/projects/`, never in the repo, so CI structurally cannot see them, and token spend is a property of how work was done rather than of the diff — there is no gate worth writing. **Open:** `tools/session_report.py` still has no regression matrix, unlike `state_rotate.py` and `archive_spec.py`; three attribution traps were found in it by hand, which is the argument for one. |
+| 2026-09-01 | Deduplicated `L-017` in this file's `## Lessons` list | Small, noticed while running `specs/010-day-rollover-anchoring` and logged as a `## Discovered` note rather than fixed inline. The headline was listed twice, verbatim. It got resolved as a side effect of adding **L-018**: the second copy was the line replaced, so the list went 18 headlines / 18 bodies instead of gaining a 19th duplicate row. Recording it here rather than claiming it is still open. No `LESSONS.md` change — there was only ever one L-017 body, which is why the push gate (headline/body pairing) never caught the duplicate: it checks that every headline has a body, not that every headline appears once. |

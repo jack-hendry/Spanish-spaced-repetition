@@ -510,3 +510,51 @@ very context whose growth tracks the decay -- treats a context-length problem
 with more context. The lever that survives is the one that needs no compliance at
 all: shorter sessions. `specs/SESSION-HYGIENE.md` is the operator-facing form of
 this, kept out of context deliberately.
+
+**L-018 — A whole test suite can pass under both the right and the wrong
+definition of a shared primitive.** (2026-09-01,
+`specs/010-day-rollover-anchoring`) `todayNumber` is the single source of every
+day number in this app: the study queue, the per-day new/review limits, the
+unbury checkpoint, the streak counters, the browse due strings and the FSRS
+optimizer histories all measure against it. It had been wrong since the
+beginning — it subtracted `collection.created` as a raw epoch instant, which
+anchored the daily rollover to whatever *time of day* the collection happened
+to be created (14:20:35 local here) instead of to `dayCutoffHour`:00. The
+user-visible symptom was a daily new-card allowance that would not renew.
+
+**All 209 existing web tests passed unchanged under both formulas.** Not "most
+of them", not "they needed re-baselining" — the suite was completely blind to a
+defect in the primitive that nearly every scheduling behaviour is measured
+against. That was verified by executing it, not assumed: the fix was applied,
+the suite run, and the change reverted, all before `tasks.md` was written.
+
+The mechanism is worth naming, because it is not carelessness. Every consumer
+called the same function, so every consumer was wrong *in the same direction by
+the same amount*, and every test that exercised two consumers together saw them
+agree. Internal consistency is exactly what a test suite is good at detecting,
+and exactly what a shared-primitive bug preserves. Spec 007 had already noticed
+this — it recorded that every `todayNumber` consumer "is internally consistent
+today because they all share the same wrong function" — and then deferred the
+fix, which is how the same root cause surfaced twice: first as a heatmap date
+off by one, then as a stuck daily cap.
+
+Three practical consequences:
+
+- **Suite-green is not evidence about a shared primitive.** When changing one,
+  the informative experiment is the reverse one: write the new tests, then put
+  the *old* implementation back and confirm they go red. Here 6 of 7 did.
+- **The seventh is the interesting one.** A 400-day walk asserting "the day
+  number advances by exactly 1 per local calendar date" stayed green under the
+  old formula too — a fixed 86,400,000 ms grid also advances once per calendar
+  day when sampled at local noon, because noon sits eight hours clear of the
+  boundary and an hour of DST drift never crosses it. The test is honest and
+  worth keeping as a regression guard, but it discriminates nothing about
+  *this* change. L-006 says a test that stays green when you stash the fix is
+  not proof; the corollary is that you have to check *which* tests went red,
+  not just count them.
+- **Pin the origin explicitly.** The first draft of this spec constrained only
+  where the day boundaries fell, never which integer day 0 was. That integer is
+  compared against every persisted review `card.due`, so it is the one degree of
+  freedom where a wrong choice silently reinterprets the entire store. It got a
+  numbered requirement (day 0 = the study day containing `created`) only because
+  the harden pass asked what pinned it.

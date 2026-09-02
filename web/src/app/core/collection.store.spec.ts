@@ -1,7 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 
-import { CollectionStore } from './collection.store';
+import { remainingLimits } from './daily-limits';
+import { heatDateKey } from './heatmap';
+import { CollectionStore, todayNumber } from './collection.store';
 import type { Card, Collection, Deck, DeckOptions } from './models';
 
 function collection(over: Partial<Collection> = {}): Collection {
@@ -156,5 +158,103 @@ describe('CollectionStore.defaultDeckOptions (audit B6)', () => {
     store.collection.set(collection({ defaultDeckOptionsId: 'missing' }));
 
     expect(store.defaultDeckOptions()?.id).toBe('o2');
+  });
+});
+
+describe('todayNumber day rollover', () => {
+  const CREATED = new Date(2026, 5, 24, 10, 20, 35).getTime();
+  const at = (y: number, m: number, d: number, h: number, min = 0) =>
+    new Date(y, m, d, h, min).getTime();
+
+  it('rolls over at dayCutoffHour:00 local, not at created\'s time-of-day', () => {
+    const coll = collection({ created: CREATED, dayCutoffHour: 4 });
+    const before = todayNumber(coll, at(2026, 8, 1, 3, 59));
+    const after = todayNumber(coll, at(2026, 8, 1, 4, 1));
+    expect(after - before).toBe(1);
+    // Still the same day well past created's 10:20 time-of-day.
+    expect(todayNumber(coll, at(2026, 8, 1, 14, 30))).toBe(after);
+    expect(todayNumber(coll, at(2026, 8, 1, 23, 59))).toBe(after);
+  });
+
+  it('ignores created\'s time-of-day', () => {
+    const early = collection({ created: at(2026, 5, 24, 5, 0), dayCutoffHour: 4 });
+    const late = collection({ created: at(2026, 5, 24, 23, 45), dayCutoffHour: 4 });
+    const now = at(2026, 8, 1, 10, 30);
+    expect(todayNumber(early, now)).toBe(todayNumber(late, now));
+  });
+
+  it('numbers the study day containing created as day 0', () => {
+    const coll = collection({ created: CREATED, dayCutoffHour: 4 });
+    expect(todayNumber(coll, CREATED)).toBe(0);
+    expect(todayNumber(coll, at(2026, 5, 24, 4, 0))).toBe(0);
+    expect(todayNumber(coll, at(2026, 5, 24, 23, 59))).toBe(0);
+    // 03:00 that date is still the previous study day.
+    expect(todayNumber(coll, at(2026, 5, 24, 3, 0))).toBe(-1);
+  });
+
+  it('treats a created before the cutoff hour as the previous calendar day', () => {
+    const coll = collection({ created: at(2026, 5, 24, 2, 0), dayCutoffHour: 4 });
+    // Day 0 runs Jun 23 04:00 -> Jun 24 04:00.
+    expect(todayNumber(coll, at(2026, 5, 23, 12, 0))).toBe(0);
+    expect(todayNumber(coll, at(2026, 5, 24, 3, 59))).toBe(0);
+    expect(todayNumber(coll, at(2026, 5, 24, 4, 1))).toBe(1);
+  });
+
+  it('advances by exactly one per local calendar date across a full year', () => {
+    const coll = collection({ created: CREATED, dayCutoffHour: 4 });
+    let prev: number | null = null;
+    for (let i = 0; i < 400; i++) {
+      // Local noon on each consecutive date; noon is safely past any cutoff
+      // and clear of both DST transition hours.
+      const t = todayNumber(coll, new Date(2026, 0, 1 + i, 12).getTime());
+      if (prev !== null) expect(t - prev).toBe(1);
+      prev = t;
+    }
+  });
+
+  it('shares heatDateKey\'s day boundaries on non-DST-transition days', () => {
+    const coll = collection({ created: CREATED, dayCutoffHour: 4 });
+    // Two consecutive ordinary dates, sampled either side of the cutoff.
+    for (const [y, m, d] of [
+      [2026, 8, 1],
+      [2026, 8, 2],
+    ] as const) {
+      const beforeCutoff = new Date(y, m, d, 3, 59).getTime();
+      const afterCutoff = new Date(y, m, d, 4, 1).getTime();
+      expect(todayNumber(coll, afterCutoff) - todayNumber(coll, beforeCutoff)).toBe(1);
+      expect(heatDateKey(afterCutoff, coll.dayCutoffHour)).not.toBe(
+        heatDateKey(beforeCutoff, coll.dayCutoffHour),
+      );
+      const later = new Date(y, m, d, 20).getTime();
+      expect(todayNumber(coll, later)).toBe(todayNumber(coll, afterCutoff));
+      expect(heatDateKey(later, coll.dayCutoffHour)).toBe(
+        heatDateKey(afterCutoff, coll.dayCutoffHour),
+      );
+    }
+  });
+});
+
+describe('daily allowance across a calendar-day boundary', () => {
+  it('restores the full new-card allowance the morning after an evening session', () => {
+    const created = new Date(2026, 5, 24, 10, 20, 35).getTime();
+    const coll = collection({ created, dayCutoffHour: 4 });
+
+    // Evening session on Aug 31, after created's 10:20 time-of-day.
+    const evening = new Date(2026, 7, 31, 17, 55).getTime();
+    const studiedDay = todayNumber(coll, evening);
+    const d = deck({ id: 'd1', daily: { day: studiedDay, newStudied: 20, reviewStudied: 0 } });
+    const opts = deckOptions();
+
+    // Same evening the cap is spent.
+    expect(
+      remainingLimits([d], new Set(['d1']), studiedDay, opts).newRemaining,
+    ).toBe(0);
+
+    // Next morning at 10:30 the tally is stale and the allowance is back.
+    const nextMorning = todayNumber(coll, new Date(2026, 8, 1, 10, 30).getTime());
+    expect(nextMorning).toBe(studiedDay + 1);
+    expect(
+      remainingLimits([d], new Set(['d1']), nextMorning, opts).newRemaining,
+    ).toBe(opts.new.perDay);
   });
 });

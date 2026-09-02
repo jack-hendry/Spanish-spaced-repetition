@@ -208,6 +208,49 @@ Discovered log: the root must pin `typescript` (an unconstrained
 `typescript: "*"` peer from `angular-eslint` otherwise resolves to 7.x), and no
 `typescript-eslint` release supports TypeScript 7 yet.
 
+**AD-019 — A spec's durable artifact lives in the folder that outlives the
+spec, not in the spec folder.** (2026-08-28, `specs/016-lint-audit` D6) The
+lint inventory is written to `specs/015-typescript-lint-rollout/INVENTORY.md`
+— the *roadmap's* folder — rather than to the spec that produced it. Two
+reasons, and the second is the reusable one. First, Phases 1–4 consume it, so
+its lifetime is the initiative's, not this spec's. Second, **the archive
+ritual's 20 KB gate collides with exactly this class of artifact**: a detailed
+inventory is valuable *because* it is detailed, and `scripts/clean-table-check.sh`
+refuses a push adding any file over 20 KB under `specs/archive/`. Putting it in
+the spec folder would have forced a summarise pass over the one file whose
+value is its detail, at archive time, by someone who no longer remembers which
+rows mattered. Keeping it outside the archiving folder removes the conflict
+instead of trading against it. Generalises: when a spec produces something later
+work depends on, ask which folder's lifetime matches the artifact's, and put it
+there — the spec folder is for the spec's own reasoning.
+
+**AD-020 — A lint ruleset is calibrated against the codebase before it is
+enforced; loosening on evidence is part of adoption, not a retreat from it.**
+(2026-08-28, `archive/2026-08-31-017-lint-phase1-web`, Phase 1 of
+`archive/2026-08-31-015-typescript-lint-rollout`, D1–D4) Phase 0 adopted the **full** ruleset
+report-only, so Phase 1's first act is calibration, not remediation: sort every
+violation class into *the code is wrong* or *the rule is miscalibrated here*.
+Three of 25 rules were the latter and carried 139 of 254 violations. `eqeqeq` →
+`{ null: 'ignore' }` (every hit was the `x != null` idiom; the compliant fix is
+a live bug — L-014). `restrict-template-expressions` → `{ allowNumber: true }`
+(all 43 hits were `${aNumber}`; `strictTypeChecked` sets `allowNumber: false`,
+typescript-eslint's own default is `true`). Five rules off for `*.spec.ts` only,
+each whose premise fails in a test. Result: 254 → 115, no code edited, four
+directories immediately gateable.
+
+What keeps this from being score-gaming is the counter-example:
+`strict-boolean-expressions` was **not** relaxed though it would have cleared 11
+more free — the roadmap names it, its hits are genuine, and one
+(`review.ts:135`) was a real finding. The test is whether the change makes the
+rule describe this codebase's conventions more accurately, or just makes the
+number smaller.
+
+Corollary: **calibration is global, a phase's file list is not.** The same edits
+drop Phase 2 31 → 5 with no scheduling file reviewed. A relaxation removes a
+*report*, not a defect — but it removes the prompt to look, so Phase 2 keeps its
+full list (widened to 16 files, see AD-018) and reviews files, not residual
+hits; recorded in `INVENTORY.md` so the drop never reads as progress.
+
 ## Blockers
 
 (nothing rotated yet)
