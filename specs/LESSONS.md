@@ -513,7 +513,7 @@ this, kept out of context deliberately.
 
 **L-018 — A whole test suite can pass under both the right and the wrong
 definition of a shared primitive.** (2026-09-01,
-`specs/010-day-rollover-anchoring`) `todayNumber` is the single source of every
+`specs/archive/2026-09-02-010-day-rollover-anchoring`) `todayNumber` is the single source of every
 day number in this app: the study queue, the per-day new/review limits, the
 unbury checkpoint, the streak counters, the browse due strings and the FSRS
 optimizer histories all measure against it. It had been wrong since the

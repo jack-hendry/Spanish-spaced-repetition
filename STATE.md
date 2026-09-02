@@ -35,20 +35,22 @@ server, 020 full gate) landed and archived** (2026-08-31). Repo-wide
 violations 254 → 0; `lint:ci` gates the full repo (`eslint .`). See AD-018
 through AD-023, L-011 through L-016.
 
-`specs/010-day-rollover-anchoring/` is **code-complete, not yet archived**
-(2026-09-01). `Analyst.md` was rewritten against the current tree, hardened in
-two rounds recorded in `CriticReview.md`, and all 8 `tasks.md` steps are done.
-`todayNumber` now counts local calendar days from the study day of
-`collection.created`; 216 web tests (was 209) and 71 server tests green, build
-and `lint:ci` clean, `data/spanish/` and `server/` untouched. See AD-024, L-018.
+The day-rollover anchoring work
+(`specs/archive/2026-09-02-010-day-rollover-anchoring/`) is **finished and
+archived** (2026-09-02). `todayNumber` now counts local calendar days from the
+study day of `collection.created`, so the daily allowance renews at
+`dayCutoffHour`:00 local instead of at `created`'s time of day. 216 web tests
+(was 209) and 71 server tests green, build and `lint:ci` clean, no on-disk
+shape change and `server/` untouched. See AD-024, L-018.
 
-`specs/STATE.md` was rotated on 2026-09-02 (`state_rotate.py --apply`): AD-019
+`specs/STATE.md` was rotated the same day (`state_rotate.py --apply`): AD-019
 and AD-020 moved to `specs/STATE-ARCHIVE.md` leaving one-line stubs, 326 -> 287
 lines, back under the ~300-line budget.
 
-One thing left: the spec is **not yet archived** — ritual steps 3+4
-(`python3 tools/archive_spec.py specs/010-day-rollover-anchoring --apply`)
-still to run, together with a `specs/STATE.md` change in the same push.
+No spec is currently live. Two follow-ups are recorded rather than started:
+consolidating `todayNumber` and `heatDateKey` behind one day-bucketing helper
+(they disagree on 4 minutes a year, both on DST-transition days), and a
+regression matrix for `tools/session_report.py`.
 
 Format while a run is in progress: `<spec> — step N of M` (see
 `specs/TEMPLATE.md`'s `Status:` field convention, AD-016).

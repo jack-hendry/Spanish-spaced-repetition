@@ -20,7 +20,7 @@ Rules:
 (nothing rotated yet)
 
 **AD-007 — `todayNumber` may be changed by 010, and its ≤1-day transition is
-accepted, never migrated.** (2026-08-15, `specs/010-day-rollover-anchoring`)
+accepted, never migrated.** (2026-08-15, `specs/archive/2026-09-02-010-day-rollover-anchoring`)
 007 explicitly deferred the root cause and declared changing `todayNumber`
 a non-goal; 010 reverses that for this one feature. Day numbers exist in two
 populations with different lifetimes — **derived at render time** from epoch-ms

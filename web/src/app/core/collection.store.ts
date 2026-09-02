@@ -45,7 +45,7 @@ function studyDayIndex(ms: number, cutoffHour: number): number {
  * NOTE: this and `heatDateKey` (`core/heatmap.ts`) bucket the timeline
  * identically on ordinary days, but `heatDateKey` shifts by absolute hours,
  * so on the two DST-transition days a year the two boundaries sit up to an
- * hour apart. Deliberate — see specs/010-day-rollover-anchoring.
+ * hour apart. Deliberate — see specs/archive/2026-09-02-010-day-rollover-anchoring.
  */
 export function todayNumber(collection: Collection, now = Date.now()): number {
   return (
