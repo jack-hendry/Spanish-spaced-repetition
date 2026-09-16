@@ -69,7 +69,7 @@ The review loop: the SPA loads the collection + cards, the user rates a card, th
 - Ids are timestamp-based strings (Anki-style). Notes have a stable `guid` for re-import identity.
 - A **note** (fields + tags) belongs to a **note type** (`standard` | `cloze`, with field defs, card templates, CSS). A note generates one or more **cards**; a card's `ord` is the template ord (standard) or cloze index (cloze).
 - A card carries both SM-2 state (`ease` in permille, `interval` in days) and FSRS state (`stability`, `difficulty`, null until FSRS schedules it), so a deck can switch algorithms.
-- `card.due` is overloaded by queue: position for `new`, epoch **milliseconds** for `learning`/`relearning`, day number for `review` (AD-003 — the "epoch seconds" this line used to claim was never true; see L-001). "Day number" = days since collection creation, honouring `collection.dayCutoffHour` (default 4am, like Anki) — see `todayNumber()`.
+- `card.due` is overloaded by queue: position for `new`, epoch **milliseconds** for `learning`/`relearning`, day number for `review` (AD-003 — the "epoch seconds" this line used to claim was never true; see L-001). "Day number" = local calendar days from the study day of `collection.created`, rolling over at `collection.dayCutoffHour`:00 local (default 4am, like Anki) — see `todayNumber()`.
 
 ### Data directory (`data/spanish/`)
 
@@ -108,7 +108,7 @@ Two rules that make this table work:
 - When unsure, size UP, never down. Sizing down to "save time" is how bugs are born.
 - If mid-work the task turns out bigger than classified (more steps, more layers), STOP and re-classify. Do not push through with too little process.
 
-Anything touching scheduling, the study queue, `card.due`, or the on-disk shape is **at least** Large regardless of how few files it looks like — that is the contract `scheduling-domain` exists to protect, and a wrong day-number is silent (see `specs/archive/2026-07-14-007-heatmap-date-off-by-one` and `specs/010-day-rollover-anchoring`).
+Anything touching scheduling, the study queue, `card.due`, or the on-disk shape is **at least** Large regardless of how few files it looks like — that is the contract `scheduling-domain` exists to protect, and a wrong day-number is silent (see `specs/archive/2026-07-14-007-heatmap-date-off-by-one` and `specs/archive/2026-09-02-010-day-rollover-anchoring`).
 
 ## Harness commands
 

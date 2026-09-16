@@ -24,10 +24,34 @@ export interface DeckNode {
 
 const ZERO: DeckCounts = { new: 0, learning: 0, review: 0 };
 
-/** The number of days since collection creation, honouring the day cutoff hour. */
+/**
+ * The whole-day index of the local calendar day `ms` belongs to, once the
+ * day is shifted to begin at `cutoffHour`:00 local. The shift uses local
+ * wall-clock hours, so the boundary is exactly `cutoffHour`:00 on every
+ * date, DST transitions included.
+ */
+function studyDayIndex(ms: number, cutoffHour: number): number {
+  const d = new Date(ms);
+  d.setHours(d.getHours() - cutoffHour);
+  return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86_400_000);
+}
+
+/**
+ * Study-day number: local calendar days from the study day containing
+ * `collection.created` (day 0) to the study day containing `now`. Rolls
+ * over at `collection.dayCutoffHour`:00 local, independent of what
+ * time-of-day the collection happened to be created.
+ *
+ * NOTE: this and `heatDateKey` (`core/heatmap.ts`) bucket the timeline
+ * identically on ordinary days, but `heatDateKey` shifts by absolute hours,
+ * so on the two DST-transition days a year the two boundaries sit up to an
+ * hour apart. Deliberate — see specs/archive/2026-09-02-010-day-rollover-anchoring.
+ */
 export function todayNumber(collection: Collection, now = Date.now()): number {
-  const cutoffMs = collection.dayCutoffHour * 3600_000;
-  return Math.floor((now - collection.created - cutoffMs) / 86_400_000);
+  return (
+    studyDayIndex(now, collection.dayCutoffHour) -
+    studyDayIndex(collection.created, collection.dayCutoffHour)
+  );
 }
 
 /**

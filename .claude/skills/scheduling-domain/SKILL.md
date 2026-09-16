@@ -5,7 +5,7 @@ description: Domain invariants for this repo's spaced-repetition scheduling — 
 
 # Scheduling domain invariants
 
-Verified against source 2026-07-07. If code and this file disagree, trust the
+Verified against source 2026-09-01. If code and this file disagree, trust the
 code and update this file.
 
 ## The prime directive
@@ -36,11 +36,11 @@ Never compare `due` values across queues, and never compare learning `due`
 ## Day numbers
 
 `todayNumber(collection, now)` in `web/src/app/core/collection.store.ts`:
-`floor((now - collection.created - dayCutoffHour*3600_000) / 86_400_000)` —
-days since collection creation, with the study day rolling over at
-`collection.dayCutoffHour` (default 4am, like Anki), NOT midnight. Any
-"per day" feature (limits, unburying, heatmap buckets, forecast) must go
-through `todayNumber`, never through calendar dates.
+local calendar days from the study day containing `collection.created` (day 0)
+to the study day containing `now`, rolling over at `collection.dayCutoffHour`
+(default 4am, like Anki) **local wall-clock time**, independent of
+`created`'s time-of-day. Any "per day" feature (limits, unburying, forecast)
+must go through `todayNumber`, never through calendar dates.
 
 ## Units are non-obvious
 
@@ -210,8 +210,8 @@ Two specifics worth keeping:
 
 (`specs/archive/2026-08-31-018-lint-phase2-scheduling`, D7 review pass finding, specs/archive/2026-07-14-007-heatmap-date-off-by-one)
 
-The guidance in this skill's main section says: "Any 'per day' feature (limits, unburying, heatmap buckets, forecast) must go through `todayNumber`, never through calendar dates." The live heatmap implementation (`core/heatmap.ts`, `heatDateKey`/`buildHeatGrid`) deliberately does the opposite: it keys buckets by **local calendar date** shifted by `dayCutoffHour`, *not* by `todayNumber`. That is correct and is exactly what spec 007 fixed — `heatmap.spec.ts`'s regression test states it: "Calendar-date keying must not depend on `created` at all."
+This skill's main section used to list heatmap buckets among the features that must go through `todayNumber`, but spec 010 removed that guidance — the heatmap deliberately keys by calendar date, not by `todayNumber`. The live heatmap implementation (`core/heatmap.ts`, `heatDateKey`/`buildHeatGrid`) demonstrates this: it keys buckets by **local calendar date** shifted by `dayCutoffHour`, *not* by `todayNumber`. That is correct and is exactly what spec 007 fixed — `heatmap.spec.ts`'s regression test states it: "Calendar-date keying must not depend on `created` at all."
 
-The trap: `todayNumber` anchors on `collection.created`'s time-of-day, which pushed a same-day review made just after midnight into the next cell when the cutoff hour was 4am. The heatmap deliberately avoids that anchor, shifting only by the cutoff hour, not by the creation timestamp.
+The trap: the old `todayNumber` formula anchored on `collection.created`'s time-of-day, which pushed a same-day review made just after midnight into the next cell when the cutoff hour was 4am. That was a bug — spec 010 reanchored `todayNumber` to local calendar days.
 
-**Corrected rule:** use day numbers (via `todayNumber`) for scheduling mechanics (limits, due comparisons, forecast); use calendar dates (shifted by `dayCutoffHour`) for the heatmap's visual calendar cells. The distinction is mechanical: `todayNumber` is for comparisons that must respect creation time; calendar date is for a user-facing grid that must respect their local clock.
+**Corrected rule (spec 010):** Both `todayNumber` and `heatDateKey` count local calendar days, rolling over at `collection.dayCutoffHour`:00 local. `todayNumber` is an integer that persisted `card.due` values are compared against; `heatDateKey` produces a calendar-date key for the visual grid. The two differ only in that `heatDateKey` shifts by **absolute hours** (wall-clock midnight + `dayCutoffHour`), while `todayNumber` shifts by **wall-clock hours** (add/subtract the offset then read the calendar date), so their boundaries sit up to an hour apart on the two DST-transition days a year. That difference is acceptable and deliberate — see `specs/archive/2026-09-02-010-day-rollover-anchoring`.
