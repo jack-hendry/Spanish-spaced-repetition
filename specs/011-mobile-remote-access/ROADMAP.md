@@ -59,12 +59,14 @@ from Angular (:4200). Needed before anything touches the public internet:
 - [x] Trim the `express.json({ limit: '50mb' })` body cap to something the
       real payloads need, and add basic rate limiting — a 50MB unauthenticated
       body is a free memory/disk exhaustion primitive once public.
-- [ ] Add security headers (helmet or equivalent) and confirm nothing outside
+- [x] Add security headers (helmet or equivalent) and confirm nothing outside
       `data/spanish/media/` is reachable through the static mounts.
-- [ ] Verify by trying: unauthenticated `curl` against `/api/collection`,
+- [x] Verify by trying: unauthenticated `curl` against `/api/collection`,
       `/api/review`, `/media/...` and the app root must all fail.
 
-**Phase 0 complete.** All 6 core hardening checkboxes landed in `specs/013-server-hardening`.
+**Phase 0 complete.** All 8 hardening checkboxes landed in `specs/013-server-hardening`
+(the last two were done — helmet in `app.ts`, `verify.sh`'s curl matrix and
+path-traversal check — but missed being ticked when this doc was updated).
 
 ## Phase 1 — Deploy to Fly.io
 
