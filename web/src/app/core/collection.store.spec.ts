@@ -166,7 +166,7 @@ describe('todayNumber day rollover', () => {
   const at = (y: number, m: number, d: number, h: number, min = 0) =>
     new Date(y, m, d, h, min).getTime();
 
-  it('rolls over at dayCutoffHour:00 local, not at created\'s time-of-day', () => {
+  it("rolls over at dayCutoffHour:00 local, not at created's time-of-day", () => {
     const coll = collection({ created: CREATED, dayCutoffHour: 4 });
     const before = todayNumber(coll, at(2026, 8, 1, 3, 59));
     const after = todayNumber(coll, at(2026, 8, 1, 4, 1));
@@ -176,7 +176,7 @@ describe('todayNumber day rollover', () => {
     expect(todayNumber(coll, at(2026, 8, 1, 23, 59))).toBe(after);
   });
 
-  it('ignores created\'s time-of-day', () => {
+  it("ignores created's time-of-day", () => {
     const early = collection({ created: at(2026, 5, 24, 5, 0), dayCutoffHour: 4 });
     const late = collection({ created: at(2026, 5, 24, 23, 45), dayCutoffHour: 4 });
     const now = at(2026, 8, 1, 10, 30);
@@ -212,7 +212,7 @@ describe('todayNumber day rollover', () => {
     }
   });
 
-  it('shares heatDateKey\'s day boundaries on non-DST-transition days', () => {
+  it("shares heatDateKey's day boundaries on non-DST-transition days", () => {
     const coll = collection({ created: CREATED, dayCutoffHour: 4 });
     // Two consecutive ordinary dates, sampled either side of the cutoff.
     for (const [y, m, d] of [
@@ -246,15 +246,13 @@ describe('daily allowance across a calendar-day boundary', () => {
     const opts = deckOptions();
 
     // Same evening the cap is spent.
-    expect(
-      remainingLimits([d], new Set(['d1']), studiedDay, opts).newRemaining,
-    ).toBe(0);
+    expect(remainingLimits([d], new Set(['d1']), studiedDay, opts).newRemaining).toBe(0);
 
     // Next morning at 10:30 the tally is stale and the allowance is back.
     const nextMorning = todayNumber(coll, new Date(2026, 8, 1, 10, 30).getTime());
     expect(nextMorning).toBe(studiedDay + 1);
-    expect(
-      remainingLimits([d], new Set(['d1']), nextMorning, opts).newRemaining,
-    ).toBe(opts.new.perDay);
+    expect(remainingLimits([d], new Set(['d1']), nextMorning, opts).newRemaining).toBe(
+      opts.new.perDay,
+    );
   });
 });
