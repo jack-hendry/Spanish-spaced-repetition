@@ -1,0 +1,348 @@
+{
+  "Menu_ID": 1757894400000,
+  "MenuTitle": "How Does the Internet Work?",
+  "language": "English",
+  "noteType": "spanish2",
+  "children": [
+    {
+      "Menu_ID": 1757894400001,
+      "MenuTitle": "Flashcards: Study Mode",
+      "DeckType": "Flashcards: Study Mode",
+      "cards": [
+        {
+          "Card_ID": 1757894400000,
+          "SideA": "What is a network?",
+          "SideB": "A group of computers or other devices connected to each other.",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400007,
+          "SideA": "What is the internet, in one sentence?",
+          "SideB": "A network of networks — many separate networks connected together.",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400014,
+          "SideA": "Who developed the internet, when, and why?",
+          "SideB": "The US Department of Defense in the late 1960s, to create a decentralized communication network that could withstand a nuclear attack.",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400021,
+          "SideA": "At a high level, how does the internet work?",
+          "SideB": "It connects devices and computer systems using a set of standardized protocols that define how information is exchanged and ensure data is transmitted reliably and securely.",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400028,
+          "SideA": "What sits at the core of the internet?",
+          "SideB": "A global network of interconnected routers that direct traffic between different devices and systems.",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400035,
+          "SideA": "What happens to your data when you send it over the internet?",
+          "SideB": "It's broken into small packets sent from your device to a router; each router examines a packet and forwards it to the next router toward its destination, until it arrives.",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400042,
+          "SideA": "What are the two core protocols that move data across the internet, and what does each do?",
+          "SideB": "IP routes packets to their correct destination; TCP ensures packets are transmitted reliably and in the correct order.",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400049,
+          "SideA": "What is a packet?",
+          "SideB": "A small unit of data transmitted over the internet.",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400056,
+          "SideA": "What is a router?",
+          "SideB": "A device that directs packets of data between different networks.",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400063,
+          "SideA": "What is an IP address?",
+          "SideB": "A unique identifier assigned to each device on a network, used to route data to the correct destination.",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400070,
+          "SideA": "What is a domain name?",
+          "SideB": "A human-readable name used to identify a website, such as google.com.",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400077,
+          "SideA": "What does DNS do?",
+          "SideB": "The Domain Name System translates domain names into IP addresses.",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400084,
+          "SideA": "What is HTTP used for?",
+          "SideB": "Transferring data between a client (e.g. a web browser) and a server (e.g. a website).",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400091,
+          "SideA": "What is HTTPS?",
+          "SideB": "An encrypted version of HTTP that provides secure communication between client and server.",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400098,
+          "SideA": "What are SSL/TLS?",
+          "SideB": "The Secure Sockets Layer and Transport Layer Security protocols, used to provide secure communication over the internet.",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400105,
+          "SideA": "What is a protocol?",
+          "SideB": "A set of rules and standards defining how information is exchanged between devices and systems.",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400112,
+          "SideA": "Name the main protocols used in internet communication.",
+          "SideB": "IP, TCP, UDP, DNS, and HTTP (among many others).",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400119,
+          "SideA": "What is the key benefit of standardized protocols?",
+          "SideB": "Devices and systems from different manufacturers and vendors can communicate seamlessly — e.g. one company's browser talks to another company's web server because both follow HTTP.",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400126,
+          "SideA": "How is an IP address typically written?",
+          "SideB": "As four numbers separated by periods, e.g. \"192.168.1.1\".",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400133,
+          "SideA": "How are domain names structured?",
+          "SideB": "Two or more parts separated by periods, e.g. \"google.com\".",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400140,
+          "SideA": "What happens when you type a domain name into your browser?",
+          "SideB": "Your computer sends a DNS query to a DNS server, which returns the corresponding IP address; your computer then uses that IP address to connect to the resource.",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400147,
+          "SideA": "Describe the HTTP request/response cycle.",
+          "SideB": "Your browser sends an HTTP request to the server asking for a webpage or resource; the server sends back an HTTP response containing the requested data.",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400154,
+          "SideA": "How does HTTPS differ from HTTP?",
+          "SideB": "It encrypts data transmitted between client and server using SSL/TLS, adding a layer of security for sensitive data like login credentials and payment information.",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400161,
+          "SideA": "How can you tell a site is using HTTPS?",
+          "SideB": "The browser shows a padlock icon in the address bar, and the address begins with \"https\" rather than \"http\".",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400168,
+          "SideA": "What does TCP/IP provide?",
+          "SideB": "Reliable, ordered, error-checked delivery of data between applications running on different devices.",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400175,
+          "SideA": "What is a port?",
+          "SideB": "A number identifying the application or service running on a device, so data reaches the correct destination.",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400182,
+          "SideA": "What is a socket?",
+          "SideB": "A combination of an IP address and a port number, representing a specific endpoint for communication.",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400189,
+          "SideA": "What happens during TCP connection establishment?",
+          "SideB": "The two devices negotiate parameters such as maximum segment size and window size, which determine how data will be transmitted.",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400196,
+          "SideA": "How is data transferred once a TCP connection is established?",
+          "SideB": "In segments, each containing a sequence number and other metadata to ensure reliable delivery.",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400203,
+          "SideA": "Name three common application protocols built on TCP/IP.",
+          "SideB": "HTTP, FTP (File Transfer Protocol), and SMTP (Simple Mail Transfer Protocol).",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400210,
+          "SideA": "What is an SSL/TLS certificate for?",
+          "SideB": "Establishing trust — it contains information about the server's identity and is signed by a trusted third party (a Certificate Authority) to verify authenticity.",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400217,
+          "SideA": "What happens during the SSL/TLS handshake?",
+          "SideB": "Client and server exchange information to negotiate the encryption algorithm and other parameters for the secure connection.",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400224,
+          "SideA": "What happens after the SSL/TLS handshake completes?",
+          "SideB": "Data is encrypted with the agreed-upon algorithm and transmitted securely between client and server.",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400231,
+          "SideA": "What does 5G offer over previous mobile generations?",
+          "SideB": "Faster speeds, lower latency, and greater capacity — enabling use cases like autonomous vehicles and remote surgery.",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400238,
+          "SideA": "What is the Internet of Things (IoT)?",
+          "SideB": "The network of physical devices, vehicles, home appliances, and other objects connected to the internet that can exchange data.",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400245,
+          "SideA": "What is blockchain?",
+          "SideB": "A distributed ledger technology enabling secure, decentralized transactions — used for cryptocurrency, supply chain management, and more.",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        },
+        {
+          "Card_ID": 1757894400252,
+          "SideA": "What is edge computing?",
+          "SideB": "Processing and storing data at the edge of the network rather than in centralized data centers, enabling real-time analytics and low-latency applications.",
+          "SideAAudio": null,
+          "SideBAudio": null,
+          "SideAImage": null,
+          "SideBImage": null
+        }
+      ]
+    }
+  ]
+}
