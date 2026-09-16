@@ -112,6 +112,29 @@ single copy on a single host: it is not a backup.
       snapshots as a convenience layer — first 10GB/mo free per the pricing
       page). Snapshots alone don't survive losing the account or a bad write
       that gets snapshotted.
+- [ ] **Reconcile the Fly volume with the existing git-history workflow.**
+      Today `data/spanish/*.json` + `revlog.ndjson` are tracked in git (only
+      `media/` is gitignored) — commits like "Progress"/"Paused cards" are a
+      running log of scheduling state, and rollback today means checking out
+      an older commit. Once Fly writes to its own volume, that volume is a
+      second live writer to the same logical state that isn't a git checkout
+      at all — a phone session leaves Fly's state ahead of the repo, so the
+      git-rollback habit silently stops covering the most recent reviews
+      unless something closes the loop. Decide **which side is the source of
+      truth** and make the backup mechanism *be* that reconciliation rather
+      than a separate parallel format:
+      - Fly-as-source: a scheduled job (cron on Fly, or a pull run from
+        desktop) pulls the volume's state and commits it to the repo — this
+        *is* the "at least one copy off Fly" bullet above, just made
+        git-native so the existing rollback workflow keeps working, lagged
+        by the pull interval.
+      - Desktop-as-source: git stays authoritative and Fly syncs from/to it
+        explicitly around each phone session — closer to today's habit, but
+        it's a manual step someone can forget, which is exactly the kind of
+        silent-divergence risk Phase 3/4 exist to close for other paths.
+      - Whichever is chosen, write it down here before Phase 2 is marked
+        done — an unstated answer means the next person (or agent) re-derives
+        it mid-incident.
 - [ ] Back up the *state*, not the media — `cards.json`, `notes.json`,
       `decks.json`, `collection.json`, `deckoptions.json`, `revlog.ndjson`.
       Media is 250MB and regenerable from the converter; state is 5MB and is
@@ -213,3 +236,9 @@ Checked during this session — current state:
 - (2026-08-26) `FileStore.init()` treats an empty data dir as "seed a fresh
   collection", which makes a failed volume mount look like a working empty
   app rather than an error — folded into Phase 1.
+- (2026-09-16) `data/spanish/*.json` + `revlog.ndjson` are git-tracked today,
+  and git history is the current rollback mechanism for scheduling state.
+  Once Fly writes to its own volume, that's a second live writer outside git
+  — the rollback habit stops covering whatever happened on Fly unless a
+  reconciliation step closes the loop. Folded into Phase 2 as a required
+  decision (Fly-as-source-pulled-into-git vs. desktop-as-source-synced-to-Fly).
