@@ -355,3 +355,40 @@
     margin: 0 0 1.25rem;
   }
 }
+
+// ---- mobile: tighten the card panel and rating grid ------------------------
+@media (max-width: 480px) {
+  .review {
+    padding: 1rem 0.75rem 1.5rem;
+    gap: 1rem;
+  }
+
+  .card-panel {
+    padding: 1.25rem 1rem;
+    gap: 1rem;
+  }
+
+  .rendered {
+    font-size: 1.1rem;
+  }
+
+  .ratings {
+    gap: 0.4rem;
+  }
+
+  .rate {
+    padding: 0.5rem 0.3rem;
+
+    &__label {
+      font-size: 0.8rem;
+    }
+    &__ivl {
+      font-size: 0.65rem;
+    }
+    &__key {
+      top: 0.3rem;
+      right: 0.35rem;
+      font-size: 0.6rem;
+    }
+  }
+}
