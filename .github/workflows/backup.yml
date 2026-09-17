@@ -23,11 +23,29 @@ jobs:
 
       - uses: superfly/flyctl-actions/setup-flyctl@fc53c09e1bc3be6f54706524e3b82c4f462f77be # v1.5
 
+      - name: Expose flyctl as `fly`
+        run: |
+          # The flyctl release tarball ships only `flyctl`; Homebrew and the
+          # official installer add the `fly` symlink, setup-flyctl does not.
+          # tools/*-fly-state.sh and the steps below all invoke `fly`.
+          FLYCTL=$(command -v flyctl) || {
+            echo "::error::setup-flyctl did not put flyctl on PATH"; exit 1; }
+          mkdir -p "$RUNNER_TEMP/fly-shim"
+          ln -sf "$FLYCTL" "$RUNNER_TEMP/fly-shim/fly"
+          echo "$RUNNER_TEMP/fly-shim" >> "$GITHUB_PATH"
+
       - name: Resolve production machine ID
         id: machine
         run: |
+          # Capture status and output separately: `fly ... | jq` would mask a
+          # failing `fly` behind jq's exit 0 (no pipefail under `bash -e`),
+          # turning a token-scope error into a false "no machine found".
+          if ! MACHINES=$(fly machine list --app spanish-srs --json 2>&1); then
+            echo "::error::fly machine list failed: $MACHINES" >&2
+            exit 1
+          fi
           # Resolved dynamically: a redeploy replaces the machine id.
-          MACHINE_ID=$(fly machine list --app spanish-srs --json | jq -r '.[0].id // empty')
+          MACHINE_ID=$(jq -r '.[0].id // empty' <<<"$MACHINES")
           if [ -z "$MACHINE_ID" ]; then
             echo "::error::No machine found for app spanish-srs" >&2
             exit 1

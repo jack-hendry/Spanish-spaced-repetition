@@ -620,13 +620,150 @@ state, the same shape as C7. `data/spanish/media/` is gitignored
 
 ---
 
+### Step 6b — Put `fly` on the runner's PATH (repair, found by Step 7)
+
+**Model:** haiku
+
+**Status:** ✅ **done** (2026-09-17) — file corrected, **not yet exercised**;
+Step 7's retry owns that. Took two rounds; round 1's guard fix was sent back.
+
+**Verified by reading the final file at the top level, not taken on the
+subagent's report** (which claimed a `Status:` update it had not written):
+
+| Claim | Check | Result |
+|---|---|---|
+| Tarball really lacks `fly` | `tar tzvf flyctl_0.4.104_Linux_x86_64.tar.gz` | one entry, `flyctl` — confirms the cause |
+| Action does set PATH | read `setup-flyctl/src/main.ts` at the pinned SHA | ends in `core.addPath(cachedPath)` — the "PATH is broken" reading was wrong |
+| Shim precedes first `fly` | read lines 24–55 | shim at 26–35, `setup-flyctl` at 24, first `fly` at 43 |
+| No softening | `grep -cE 'continue-on-error\|\|\| *true'` | **0** |
+
+**Round 1 was sent back — the guard fix reproduced the defect it was meant to
+remove.** It added a `command -v fly` check, which covers only the cause we
+happened to hit. The resolve line was still
+`fly machine list ... | jq -r ...`, and GitHub runs `run:` blocks under
+`bash -e {0}` — `-e` but **not** `-o pipefail` — so the pipeline's status is
+jq's, always 0. Any *other* `fly` failure (narrow token, API error, wrong app)
+would still be swallowed and still print "No machine found for app
+spanish-srs" about a healthy app.
+
+That is not hypothetical: Step 7's **If blocked** path *is* a too-narrow token,
+and the token is still unexercised for `machine start`/`stop`. The guard as
+first written would have sent the next reader hunting a missing machine instead
+of a token scope — the same lie, a second time, about the same app. Final form
+captures status and output separately, so a failing `fly` reports its own
+stderr and only a genuinely empty list says "no machine found"; the explicit
+`command -v fly` branch was dropped as redundant (exit 127 lands in the first
+branch with bash's own message).
+
+**The transferable lesson, for Step 19:** a guard that cannot distinguish *the
+command failed* from *the command returned nothing* misattributes as
+confidently as no guard at all — and `$(cmd | filter)` under `bash -e` without
+`pipefail` is the standard way to build one by accident.
+
+**Depends on:** Step 6. **Blocks Step 7**, which cannot reach any of its
+criteria until this lands.
+
+**Context**
+
+Step 7's first dispatch failed, twice identically, at the very first `fly`
+call. Step 6 had verified everything about this workflow *except* that its
+central command exists on a runner — the one thing only a real run can show.
+
+The cause is **not** that `setup-flyctl` fails to set PATH; that was the first
+reading and it is wrong. The action's source at the pinned SHA ends in
+`core.addPath(cachedPath)`, and the run log shows the download and
+`flyctl 0.4.104 is installed` both succeeding. The actual cause is a **binary
+name mismatch**:
+
+```
+$ tar tzvf flyctl_0.4.104_Linux_x86_64.tar.gz
+-rwxr-xr-x  runner runner 113119903  flyctl
+```
+
+The release tarball ships **only `flyctl`** — there is no `fly` in it. Homebrew
+and the official install script create the `fly` symlink, so every local
+invocation and every one of Steps 1–3's proofs used a name that exists only on
+a developer machine. `data/spanish/` has a live-state analogue of this
+(`CLAUDE.md`); this is the same shape in the tooling.
+
+| Run | Conclusion | Failure |
+|---|---|---|
+| [35272533757](https://github.com/jack-hendry/Spanish-spaced-repetition/actions/runs/35272533757) | `failure` | `fly: command not found` at "Resolve production machine ID" |
+| [35272676581](https://github.com/jack-hendry/Spanish-spaced-repetition/actions/runs/35272676581) | `failure` | identical — not transient |
+
+**Renaming the call sites is the wrong fix.** `tools/pull-fly-state.sh:64` and
+seven sites in `tools/push-fly-state.sh` also call `fly`. Those two scripts are
+what a human runs by hand and what Steps 1–3 proved under bash 5; rewriting
+them to `flyctl` would reopen verified work and split the name between the
+script and the runbook. Add the missing symlink once instead, in the one place
+that lacks it.
+
+**Also record — Step 6's "loudening" named the wrong cause.** Step 6 added
+`// empty` plus an explicit `::error::No machine found for app spanish-srs` so
+that "the failure names its own cause". On this failure it printed exactly
+that, and it was **false**: the machine existed and was healthy; `fly` was
+missing. `$(...)` of a missing command is empty and the guard cannot tell
+"command absent" from "no machines". A guard that assumes its command ran can
+misattribute as confidently as no guard at all. Fix this too — see item 2.
+
+**Files**
+- EDIT `.github/workflows/backup.yml`
+- DO NOT TOUCH: `tools/pull-fly-state.sh`, `tools/push-fly-state.sh` (see
+  above — they stay on `fly` deliberately), `.github/workflows/ci.yml`
+  (Step 11 owns its `on:` trigger).
+
+**Do**
+1. After the `setup-flyctl` step, add a step that exposes `flyctl` as `fly` on
+   `$GITHUB_PATH`, failing loudly if `flyctl` itself is absent:
+   ```yaml
+   - name: Expose flyctl as `fly`
+     run: |
+       # The flyctl release tarball ships only `flyctl`; Homebrew and the
+       # official installer add the `fly` symlink, setup-flyctl does not.
+       # tools/*-fly-state.sh and the steps below all invoke `fly`.
+       FLYCTL=$(command -v flyctl) || {
+         echo "::error::setup-flyctl did not put flyctl on PATH"; exit 1; }
+       mkdir -p "$RUNNER_TEMP/fly-shim"
+       ln -sf "$FLYCTL" "$RUNNER_TEMP/fly-shim/fly"
+       echo "$RUNNER_TEMP/fly-shim" >> "$GITHUB_PATH"
+   ```
+   Use `$RUNNER_TEMP` + `$GITHUB_PATH`, not `/usr/local/bin`, so the step does
+   not depend on runner write permissions outside its own workspace.
+2. Make the machine-id guard distinguish the two causes it currently conflates
+   — check `fly` is invokable before blaming the app, e.g. resolve into a
+   variable and emit a different `::error::` when the command itself failed
+   versus when it returned no machines. Keep it loud; do not soften either
+   branch.
+3. Re-read the whole file afterwards and confirm no `continue-on-error` or
+   `|| true` crept in.
+
+**Done when**
+- `python3 -c 'import yaml,sys; yaml.safe_load(open(sys.argv[1]))' .github/workflows/backup.yml`
+  parses clean.
+- `grep -c 'continue-on-error\|| true' .github/workflows/backup.yml` → 0
+  (the `|| {` guards are not `|| true` — confirm by reading, not only grep).
+- The shim step sits **after** `setup-flyctl` and **before** the first `fly`
+  call.
+- Step 7 is handed a workflow whose first `fly` call can succeed; Step 7, not
+  this step, is what proves it.
+
+---
+
 ### Step 7 — Prove it from a *stopped* machine (A1, A11)
 
 **Model:** haiku
 
-**Status:** not started
+**Status:** ⏸️ **attempted 2026-09-17, blocked — retry after Step 6b.** Both
+dispatches failed at the first `fly` call (`fly: command not found`); machine
+state before was verified `stopped`, and the workflow never reached any machine
+operation, so **A11 and A2 are untested, not failed**. Diagnosis and the fix
+live in Step 6b. Nothing was committed and `data/spanish/` was not touched.
 
-**Depends on:** Step 6.
+This is **not** this step's documented **If blocked** path (that covers a Fly
+*token permissions* error at `fly machine start`); the token remains unexercised
+for `machine start`/`stop`, so Step 6's "still unverified, by design" note stands.
+
+**Depends on:** Step 6; **Step 6b** — the retry is meaningless before it.
 
 **Context**
 Analyst A1 as corrected by harden C2: a run that begins while the machine
@@ -1256,9 +1393,47 @@ mistake Step 1 punishes. At harden time: `Scheduled snapshots: true`,
 
 **Model:** top-level
 
-**Status:** ⏸️ **decided, awaiting the user's `--apply`.** Asked 2026-09-17;
-the user chose **rotate now**. Nothing is written to `specs/STATE.md` until it
-lands, which is exactly what this step exists to enforce.
+**Status:** ⚠️ **cannot be done as written — this step's premise is wrong.**
+The user chose "rotate now" and **ran `--apply` on 2026-09-17. It was a
+no-op**, and will stay one.
+
+`tools/state_rotate.py --apply` runs the *same budget check* as `--check`
+before rotating anything, and returns "ok" without touching the file while it
+is under 300 lines. Observed, both before and after the user's run:
+
+```
+$ python3 tools/state_rotate.py --apply
+state_rotate: specs/STATE.md is 291 lines, budget 300 — ok
+$ git status --porcelain -- specs/       # no STATE.md, no STATE-ARCHIVE.md
+```
+
+So this step's `Done when` — "`--check` passes with **at least ~17 lines of
+headroom**" — is **unachievable by the tool at 291 lines**. Harden R3 assumed
+`--apply` rotates aged entries on demand; it does not. It rotates only what is
+already over budget. "Rotate before writing" cannot be ordered first, because
+nothing is rotatable until the writing has pushed the file over.
+
+Actual headroom for Steps 17 and 19 is **9 lines, not 17.** Step 17's `AD`
+alone measures ~14 (the `AD-025`→`AD-026` span is 15), so the budget *will* be
+exceeded, and gate 4 of `scripts/clean-table-check.sh` refuses that push.
+
+**Resolution — invert the order (decided 2026-09-17, needs the user to run the
+second command):** write Step 17 and Step 19 normally, at whatever length the
+content honestly needs, then rotate *after* the file goes over budget and
+before the closing push:
+
+1. Step 17 + Step 19 write to `specs/STATE.md` as specified. Do not compress
+   an `AD` to dodge a gate — a terse-to-fit decision record is the failure
+   this budget exists to prevent.
+2. **User runs** `python3 tools/state_rotate.py --apply`. Now over budget, it
+   will actually rotate aged `AD`/`B` entries into `specs/STATE-ARCHIVE.md`.
+3. Confirm `--check` passes and **no `L-NNN` headline moved** (lesson headlines
+   never move — gate 3 fails the push if one does), then
+   `bash scripts/clean-table-check.sh` for lessons in sync.
+
+This keeps the human-decides-the-rotation rule in `CLAUDE.md` intact; only the
+*timing* changes. **Step 17 is therefore unblocked** — it no longer waits on
+this step, and the ⚠️ USER action moves to just before Step 19's push.
 
 The arithmetic presented:
 
