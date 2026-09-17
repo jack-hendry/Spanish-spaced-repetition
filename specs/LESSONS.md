@@ -694,3 +694,25 @@ which to stand down** — here, dropping the `## Executing:` marker, justified
 because all remaining steps were top-level by design and the hook had already
 served its purpose. Do not route around a gate silently; the marker exists to be
 removed deliberately, and it must not be re-added by a later step.
+
+**L-023 — A pre-push hook that never runs lint or format only catches those
+errors after a PR is already open.**
+(2026-09-17, PR #22 `.github/workflows/ci.yml` `lint` job failed twice on
+`npm run lint:ci`)
+
+`.pre-commit-config.yaml`'s only pre-push hook was `clean-table-check` (the SDD
+archive/STATE.md gates). Nothing local ever ran `npm run lint:ci` or
+`npm run format:check`, so an ESLint or Prettier violation was invisible until
+CI ran on an already-open PR — twice, on unrelated pushes. Fixing it meant
+adding `format-check` and `eslint-check` as their own local hooks at the same
+`pre-push` stage, not folding them into `clean-table-check.sh`: that script's
+job is the SDD gates specifically, and a second, unrelated failure mode belongs
+in a hook of its own so the two can be read, tested, and bypassed
+independently.
+
+Applying the fix immediately surfaced a second instance of the same lesson:
+turning the hook on failed the very first run, on 12 pre-existing ESLint
+errors in two test files already committed on the branch
+(`file-store.flush.test.ts`, `sentinel.test.ts`, from the Fly deploy work) —
+proof that without this hook, code with lint errors already reaches `main`
+undetected until a PR's CI run happens to touch that job.

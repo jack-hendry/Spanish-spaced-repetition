@@ -80,7 +80,7 @@ describe('FileStore debounce and flush', () => {
     // The file should still have the original content
     const contentAfter = readFileSync(beforePath, 'utf8');
     expect(contentAfter).toBe(contentBefore);
-    expect(JSON.parse(contentAfter)[0].reps).toBe(original.reps);
+    expect((JSON.parse(contentAfter) as Card[])[0].reps).toBe(original.reps);
   });
 
   it('Test B: after await flushAll(), on-disk cards.json contains the mutation', async () => {
@@ -102,7 +102,7 @@ describe('FileStore debounce and flush', () => {
     // The file should now contain the mutation
     const cardsPath = join(dir, 'cards.json');
     const content = readFileSync(cardsPath, 'utf8');
-    expect(JSON.parse(content)[0].reps).toBe(42);
+    expect((JSON.parse(content) as Card[])[0].reps).toBe(42);
   });
 
   it('Test C: after flushAll(), advancing fake timers does not trigger a second write (timer was cleared)', async () => {
@@ -139,7 +139,7 @@ describe('FileStore debounce and flush', () => {
       // Verify the mutation persisted
       const cardsPath = join(dir, 'cards.json');
       const content = readFileSync(cardsPath, 'utf8');
-      expect(JSON.parse(content)[0].reps).toBe(99);
+      expect((JSON.parse(content) as Card[])[0].reps).toBe(99);
     } finally {
       vi.useRealTimers();
     }
