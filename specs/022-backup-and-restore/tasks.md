@@ -749,21 +749,167 @@ misattribute as confidently as no guard at all. Fix this too — see item 2.
 
 ---
 
+### Step 6c — Wake by HTTP instead of machine lease (user decision, 2026-09-17)
+
+**Model:** haiku
+
+**Status:** ✅ **done** (2026-09-17) — file correct, **not yet exercised**;
+Step 7 attempt 3 owns that.
+
+**Verified by reading the final file at the top level**, not from the
+subagent's report:
+
+| Done-when check | Result |
+|---|---|
+| `yaml.safe_load` | clean |
+| `grep -c 'fly machine'` | **0** — all three lease-dependent steps gone |
+| `grep -c 'continue-on-error\|\|\| true'` | **0** |
+| Shim survives, precedes the pull | shim at 26–35, pull at 49–50 |
+| No comment claims the workflow stops the machine | header reworded to "Backup scheduling state from Fly.io" |
+
+Final step list: checkout → setup-flyctl → expose `fly` shim → **wake by curl**
+→ pull → commit-if-changed. Six steps, down from eight; `-f` retained on curl
+so an HTTP 5xx fails the step rather than pulling from a machine that never
+came up.
+
+**Process note, recorded because it caused two false "I updated the Status"
+reports earlier in this run:** subagents are blocked from writing spec docs by
+`protect-spec-docs-from-subagents.sh`, so a `tasks.md` `Status:` block can only
+be written by the top-level session. That is the harness working as designed
+(`CLAUDE.md` calls it out as guarding specs "from the other direction"), but
+the step prompts had been asking subagents to do something the hook forbids.
+Ask them to *report* the evidence table and have the orchestrator write it.
+
+**Depends on:** Step 6b. **Blocks Step 7**'s third attempt.
+
+**Context**
+Step 7 attempt 2 proved the `ssh` token cannot take a machine lease. The user
+was given three options (deploy token / org token / drop the lease need) and
+chose **dropping the lease requirement**: the narrow token stays, and CI's
+blast radius shrinks instead of growing.
+
+`fly.toml:20-22` has `auto_start_machines = true`, `min_machines_running = 0`,
+so any HTTP request wakes the machine, and `GET /api/health` is this app's one
+deliberately anonymous route (`server/src/app.ts` — registered first,
+pre-auth, on purpose). No Fly machine permission is involved.
+
+**A11 has been formally amended in `Analyst.md`** from "the workflow leaves the
+machine stopped (commanded)" to "Fly's auto-stop reclaims it within ~10min
+(inferred)". Read that amendment before starting — the criterion's *evidence*
+changes shape, and Step 7 checks it differently as a result.
+
+**Files**
+- EDIT `.github/workflows/backup.yml`
+- DO NOT TOUCH: `fly.toml` (the auto-start config is already correct — this
+  step depends on it, it does not change it), `tools/pull-fly-state.sh`,
+  `tools/push-fly-state.sh`, `.github/workflows/ci.yml` (Step 11 owns it).
+
+**Do**
+1. **Delete three steps:** "Resolve production machine ID", "Start production
+   machine", "Stop production machine". The machine id is no longer needed
+   anywhere, so the whole resolve step goes — including the guard Step 6b just
+   fixed. That guard's *lesson* is already recorded in Step 6b and is destined
+   for a Step 19 `L-NNN`; deleting the code does not retract the finding.
+2. **Add a wake step** before the pull:
+   ```yaml
+   - name: Wake production machine
+     run: |
+       # fly.toml: auto_start_machines = true, min_machines_running = 0, so an
+       # HTTP request wakes the machine. /api/health is the one anonymous
+       # route (server/src/app.ts). This avoids `fly machine start`, which
+       # needs a machine lease the CI token deliberately does not have.
+       # Fly holds the request while the machine boots, so a 200 means it is
+       # serving. Retries cover a cold-start timeout, not a failing app: if
+       # every attempt fails the step still exits non-zero.
+       curl -fsS --retry 5 --retry-delay 5 --retry-all-errors \
+         --max-time 90 https://spanish-srs.fly.dev/api/health
+   ```
+   `-f` is load-bearing: without it curl exits 0 on an HTTP 5xx and the pull
+   would run against a machine that never came up.
+3. **Keep the `flyctl`→`fly` shim step.** Still required —
+   `tools/pull-fly-state.sh:64` calls `fly ssh sftp get`.
+4. Update the cron/header comments so nothing still claims the workflow stops
+   the machine.
+
+**Done when**
+- `python3 -c 'import yaml,sys; yaml.safe_load(open(sys.argv[1]))' .github/workflows/backup.yml`
+  parses clean.
+- `grep -c 'fly machine' .github/workflows/backup.yml` → **0**.
+- `grep -c 'continue-on-error\|| true' .github/workflows/backup.yml` → **0**.
+  Note `--retry-all-errors` is **not** softening: it retries, then still fails.
+- The shim step survives and still precedes `pull-fly-state.sh`.
+- No comment anywhere in the file claims the machine is stopped by the
+  workflow.
+
+---
+
 ### Step 7 — Prove it from a *stopped* machine (A1, A11)
 
 **Model:** haiku
 
-**Status:** ⏸️ **attempted 2026-09-17, blocked — retry after Step 6b.** Both
-dispatches failed at the first `fly` call (`fly: command not found`); machine
-state before was verified `stopped`, and the workflow never reached any machine
-operation, so **A11 and A2 are untested, not failed**. Diagnosis and the fix
-live in Step 6b. Nothing was committed and `data/spanish/` was not touched.
+**Status:** 🔴 **blocked 2026-09-17 on Fly token scope — this step's documented
+"If blocked" path, reached on the second attempt.** Needs a ⚠️ USER decision
+(see below); do not widen the token unilaterally.
 
-This is **not** this step's documented **If blocked** path (that covers a Fly
-*token permissions* error at `fly machine start`); the token remains unexercised
-for `machine start`/`stop`, so Step 6's "still unverified, by design" note stands.
+**Attempt 1** (runs [35272533757](https://github.com/jack-hendry/Spanish-spaced-repetition/actions/runs/35272533757),
+[35272676581](https://github.com/jack-hendry/Spanish-spaced-repetition/actions/runs/35272676581)):
+both failed at the first `fly` call, `fly: command not found`. Cause and fix in
+**Step 6b**. Not the If-blocked path.
 
-**Depends on:** Step 6; **Step 6b** — the retry is meaningless before it.
+**Attempt 2**, after Step 6b (run
+[35273590615](https://github.com/jack-hendry/Spanish-spaced-repetition/actions/runs/35273590615),
+`workflow_dispatch` on ref `spec-022-backup-and-restore` — `main` still carried
+the broken file, so the `--ref` discipline Step 9 mandates was used here too):
+
+| Criterion | Evidence |
+|---|---|
+| Machine state before | `stopped`, verified via `fly machine list` |
+| Step 6b's fix | **worked** — `fly` resolved and executed; no `command not found` |
+| Run conclusion | `failure` at **Start production machine** |
+| Fly's error | `failed to obtain lease: failed to get lease on VM 850d53cd95d668: unauthorized` (Request ID `01M2RJEDNWA7BQZTJ8ATAXVQAF-ord`) |
+| Commits | none — never reached the pull step. **A2 not proven** (expected; Step 8b is what makes it reachable) |
+| A11 | **not proven — see below** |
+
+**A11 is *not* satisfied by this run, contrary to the executing subagent's
+report.** It claimed A11 held because the `if: always()` stop step ran and the
+machine was `stopped` afterwards. The stop step *ran*, but the log shows it
+**also failed `unauthorized`** (Request ID `01M2RJG80DATM465NRG00M4Y8J-ord`).
+The machine is `stopped` only because `start` failed and it never woke. The
+workflow's stop command has still never successfully stopped anything, so A11
+is untested — satisfied incidentally, not demonstrated. `if: always()` was
+proven to *fire*; it was not proven to *work*.
+
+**What this rules in and out.** The `ssh`-type token from Step 5 authenticates
+(no auth error at `fly machine list`) but cannot take a **machine lease**, which
+both `start` and `stop` require. Step 6's "still unverified, by design" note is
+now resolved in the negative.
+
+**⚠️ USER decision — three options, and the third does not touch the token.**
+`fly.toml:20-22` has `auto_start_machines = true`, `min_machines_running = 0`,
+so *any HTTP request wakes the machine*, and `GET /api/health` is this app's one
+deliberately anonymous route (`server/src/app.ts`). Auto-stop was already
+**measured** in Step 6 to reclaim the machine ~539s after an `sftp`-only wake,
+and Step 6 recorded the explicit stop as "hygiene, not load-bearing".
+
+1. **Deploy token** (`fly tokens create deploy --app spanish-srs`) — app-scoped,
+   can lease machines. Needs verifying that it also permits `fly ssh sftp`,
+   which `tools/pull-fly-state.sh` depends on.
+2. **Org token** — certainly works, widest blast radius. Worst fit for a secret
+   living in CI, against Analyst S6's reasoning for pinning the action SHA.
+3. **Drop the machine-lease requirement entirely** — replace `fly machine start`
+   with `curl -fsS https://spanish-srs.fly.dev/api/health` and delete the stop
+   step, relying on measured auto-stop. This needs **no** machine permissions,
+   so the existing narrow `ssh` token suffices and the token's blast radius
+   *shrinks* instead of growing. Costs: ~9min of idle machine per run, and A11
+   changes meaning from "the workflow commands the machine to sleep" to "Fly
+   reclaims it", which must be re-stated rather than quietly re-scoped.
+
+**Recommended: option 3**, then option 1 if an explicit commanded stop is wanted.
+It is the only one that satisfies non-negotiable #2 without handing CI a
+broader credential, and it deletes the two steps that just failed.
+
+**Depends on:** Step 6; **Step 6b**; **Step 6c** — attempt 3 runs the
+HTTP-wake workflow, so it must not start before 6c lands.
 
 **Context**
 Analyst A1 as corrected by harden C2: a run that begins while the machine
@@ -771,21 +917,36 @@ happens to be awake proves nothing about the nightly case, which is the only
 case that will ever occur.
 
 **Do**
-1. `fly machine stop <id> --app spanish-srs`; confirm `stopped`.
-2. Trigger `gh workflow run backup.yml`; watch it.
+1. `fly machine stop <id> --app spanish-srs`; confirm `stopped`. This is done
+   from a **developer machine**, whose token *can* lease — only CI's token
+   cannot. Setting up the precondition by hand is legitimate; the workflow
+   itself must not need it.
+2. Trigger the workflow and watch it. Use
+   `gh workflow run backup.yml --ref <branch>` while the fix is not yet on
+   `main` (see Step 9's R8 note on why the bare form silently tests `main`).
 3. Record machine state before, during and after.
 
 **Done when**
 - Machine state was `stopped` immediately before the run — record it.
 - The run concludes `success`. Record the URL.
-- Machine state after the run is `stopped` (**A11**). Record it.
+- **A11, as amended 2026-09-17** (see `Analyst.md`): the machine is *reclaimed*
+  to `stopped` by Fly's auto-stop, not commanded. So poll after the run —
+  e.g. every 60s for ~15min — and record the state **and the elapsed time** at
+  which it flipped. Immediately after a successful run the correct observation
+  is `started`; that is no longer a failure. Recording "still `started` at
+  15min" is a real finding, not a blocked step: it would mean Step 6's 539s
+  auto-stop measurement no longer holds.
 - If state changed, `git log --oneline -1 -- data/spanish/` shows the bot
-  commit (**A2**). Record the SHA.
+  commit (**A2**). Record the SHA. A no-op run here is the expected outcome
+  until Step 8b; A2 stays unproven and that is not a failure of this step.
 
 **If blocked**
-If the run fails at `fly machine start` with a permissions error, the token
-from Step 5 is too narrow — go back to Step 5's **If blocked**, do not widen
-the token unilaterally.
+The lease-permission path is **resolved, not open** — attempt 2 hit it and
+Step 6c removed the requirement. If a *new* permissions error appears, it is
+about `fly ssh sftp` (the only Fly operation left, in
+`tools/pull-fly-state.sh:64`), which is what the Step 5 `ssh` token exists for.
+That would be a genuinely new finding: report it, and do not widen the token
+unilaterally.
 
 ---
 

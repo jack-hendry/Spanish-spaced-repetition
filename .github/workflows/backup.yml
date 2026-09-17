@@ -1,4 +1,4 @@
-# Nightly backup to Fly.io and push to git history.
+# Backup scheduling state from Fly.io and push to git history.
 # See specs/BACKUP-RUNBOOK.md for operational runbook and incident procedures.
 
 name: Backup
@@ -34,26 +34,17 @@ jobs:
           ln -sf "$FLYCTL" "$RUNNER_TEMP/fly-shim/fly"
           echo "$RUNNER_TEMP/fly-shim" >> "$GITHUB_PATH"
 
-      - name: Resolve production machine ID
-        id: machine
+      - name: Wake production machine
         run: |
-          # Capture status and output separately: `fly ... | jq` would mask a
-          # failing `fly` behind jq's exit 0 (no pipefail under `bash -e`),
-          # turning a token-scope error into a false "no machine found".
-          if ! MACHINES=$(fly machine list --app spanish-srs --json 2>&1); then
-            echo "::error::fly machine list failed: $MACHINES" >&2
-            exit 1
-          fi
-          # Resolved dynamically: a redeploy replaces the machine id.
-          MACHINE_ID=$(jq -r '.[0].id // empty' <<<"$MACHINES")
-          if [ -z "$MACHINE_ID" ]; then
-            echo "::error::No machine found for app spanish-srs" >&2
-            exit 1
-          fi
-          echo "id=$MACHINE_ID" >> "$GITHUB_OUTPUT"
-
-      - name: Start production machine
-        run: fly machine start ${{ steps.machine.outputs.id }} --app spanish-srs
+          # fly.toml: auto_start_machines = true, min_machines_running = 0, so an
+          # HTTP request wakes the machine. /api/health is the one anonymous
+          # route (server/src/app.ts). This approach avoids CLI commands that
+          # need a machine lease the CI token deliberately does not have.
+          # Fly holds the request while the machine boots, so a 200 means it is
+          # serving. Retries cover a cold-start timeout, not a failing app: if
+          # every attempt fails the step still exits non-zero.
+          curl -fsS --retry 5 --retry-delay 5 --retry-all-errors \
+            --max-time 90 https://spanish-srs.fly.dev/api/health
 
       - name: Pull scheduling state from Fly
         run: bash tools/pull-fly-state.sh
@@ -70,6 +61,3 @@ jobs:
           git commit -m "Automated backup from Fly.io"
           git push
 
-      - name: Stop production machine
-        if: always()
-        run: fly machine stop ${{ steps.machine.outputs.id }} --app spanish-srs
