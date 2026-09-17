@@ -70,27 +70,18 @@ them in here is the drift this harness exists to prevent:
 
 ### D0 — Fold a minimal backup into this phase; Fly is the source of truth
 
-`ROADMAP.md:32` states: "Phases 0–2 must all land before the server is
-publicly reachable." Revision 1 of this document made the server publicly
-reachable while declaring Phase 2 out of scope, and substituted a prose
-interim rule ("desktop stays authoritative") for that MUST. That was C1, and
-it was a fig leaf: once the app works on a phone it will be used, and the
-reviews it collects would have had nothing backing them up.
+**→ Shipped as AD-025 in `specs/STATE.md`, which carries the full reasoning.**
 
-**Decision (user, 2026-09-16): fold the load-bearing slice of Phase 2 in.**
-
-- **Fly is the source of truth** once deployed. This is the roadmap's
-  "Fly-as-source" option, one of the two it already names — so choosing it
-  resolves Phase 2's question rather than inventing new policy. Record it as
-  an `AD-NNN` in `specs/STATE.md`.
-- A script pulls the six state files (`collection.json`, `notetypes.json`,
-  `decks.json`, `deckoptions.json`, `notes.json`, `cards.json`) plus
-  `revlog.ndjson` off the volume to `data/spanish/`, where the existing git
-  workflow takes over. Media is excluded (D3).
-- The **restore path is verified in this phase**, not assumed: restore into a
-  scratch `DATA_DIR` and study one card against it. An untested backup is a
-  guess.
-- Run manually. Automation, retention and snapshots stay in Phase 2.
+Why it was folded into Phase 1 at all: `ROADMAP.md:32` says "Phases 0–2 must
+all land before the server is publicly reachable." Revision 1 of this document
+made the server publicly reachable while declaring Phase 2 out of scope,
+substituting a prose interim rule ("desktop stays authoritative") for that
+MUST. That was C1, and it was a fig leaf — once the app works on a phone it
+will be used, and the reviews it collects would have had nothing backing them
+up. The decision (user, 2026-09-16) was to fold in the load-bearing slice:
+Fly-as-source, a pull script for the seven state files, and a **restore path
+verified in this phase rather than assumed**. Automation, retention and
+snapshots stayed in Phase 2.
 
 ### D1 — Volume mounts at `/data`, `DATA_DIR=/data/spanish`
 
@@ -105,29 +96,18 @@ genuine first boot.
 
 ### D2 — Sentinel: refuse to boot on an empty store *by content*
 
-Revision 1 checked whether `cards.json` **exists**. That was wrong (C2):
-`file-store.ts:106` — `if (!existsSync(this.path('cards'))) await
-this.flush('cards')` — means `init()` *creates* `cards.json` as `[]` whenever
-it is absent. The first `ALLOW_EMPTY_STORE=1` boot would therefore write the
-file permanently, and every later boot would pass the sentinel whether or not
-real data was ever uploaded. The guard would have disarmed itself on the one
-boot it was designed around.
+**→ Shipped as AD-026 in `specs/STATE.md`, which carries the full reasoning.**
 
-Corrected:
-
-- The check is on **content**: refuse when `cards.json` is missing **or**
-  parses to an empty array.
-- It runs **before `store.init()`** (`server/src/index.ts:19`), because
-  `init()` would otherwise satisfy it.
-- `ALLOW_EMPTY_STORE=1` remains the only way past it, following the fail-safe
-  pattern `config.ts` already establishes. Absent the flag the process prints
-  the path it examined and exits 1.
-- Gated on `config.hardened`, so `npm run dev` (which sets `DEV_MODE=1`) keeps
-  seed-on-empty.
-
-The escape hatch is required, not optional: a volume can only be seeded while
-a machine is running, so the very first boot is legitimately empty. It is set
-for that one boot and removed immediately after (verified by criterion 9).
+The correction worth remembering: revision 1 checked whether `cards.json`
+**exists**, which was wrong (C2). `file-store.ts:106` — `if
+(!existsSync(this.path('cards'))) await this.flush('cards')` — means `init()`
+*creates* `cards.json` as `[]` whenever it is absent, so the first
+`ALLOW_EMPTY_STORE=1` boot would write the file permanently and every later
+boot would pass the sentinel whether or not real data was ever uploaded. **The
+guard would have disarmed itself on the one boot it was designed around.**
+Corrected to a content check, running before `store.init()`, gated on
+`config.hardened` so `npm run dev` keeps seed-on-empty. Harden round 2 (R5)
+then added `notes.json` alongside `cards.json`.
 
 ### D3 — Media lives on the volume, not in the image
 
@@ -264,152 +244,48 @@ D10 is.
 
 ## 5a. Cost
 
-Verified against fly.io/docs/about/pricing and fly.io/plans on **2026-09-16**.
-This supersedes the ROADMAP's 2026-08-26 estimate, which missed the IPv4 line
-item.
-
-**There is no minimum spend, no base platform fee, and no required
-subscription.** Billing is purely metered; machines are billed by the second
-while running. (The $29/$199/mo figures on the plans page are optional
-*support* plans, not required to run an app.)
-
-| Line item | Rate | This deployment |
-|---|---|---|
-| Volume, 1GB | $0.15/GB/mo | **$0.15/mo** — billed even while the machine is stopped |
-| Stopped-machine rootfs | $0.15/GB per 30 days | **~$0.07/mo** at a ~500MB image (D11) |
-| Compute, shared-cpu-1x 256MB | $0.0027/hr | **$0.04–0.24/mo** — 15 hr/mo light use to 90 hr/mo heavy |
-| Egress, North America | $0.02/GB | **~$0.01/mo** — a session is ~20MB including audio |
-| Shared IPv4 | free | **$0.00** (D10) |
-| TLS cert on `*.fly.dev` | free | **$0.00** — first 10 per org |
-
-**Realistic total: $0.25–$0.50/month.**
-
-### The ceiling, which matters more than the estimate
-
-Fly has **no hard spending limits and no billing alerts** — its own docs say
-"We don't support billing alerts (yet), so budget accordingly." So the
-protection cannot be a cap; it has to be that the architecture's worst case is
-small by construction.
-
-It is. There is exactly **one** machine of fixed size and **one** volume of
-fixed size. No autoscaling, no per-request pricing, no managed services. The
-pathological case — a dedicated IPv4 slipping in *and* the machine never
-sleeping — is:
-
-> $2.00 (dedicated IPv4) + $1.94 (always-on machine) + $0.15 (volume)
-> + $0.07 (rootfs) ≈ **$4.16/month**
-
-That is the realistic worst case, and it is ~8x the expected cost, not 100x.
-
-The only unbounded meter is egress, and it is bounded in practice by auth:
-every route including `/media` requires credentials (Phase 0), so nobody else
-can pull the 252MB media library. Reaching even $10 of egress would take
-~500GB — roughly 2,000 full downloads of the entire library.
-
-### What actually controls the cost
-
-In descending order of impact:
-
-1. **Shared IPv4 (D10)** — $2/mo, the single largest avoidable item, and the
-   easiest to get wrong because `fly launch` can assign a dedicated one
-   silently.
-2. **The machine actually sleeping** — the difference between $0.08 and
-   $1.94/mo. `min_machines_running = 0` is set in `fly.toml`, but criterion 14
-   verifies the *behaviour*, not the file.
-3. **Volume stays at 1GB** — $0.15/GB/mo, and volumes cannot be shrunk. 259MB
-   of data today; revisit only past ~700MB (D3).
-4. **A manual month-to-date check** — since no alert exists, criterion 15 makes
-   looking at the dashboard an explicit step rather than a good intention.
+**→ Superseded by the Retrospective's measured table below**, which records
+what the deployment actually does (machine confirmed sleeping, 73MB image,
+shared v4) rather than this section's pre-deploy estimate. The estimate's two
+load-bearing conclusions both held: the
+machine must sleep for the ~$0.08/mo compute figure to be real (Step 19 proved
+it does), and a **dedicated IPv4 at $2/mo would have cost more than every other
+line item combined** (D10 — pre-allocating a shared v4 removed the risk).
 
 ## 6. How do we know it is done?
 
-Every one is a command or an observation, not a judgement.
+**→ All 13 criteria discharged.** Rather than duplicate them here, the
+outcomes live where they will actually be read: per-criterion evidence in
+`tasks.md`'s Status blocks (git history, commit `0a4cc52`), the delivered
+result in `specs/011-mobile-remote-access/ROADMAP.md` Phase 1, and what changed
+from the plan in the Retrospective below.
 
-1. `docker build -t spanish-srs .` succeeds from a clean checkout.
-2. `npm run test -w server` passes, including **two new tests**: the sentinel
-   refuses a `cards.json` that parses to `[]` and one that is absent, and
-   boots with `ALLOW_EMPTY_STORE=1`.
-3. **Deterministic flush test** (replaces revision 1's unfalsifiable criterion
-   8, C3): a server test builds `new FileStore(tmp, { debounceMs: 60_000 })`,
-   calls `saveCardsSoon()`, asserts the file is unchanged, calls `flushAll()`,
-   asserts it is written. Must fail if `flushAll()` is stubbed out.
-4. The built image, run locally with `DATA_DIR` pointed at a **copy** of
-   `data/spanish/` and credentials set (note: use `AUTH_USER`, not `$USER` —
-   the shell already populates that, C11):
-   - `curl -i localhost:3000/api/collection` → `401`
-   - `curl -i -u "$AUTH_USER:$AUTH_PASSWORD" localhost:3000/api/collection` →
-     `200`, non-empty `cards`
-   - `curl -i -u "$AUTH_USER:$AUTH_PASSWORD" localhost:3000/` → `200` + HTML
-     (proves D8's layout)
-5. The same image against an **empty** `DATA_DIR`, no `ALLOW_EMPTY_STORE`:
-   exits non-zero, prints the path examined. With the flag: boots.
-6. `fly deploy` succeeds; `https://<app>.fly.dev/` prompts for Basic auth.
-7. Phase 0's `specs/archive/2026-08-27-013-server-hardening/verify.sh` passes
-   against the public hostname (C7), plus `curl -i http://<app>.fly.dev/` →
-   `308`.
-8. **Redeploy preserves state, with a write in flight** (C11): answer a card,
-   then immediately `fly deploy`; afterwards the deck list shows the expected
-   due counts and the answered card did not return.
-9. `fly secrets list` shows `AUTH_USER` + `AUTH_PASSWORD`; the deployed env
-   shows **both** `ALLOW_EMPTY_STORE` and `DEV_MODE` absent.
-10. On a phone, **on cellular with wifi off**, against **disposable state**
-    (scratch volume or a `DATA_DIR` that will be wiped and re-seeded, C4):
-    log in, study ≥20 cards, confirm audio plays, reload mid-session and
-    confirm answered cards did not come back. Then wipe and re-seed.
-11. **Backup round-trip** (D0): the pull script fetches the seven state files
-    to the desktop; `git status` shows them changed; restoring them into a
-    scratch `DATA_DIR` boots a server and one card can be studied against it.
-12. **Shared IPv4, not dedicated** (D10): `fly ips list` shows no dedicated v4
-    — the $2/mo line item that would otherwise exceed every other cost in this
-    deployment combined.
-13. **Runtime image is lean** (D11): `docker images spanish-srs` reports under
-    **350MB**. The full `node_modules` is 287MB, so anything near 500MB means
-    devDependencies were shipped.
-14. **The machine actually sleeps**: after ~10 minutes idle,
-    `fly machine list` shows state `stopped`; the next request auto-starts it.
-    This is the difference between ~$0.08/mo and $1.94/mo, and until now only
-    the *file* said so.
-15. **Month-to-date bill checked by hand**: Fly has no billing alerts, so the
-    dashboard's "current month to date" figure is read and recorded once the
-    deployment has been live a few days. A number materially above
-    ~$0.50/month means something in §5a is wrong.
-16. `specs/011-mobile-remote-access/ROADMAP.md` Phase 1 checkboxes ticked,
-    Phase 2's source-of-truth bullet marked decided (D0), and anything the
-    phone pass revealed appended to that doc's `## Discovered` log.
+Two are worth restating because they were *not* met as written:
 
-### On the 20-card figure
-
-Revision 1 justified dropping the roadmap's 200-card criterion to 20 as a
-safety measure. That was backwards (C4): 20 carries the same *class* of risk
-as 200. The real mitigation is criterion 10's disposable state. 20 is simply a
-**smoke test sample size** — enough to prove the round-trip, small enough to
-be quick. The 200-card session remains Phase 3's criterion, where the outbox
-makes it meaningful.
+- **Criterion 13 (<350MB image)** looked unreachable — the arm64 base alone is
+  349MB — but Fly's remote builder is **amd64**, where the deployed image is
+  **73MB**. The gate was being measured against the wrong architecture.
+- **The "200-card session"** (roadmap) was reduced to ~20 by this spec and run
+  as **12**. Deliberate; the safety property is the verified restore, not the
+  sample size. Nothing is known about 200-card-scale behaviour.
 
 ## 7. Discovered (record, do not fix here)
 
-- **C8** — `app.ts:70-78`: the tier-1 limiter (20 failures / 15 min) applies
-  to *all* routes. An Angular page load 401s several times before credentials
-  are entered; two mistyped passwords plus a few missing-media 404s can burn
-  20 and lock the app out for 15 minutes — during criterion 10, which checks
-  audio. Add a pre-phone check that media file count matches the desktop, and
-  expect the lockout rather than misdiagnosing it.
-- **C9** — `routes/index.ts:116-123`: `/review` calls `saveCardsSoon()`
-  (debounced) but `await store.appendRevlog(...)` (immediate). A hard kill
-  inside the window leaves the revlog claiming a review `cards.json` does not
-  reflect. Not introduced here, but Fly's auto-stop makes it reachable for the
-  first time, and it is exactly the divergence Phase 2's "rebuild from revlog"
-  note assumes.
-- **C11** — `server/src/index.ts:18` hardcodes `new FileStore(dataDir())`, so
-  `debounceMs` cannot be tuned by env in production. Fine today; worth knowing.
+**C8** (all-routes rate limiter) and **C9** (`/api/review` can leave the revlog
+ahead of `cards.json` on a hard kill) were **promoted to the ROADMAP's
+`## Discovered` log**, where Phase 2 and Phase 5 will actually read them —
+C9 in particular is real, unfixed, and newly reachable now that Fly can
+auto-stop the machine.
+
+**C11** — `server/src/index.ts:18` hardcodes `new FileStore(dataDir())`, so
+`debounceMs` cannot be tuned by env in production. Fine today; worth knowing.
+Step 4's flush test reaches it via the constructor instead.
 
 ## 8. Prerequisites outside the repo
 
-- Fly.io account with a card on file — **done** (`jack.r.hendry.p@gmail.com`,
-  org `personal`).
-- `flyctl` installed and authenticated — **done** (v0.4.104).
-- A local Docker runtime for criteria 1, 4 and 5 — **OrbStack chosen, install
-  pending**: `brew install orbstack`.
+All satisfied: Fly.io account (org `personal`), `flyctl` v0.4.104, and a local
+Docker runtime (OrbStack, daemon 29.4.0) — the last one is what made Step 7
+able to catch D8's layout trap before a deploy rather than after.
 
 ## Retrospective
 

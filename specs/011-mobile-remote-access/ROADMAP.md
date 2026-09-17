@@ -70,7 +70,7 @@ path-traversal check — but missed being ticked when this doc was updated).
 
 ## Phase 1 — Deploy to Fly.io
 
-**Done 2026-09-17** — `specs/021-fly-deploy`, live at
+**Done 2026-09-17** — `specs/archive/2026-09-17-021-fly-deploy`, live at
 `https://spanish-srs.fly.dev`.
 
 - [x] Dockerfile + `fly.toml`. Two-stage build on `node:24-bookworm-slim`; the
@@ -169,7 +169,7 @@ single copy on a single host: it is not a backup.
       - Whichever is chosen, write it down here before Phase 2 is marked
         done — an unstated answer means the next person (or agent) re-derives
         it mid-incident.
-      - ✅ **DECIDED 2026-09-17: Fly-as-source** (`specs/021-fly-deploy`
+      - ✅ **DECIDED 2026-09-17: Fly-as-source** (`specs/archive/2026-09-17-021-fly-deploy`
         Analyst D0, AD-025). Settled during Phase 1 rather than Phase 2,
         because Phase 1 could not write a seed or a restore script without
         first knowing which side wins a conflict. `tools/pull-fly-state.sh`
@@ -300,6 +300,23 @@ Checked during this session — current state:
   reconciliation step closes the loop. Folded into Phase 2 as a required
   decision (Fly-as-source-pulled-into-git vs. desktop-as-source-synced-to-Fly).
   **Resolved 2026-09-17: Fly-as-source** — see Phase 2 above and AD-025.
+- (2026-09-17) **`/api/review` can leave the revlog ahead of `cards.json`** —
+  Phase 2 input, promoted out of `021-fly-deploy` (C9) so it isn't lost in an
+  archived spec. `routes/index.ts:116-123` calls `saveCardsSoon()` (debounced
+  ~400ms) but `await store.appendRevlog(...)` (immediate). A **hard** kill
+  inside that window — a crash or OOM, not a signalled stop — leaves the
+  append-only revlog claiming a review that `cards.json` does not reflect.
+  Not introduced by Phase 1, but **Fly's auto-stop makes it reachable for the
+  first time**, and it is exactly the divergence Phase 2's "rebuild from
+  revlog" note assumes is possible. Note the signalled path is fine and was
+  verified in Step 20 (`flushAll()` on SIGINT/SIGTERM, clean exit 0) — this is
+  only about kills that skip the handler.
+- (2026-09-17) **The tier-1 rate limiter covers all routes**, 20 failures per
+  15 minutes (`app.ts:70-78`, `skipSuccessfulRequests: true`). An Angular page
+  load 401s several times before credentials are entered, so two mistyped
+  passwords plus a handful of missing-media 404s can lock the app out for 15
+  minutes. Expect it rather than misdiagnosing it as an auth bug; a Phase 5
+  mobile pass should budget for it.
 - (2026-09-17) **Phase 5 input from the Phase 1 phone test.** A real cellular
   session on an iPhone found **no blocking UI problems** — the user's verdict
   was "good enough for now, come back to mobile UI in Phase 5". Two

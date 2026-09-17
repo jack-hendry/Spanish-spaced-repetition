@@ -206,7 +206,7 @@ work 007 deferred (its Open question 1 and its non-goal "changing `todayNumber`
 itself"). See **L-018**.
 
 **AD-025 — Fly is the source of truth for scheduling state; the repo is a
-lagging replica.** (2026-09-17, `021-fly-deploy` D0) Once Fly writes to its own
+lagging replica.** (2026-09-17, `archive/2026-09-17-021-fly-deploy` D0) Once Fly writes to its own
 volume there are two live writers to the same logical state, and git is no
 longer one of them. Chosen: **Fly-as-source**, with
 `tools/pull-fly-state.sh` pulling the seven state files into `data/spanish/` so
@@ -220,7 +220,7 @@ Decided in Phase 1 rather than Phase 2 as the roadmap planned, because the seed
 and restore scripts could not be written without knowing which side wins.
 
 **AD-026 — The empty-store sentinel checks file *content*, and checks two
-files.** (2026-09-17, `021-fly-deploy` §1, `CriticReview.md` C2/R5)
+files.** (2026-09-17, `archive/2026-09-17-021-fly-deploy` §1, C2/R5)
 `FileStore.init()` treats an empty data dir as "seed a fresh collection", so a
 failed volume mount silently starts a blank app and then persists blank state.
 `server/src/store/sentinel.ts` turns that into a failed boot, and two design
