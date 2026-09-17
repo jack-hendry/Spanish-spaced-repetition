@@ -265,3 +265,33 @@
   flex: 1 1 auto;
   min-width: 0;
 }
+
+// ---- mobile: stack the shell instead of a fixed 280px side rail ------------
+//
+// Below this width the sidebar's fixed pixel width squeezes .app-main into a
+// sliver too narrow to use (e.g. the review screen's rating buttons). Stack
+// the sidebar above the content instead, with the deck tree height-capped and
+// independently scrollable so it doesn't push the actual page below the fold.
+@media (max-width: 768px) {
+  .app-shell {
+    flex-direction: column;
+    min-height: auto;
+  }
+
+  .app-sidebar {
+    position: static;
+    height: auto;
+    width: 100%;
+    flex: none;
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .tree-scroll {
+    max-height: 35vh;
+  }
+
+  .app-main {
+    width: 100%;
+  }
+}

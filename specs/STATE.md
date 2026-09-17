@@ -158,42 +158,9 @@ is enough; the cost is that renaming a deck recolours it.
 
 **AD-020 — A lint ruleset is calibrated against the codebase before it is enforced; loosening on evidence is part of adoption, not a retreat from it.** → moved to `STATE-ARCHIVE.md`
 
-**AD-021 — Phase 2 (scheduling-core lint fixes) changed no ESLint rule and
-added no `eslint-disable` comments; the CI gate widened from 13 paths to a
-single directory.** (2026-08-31, `archive/2026-08-31-018-lint-phase2-scheduling/`, all 14
-steps completed) Phase 2 was pure remediation: 24 violations across 7 files
-fixed by hand, no rule or calibration modified. Of its 17 zero-violation files,
-the **five** doing `card.due`/day-number arithmetic were read against
-`scheduling-domain` (2 docs/dead-code findings, recorded not fixed); the other
-12 were confirmed clean and gated, not audited. The CI gate
-`npm run lint:ci` moved from an incremental path list in `package.json` to
-`eslint web/src` — which also picks up nine files Phase 1 never gated (they were
-clean from the start and never had violations to remediate). A green exit code
-from the script cannot prove the gate's scope changed, only that everything it
-already covered is clean; the change is asserted on script text, not behavior
-(see L-015).
+**AD-021 — Phase 2 (scheduling-core lint fixes) changed no ESLint rule and added no `eslint-disable` comments; the CI gate widened from 13 paths to a single directory.** → moved to `STATE-ARCHIVE.md`
 
-**AD-022 — Phase 4 closed `specs/archive/2026-08-31-015-typescript-lint-rollout/ROADMAP.md`: the
-CI gate is now the full repo (`eslint .`), and `eslint.config.mjs`/
-`tools/shoot.mjs` were clean the moment they got a ruleset at all.**
-(2026-08-31, `archive/2026-08-31-020-lint-phase4-full-gate/`, all 5 steps completed)
-`lint:ci` moved from `eslint web/src server/src` to `eslint .`. The only two
-JS/TS-family files at the repo root and in `tools/` — previously excluded by
-name in `eslint.config.mjs`'s own `ignores` array — got a new config block
-(`js.configs.recommended` plus four hand-declared Node globals; no
-type-checked preset applies since neither file is covered by any
-`tsconfig.json`) and carried **zero** violations under it, so this phase was
-pure CI-gate config, not remediation. 280 tests, the build, and
-`format:check` unchanged throughout. Of the roadmap's four inherited open
-questions, one is now a closed decision rather than deferred work:
-`web/src/index.html` stays outside the gate because it is the Angular CLI's
-static host shell (no bindings, no directives), not a component template —
-`angular-eslint`'s `templateRecommended` ruleset, which the existing
-`web/src/app/**/*.html` glob applies, has nothing in it to check there. The
-other three (`noUncheckedIndexedAccess`, test-file
-`no-unsafe-*`/`no-explicit-any`, `templateAccessibility`) remain
-deliberately open — no new evidence surfaced in this phase to reopen any of
-them.
+**AD-022 — Phase 4 closed `specs/archive/2026-08-31-015-typescript-lint-rollout/ROADMAP.md`: the CI gate is now the full repo (`eslint .`), and `eslint.config.mjs`/ `tools/shoot.mjs` were clean the moment they got a ruleset at all.** → moved to `STATE-ARCHIVE.md`
 
 **AD-023 — Phase 3's `no-unnecessary-condition` sites in `server/src` were
 all "type is lying," never "guard is dead," and the importer refactor was
@@ -238,6 +205,36 @@ the two schemes behind one helper is left as a separate task. This closes the
 work 007 deferred (its Open question 1 and its non-goal "changing `todayNumber`
 itself"). See **L-018**.
 
+**AD-025 — Fly is the source of truth for scheduling state; the repo is a
+lagging replica.** (2026-09-17, `archive/2026-09-17-021-fly-deploy` D0) Once Fly writes to its own
+volume there are two live writers to the same logical state, and git is no
+longer one of them. Chosen: **Fly-as-source**, with
+`tools/pull-fly-state.sh` pulling the seven state files into `data/spanish/` so
+the existing git-rollback workflow keeps working, lagged by the pull interval;
+`tools/push-fly-state.sh` is the reverse path for restore and refuses to run
+without `--yes`. Media is excluded from both (252MB, regenerable). Consequence:
+**a local edit to `data/spanish/` is not authoritative and is overwritten by
+the next pull** — the `git checkout -- data/spanish/` habit in CLAUDE.md L-002
+now means "discard a dev-server artefact", never "restore the real state".
+Decided in Phase 1 rather than Phase 2 as the roadmap planned, because the seed
+and restore scripts could not be written without knowing which side wins.
+
+**AD-026 — The empty-store sentinel checks file *content*, and checks two
+files.** (2026-09-17, `archive/2026-09-17-021-fly-deploy` §1, C2/R5)
+`FileStore.init()` treats an empty data dir as "seed a fresh collection", so a
+failed volume mount silently starts a blank app and then persists blank state.
+`server/src/store/sentinel.ts` turns that into a failed boot, and two design
+points are load-bearing: **(1) content, not existence** — `init()` *creates*
+`cards.json` as `[]` whenever absent, so an existence check would disarm itself
+on the first seeded boot; **(2) `notes.json` as well as `cards.json`** — an
+interrupted or alphabetical upload lands `cards.json` first, which is the most
+likely partial-seed shape and is invisible to a cards-only check. The escape
+hatch `ALLOW_EMPTY_STORE=1` exists for the one chicken-and-egg boot that seeds
+an empty volume; it is passed transiently via `fly deploy --env` and **must
+never be committed to `fly.toml`**, which would permanently disarm the guard.
+Every throw names the absolute path *and* the literal `ALLOW_EMPTY_STORE`, so
+the operator learns the escape hatch from the failure itself.
+
 ## Blockers
 
 (none open)
@@ -262,6 +259,11 @@ itself"). See **L-018**.
 - **L-016** — A harden pass must re-derive, not re-reason: an unexecuted prescription is a hypothesis.
 - **L-017** — Token cost is a function of *when* a payload lands, not how big the task is.
 - **L-018** — A whole test suite can pass under both the right and the wrong definition of a shared primitive.
+- **L-019** — A `grep -c … → 0` criterion is unfalsifiable without a positive control that the stream was non-empty.
+- **L-020** — A check that never reaches the thing under test reports green about something else.
+- **L-021** — `bash -n` proves syntax, never that the commands a script invokes exist.
+- **L-022** — The delegation hook and the permission classifier can deadlock a step between them.
+- **L-023** — A pre-push hook that never runs lint or format only catches those errors after a PR is already open.
 
 ## Quick Tasks
 
@@ -285,3 +287,4 @@ itself"). See **L-018**.
 | 2026-09-01 | `specs/SESSION-HYGIENE.md` + `CLAUDE.md` piping rule — acting on L-017 | Small, docs. L-017 measured where the tokens go; this puts each half where its audience will meet it (the AD-009 split, applied to a third audience — the operator). **Human-facing** `specs/SESSION-HYGIENE.md`: the do/don't list, the `/clear` rule with the worked `29500212` example (4 prompts across 3.5 days, 291 turns, spanning specs 015/017/018/019 — the last 9 turns each carried 358k of dead phase-1 lint context after "I have merged and closed the PR"), and the three ratios worth watching. Deliberately *not* referenced from anywhere the agent reads, so it costs nothing per turn. **Agent-facing** one `CLAUDE.md` bullet, the piping rule only. **Two things deliberately not done and why:** no batching instruction — the system prompt already carries one and batching decays *within* a session (41 batched turns across first thirds vs 8 across last thirds, 6/6 declining), so more instruction text re-read inside the growing context is the least likely fix; and no `PreToolUse` hook yet — a hook that blocks forces a retry, and a retry is a full context re-read, so it can cost more than it saves. **Open:** if the re-measure in a week still shows fat payloads, build that hook *warn-only* and re-measure again. Also fixed while here: `tools/session_report.py` still printed a "batching half the single-call turns would save N%" figure that a transcript cannot support (it cannot tell a missed batch from genuinely sequential work); it now reports the rate only. |
 | 2026-09-01 | `SessionEnd` hook + `session_report.py --append-log`: record token metrics per session | Small, tooling. Transcripts are deleted after `cleanupPeriodDays` (30 by default), so every measurement behind L-017 and `specs/SESSION-HYGIENE.md` is unreproducible next month — the log is the durable half. The hook (in **`.claude/settings.local.json`**, gitignored: personal telemetry, not a project contract like the delegation hooks in `settings.json`) pipes `session_id` into the tool and appends one compact JSON row to `~/.claude/token-logs/spanish-srs.ndjson`. Runs outside the model's context, so it costs **zero tokens**. Rows carry *ratios* (`fat_payload_share`, `batch_rate`) not just raw sizes, because raw size tracks task length and is not comparable across sessions. `--append-log` is idempotent (skips a session already logged at that turn count) and exits 0 with no output when nothing matches, so the same command doubles as a backfill — necessary because `SessionEnd` only fires on a clean exit, and a killed terminal writes nothing. Backfilled 35 existing sessions. **CI was considered and rejected:** transcripts live in `~/.claude/projects/`, never in the repo, so CI structurally cannot see them, and token spend is a property of how work was done rather than of the diff — there is no gate worth writing. **Open:** `tools/session_report.py` still has no regression matrix, unlike `state_rotate.py` and `archive_spec.py`; three attribution traps were found in it by hand, which is the argument for one. |
 | 2026-09-01 | Deduplicated `L-017` in this file's `## Lessons` list | Small, noticed while running `specs/archive/2026-09-02-010-day-rollover-anchoring` and logged as a `## Discovered` note rather than fixed inline. The headline was listed twice, verbatim. It got resolved as a side effect of adding **L-018**: the second copy was the line replaced, so the list went 18 headlines / 18 bodies instead of gaining a 19th duplicate row. Recording it here rather than claiming it is still open. No `LESSONS.md` change — there was only ever one L-017 body, which is why the push gate (headline/body pairing) never caught the duplicate: it checks that every headline has a body, not that every headline appears once. |
+| 2026-09-17 | Added `format-check` + `eslint-check` as local `pre-push` hooks | Small. PR #22's CI `lint` job failed on `npm run lint:ci` for the second time — prompted by the user noticing it in the Actions log. `.pre-commit-config.yaml` had only ever run `clean-table-check`; added two more local hooks at the same `pre-push` stage running `npm run format:check` and `npm run lint:ci`, reinstalled via `pre-commit install --hook-type pre-push --overwrite`. Turning the hook on immediately failed on 12 pre-existing ESLint errors already committed on this branch (`server/src/store/file-store.flush.test.ts`: 3× `no-unsafe-member-access` on `JSON.parse(...)[0].reps`, fixed with a `Card[]` cast; `server/src/store/sentinel.test.ts`: 9× `no-confusing-void-expression`, fixed via `eslint --fix` then `prettier --write` to reconcile brace style) — user chose to fix rather than defer. All 8 affected tests still pass; `pre-commit run --hook-stage pre-push --all-files` is green. See **L-023**. |

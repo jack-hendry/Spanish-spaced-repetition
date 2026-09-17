@@ -48,6 +48,7 @@ describe('hardened app', () => {
 
     const config: ServerConfig = {
       hardened: true,
+      allowEmptyStore: false,
       port: 0,
       authUser: 'u',
       authPassword: 'p',
@@ -186,6 +187,7 @@ describe('dev app', () => {
 
     const config: ServerConfig = {
       hardened: false,
+      allowEmptyStore: false,
       port: 0,
       authUser: '',
       authPassword: '',

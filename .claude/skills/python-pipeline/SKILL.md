@@ -92,4 +92,36 @@ trust the code, then fix both.
 Project and process lessons go to `specs/STATE.md` + `specs/LESSONS.md` as
 `L-NNN` instead -- that pair is what the pre-push gate enforces (AD-009).
 
-_None yet._
+### 2026-09-17 — Moving `media/` off macOS carries AppleDouble junk, and `ls | wc -l` cannot see it
+
+(`specs/archive/2026-09-17-021-fly-deploy` Step 15)
+
+Seeding the Fly volume meant tarring `data/spanish/` on macOS and extracting on
+Linux. macOS `tar` embeds extended attributes as **AppleDouble** entries, so the
+extract created **7250** `._*` files on the remote: one shadowing every mp3 in
+`media/`, seven shadowing the top-level JSON files, two in `_source/`.
+
+The integrity check missed all of them. It was:
+
+```sh
+ls /data/spanish/media | wc -l     # reported a clean 7241 = 7241
+```
+
+**`ls` hides dotfiles by default, and `._foo.mp3` begins with a dot.** The count
+was right and the directory was dirty. Found only by cross-checking with
+`find /data/spanish -name '._*' -type f | wc -l`, and cleared with the same
+predicate plus `-delete` (after listing them by name first). Re-verified
+afterwards: media still 7241, all seven JSON files still byte-identical.
+
+Two rules:
+
+- **Transfer out of macOS with `COPYFILE_DISABLE=1 tar …`** (or `--no-xattrs`),
+  or the AppleDouble files travel with it.
+- **Never use bare `ls` for a count that is acting as an integrity check.** Use
+  `ls -A`, or `find`, whenever the thing you are screening for could be a
+  dotfile. This is the domain-specific instance of L-019.
+
+Worth knowing for `media/` specifically: it is 252MB and **regenerable** by the
+converter, so a contaminated media transfer is always cheaper to redo than to
+repair — but the same tar carried the seven state files, which are not.
+

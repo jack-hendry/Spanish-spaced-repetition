@@ -1,0 +1,11 @@
+node_modules
+**/node_modules
+dist
+**/dist
+data
+specs
+.git
+.claude
+*.md
+__pycache__
+.venv

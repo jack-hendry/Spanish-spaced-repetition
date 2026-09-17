@@ -2,6 +2,7 @@ import { dataDir } from './paths.js';
 import { createApp } from './app.js';
 import { ConfigError, loadConfig } from './config.js';
 import { FileStore } from './store/file-store.js';
+import { assertPopulatedStore, EmptyStoreError } from './store/sentinel.js';
 
 async function main(): Promise<void> {
   let config;
@@ -13,6 +14,18 @@ async function main(): Promise<void> {
       process.exit(1);
     }
     throw err;
+  }
+
+  if (config.hardened && !config.allowEmptyStore) {
+    try {
+      assertPopulatedStore(dataDir());
+    } catch (err) {
+      if (err instanceof EmptyStoreError) {
+        console.error(`[server] refusing to start: ${err.message}`);
+        process.exit(1);
+      }
+      throw err;
+    }
   }
 
   const store = new FileStore(dataDir());

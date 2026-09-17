@@ -7,3 +7,15 @@ repos:
         language: script
         pass_filenames: false
         stages: [pre-push]
+      - id: format-check
+        name: prettier format check
+        entry: npm run format:check --silent
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+      - id: eslint-check
+        name: eslint check (npm run lint:ci)
+        entry: npm run lint:ci --silent
+        language: system
+        pass_filenames: false
+        stages: [pre-push]

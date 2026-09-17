@@ -51,4 +51,29 @@ describe('loadConfig', () => {
     expect(config.authUser).toBe('');
     expect(config.authPassword).toBe('');
   });
+
+  it('allowEmptyStore defaults to false', () => {
+    const config = loadConfig({ DEV_MODE: '1' });
+    expect(config.allowEmptyStore).toBe(false);
+  });
+
+  it('allowEmptyStore is true when ALLOW_EMPTY_STORE=1', () => {
+    const config = loadConfig({
+      DEV_MODE: '1',
+      ALLOW_EMPTY_STORE: '1',
+    });
+    expect(config.allowEmptyStore).toBe(true);
+  });
+
+  it('allowEmptyStore is unaffected by DEV_MODE', () => {
+    const devConfig = loadConfig({ DEV_MODE: '1', ALLOW_EMPTY_STORE: '1' });
+    expect(devConfig.allowEmptyStore).toBe(true);
+
+    const hardenedConfig = loadConfig({
+      AUTH_USER: 'testuser',
+      AUTH_PASSWORD: 'testpass',
+      ALLOW_EMPTY_STORE: '1',
+    });
+    expect(hardenedConfig.allowEmptyStore).toBe(true);
+  });
 });

@@ -116,14 +116,17 @@ Anything touching scheduling, the study queue, `card.due`, or the on-disk shape 
 pip install pre-commit && pre-commit install --hook-type pre-push   # one-time per clone
 ```
 
-Without that, the clean-table pre-push hook is not installed and pushes are not checked.
+Without that, none of the pre-push hooks below are installed and pushes are not checked.
+
+`.pre-commit-config.yaml` wires three local hooks at the `pre-push` stage: `clean-table-check` (the SDD archive/STATE.md gates above), `format-check` (`npm run format:check`, Prettier) and `eslint-check` (`npm run lint:ci`, ESLint over the whole repo). The latter two exist because lint/format errors were twice caught only by CI, after a PR was already open (L-023) — now `git push` fails locally first. Like `clean-table-check`, both are bypassable with `git push --no-verify`; CI's `lint` job (`npm run lint:ci`) and `tests` job (`npm run format:check`) are the real guarantee.
 
 ```bash
 python3 tools/archive_spec.py <spec-dir>          # ritual steps 3+4: plan the archive move (dry run)
 python3 tools/archive_spec.py <spec-dir> --apply  # …and perform it; prints the STATE.md checklist
 ./tools/archive_spec.test.sh                      # regression matrix for the above
-bash scripts/clean-table-check.sh                 # run the four push gates by hand
+bash scripts/clean-table-check.sh                 # run the four SDD push gates by hand
 RANGE_OVERRIDE=main..HEAD scripts/clean-table-check.sh   # test them over any range
+pre-commit run --hook-stage pre-push --all-files  # run all pre-push hooks by hand (SDD gates + format + lint)
 python3 tools/state_rotate.py --check             # is specs/STATE.md over its ~300-line budget?
 python3 tools/state_rotate.py --apply             # rotate aged AD/B entries into STATE-ARCHIVE.md
 ./.claude/hooks/enforce-haiku-tasks.test.sh       # regression matrix for the delegation hook
