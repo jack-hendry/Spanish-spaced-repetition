@@ -29,7 +29,7 @@ while [[ $# -gt 0 ]]; do
       exit 1
       ;;
     *)
-      ((POSITIONAL_ARGS++))
+      POSITIONAL_ARGS=$((POSITIONAL_ARGS+1))
       if [[ $POSITIONAL_ARGS -gt 1 ]]; then
         echo "Error: Only one positional argument (source dir) allowed" >&2
         exit 1
@@ -170,7 +170,6 @@ local_total=0
 for file in "${FILES[@]}"; do
   local_path="$SOURCE_DIR/$file"
   if [[ -f "$local_path" ]]; then
-    local size
     size=$(stat -f%z "$local_path" 2>/dev/null || stat -c%s "$local_path" 2>/dev/null || echo "?")
     echo "  $file: $size bytes"
     if [[ "$size" != "?" ]]; then

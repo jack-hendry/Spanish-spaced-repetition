@@ -206,6 +206,19 @@ not the *policy*:
       and holds every review ever answered, so a damaged `cards.json` is in
       principle rebuildable from it. Nothing does that today — worth a
       one-off repair tool if it ever proves cheap.
+      - ⏭️ **DEFERRED 2026-09-17, not dropped** → `specs/BACKLOG.md`
+        (2026-09-17 entry, "A `revlog.ndjson` → `cards.json` repair tool").
+        This is spec `022-backup-and-restore`'s **O1**: it turned out not to
+        be cheap. Replaying SM-2/FSRS over the whole review history is a
+        scheduling-domain change, which `CLAUDE.md` classes as **at least
+        Large on its own** — not a checkbox on a backup spec. The backlog
+        entry records the wrinkles a future spec has to answer.
+      - ⏭️ **Related, also deferred 2026-09-17** → `specs/BACKLOG.md`: the
+        `/api/review` revlog-ahead-of-`cards.json` divergence in the
+        Discovered list below. That is spec 022's **O2** — it is the
+        *corruption* this repair tool would be asked to fix, so the two
+        travel together. Deferred because it is a server-side durability bug
+        on the persistence path, which 022's O5 puts out of scope.
 
 ## Phase 3 — Never lose a review in flight
 
@@ -311,6 +324,11 @@ Checked during this session — current state:
   revlog" note assumes is possible. Note the signalled path is fine and was
   verified in Step 20 (`flushAll()` on SIGINT/SIGTERM, clean exit 0) — this is
   only about kills that skip the handler.
+  **Deferred 2026-09-17, not dropped** → `specs/BACKLOG.md` (2026-09-17 entry,
+  "`/api/review` can leave `revlog.ndjson` ahead of `cards.json`"). Spec
+  `022-backup-and-restore`'s **O2**: a server-side durability bug on the
+  persistence path, which that spec's O5 puts out of scope, and a
+  scheduling-domain change besides. Travels with O1 (the repair tool) above.
 - (2026-09-17) **The tier-1 rate limiter covers all routes**, 20 failures per
   15 minutes (`app.ts:70-78`, `skipSuccessfulRequests: true`). An Angular page
   load 401s several times before credentials are entered, so two mistyped

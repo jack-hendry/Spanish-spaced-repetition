@@ -23,7 +23,7 @@ while [[ $# -gt 0 ]]; do
       exit 1
       ;;
     *)
-      ((POSITIONAL_ARGS++))
+      POSITIONAL_ARGS=$((POSITIONAL_ARGS+1))
       if [[ $POSITIONAL_ARGS -gt 1 ]]; then
         echo "Error: Only one positional argument (destination dir) allowed" >&2
         exit 1
@@ -103,9 +103,9 @@ unchanged=0
 # Move files from staging directory to destination, tracking what changed
 for file in "${FILES[@]}"; do
   if [[ -f "$DEST_DIR/$file" ]] && cmp -s "$STAGE_DIR/$file" "$DEST_DIR/$file"; then
-    ((unchanged++))
+    unchanged=$((unchanged+1))
   else
-    ((updated++))
+    updated=$((updated+1))
   fi
   mv "$STAGE_DIR/$file" "$DEST_DIR/$file"
 done
