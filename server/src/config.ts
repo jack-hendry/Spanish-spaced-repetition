@@ -21,6 +21,8 @@ export interface ServerConfig {
   staticDir: string | null;
   /** Max JSON body. Sized for the ~311KB /collection/resume payload. */
   bodyLimit: string;
+  /** False by default. When hardened, true only when ALLOW_EMPTY_STORE=1. Failure to assert a populated store is a hard boot error unless overridden. */
+  allowEmptyStore: boolean;
 }
 
 export class ConfigError extends Error {}
@@ -29,6 +31,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
   const hardened = env.DEV_MODE !== '1';
   const authUser = env.AUTH_USER ?? '';
   const authPassword = env.AUTH_PASSWORD ?? '';
+  const allowEmptyStore = env.ALLOW_EMPTY_STORE === '1';
 
   // Analyst D3: a hardened server with no credentials must not boot. Serving
   // unauthenticated, or inventing a random password nobody knows, are both
@@ -49,5 +52,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     authPassword,
     staticDir: existsSync(built) ? built : null,
     bodyLimit: env.BODY_LIMIT ?? '2mb',
+    allowEmptyStore,
   };
 }

@@ -158,42 +158,9 @@ is enough; the cost is that renaming a deck recolours it.
 
 **AD-020 — A lint ruleset is calibrated against the codebase before it is enforced; loosening on evidence is part of adoption, not a retreat from it.** → moved to `STATE-ARCHIVE.md`
 
-**AD-021 — Phase 2 (scheduling-core lint fixes) changed no ESLint rule and
-added no `eslint-disable` comments; the CI gate widened from 13 paths to a
-single directory.** (2026-08-31, `archive/2026-08-31-018-lint-phase2-scheduling/`, all 14
-steps completed) Phase 2 was pure remediation: 24 violations across 7 files
-fixed by hand, no rule or calibration modified. Of its 17 zero-violation files,
-the **five** doing `card.due`/day-number arithmetic were read against
-`scheduling-domain` (2 docs/dead-code findings, recorded not fixed); the other
-12 were confirmed clean and gated, not audited. The CI gate
-`npm run lint:ci` moved from an incremental path list in `package.json` to
-`eslint web/src` — which also picks up nine files Phase 1 never gated (they were
-clean from the start and never had violations to remediate). A green exit code
-from the script cannot prove the gate's scope changed, only that everything it
-already covered is clean; the change is asserted on script text, not behavior
-(see L-015).
+**AD-021 — Phase 2 (scheduling-core lint fixes) changed no ESLint rule and added no `eslint-disable` comments; the CI gate widened from 13 paths to a single directory.** → moved to `STATE-ARCHIVE.md`
 
-**AD-022 — Phase 4 closed `specs/archive/2026-08-31-015-typescript-lint-rollout/ROADMAP.md`: the
-CI gate is now the full repo (`eslint .`), and `eslint.config.mjs`/
-`tools/shoot.mjs` were clean the moment they got a ruleset at all.**
-(2026-08-31, `archive/2026-08-31-020-lint-phase4-full-gate/`, all 5 steps completed)
-`lint:ci` moved from `eslint web/src server/src` to `eslint .`. The only two
-JS/TS-family files at the repo root and in `tools/` — previously excluded by
-name in `eslint.config.mjs`'s own `ignores` array — got a new config block
-(`js.configs.recommended` plus four hand-declared Node globals; no
-type-checked preset applies since neither file is covered by any
-`tsconfig.json`) and carried **zero** violations under it, so this phase was
-pure CI-gate config, not remediation. 280 tests, the build, and
-`format:check` unchanged throughout. Of the roadmap's four inherited open
-questions, one is now a closed decision rather than deferred work:
-`web/src/index.html` stays outside the gate because it is the Angular CLI's
-static host shell (no bindings, no directives), not a component template —
-`angular-eslint`'s `templateRecommended` ruleset, which the existing
-`web/src/app/**/*.html` glob applies, has nothing in it to check there. The
-other three (`noUncheckedIndexedAccess`, test-file
-`no-unsafe-*`/`no-explicit-any`, `templateAccessibility`) remain
-deliberately open — no new evidence surfaced in this phase to reopen any of
-them.
+**AD-022 — Phase 4 closed `specs/archive/2026-08-31-015-typescript-lint-rollout/ROADMAP.md`: the CI gate is now the full repo (`eslint .`), and `eslint.config.mjs`/ `tools/shoot.mjs` were clean the moment they got a ruleset at all.** → moved to `STATE-ARCHIVE.md`
 
 **AD-023 — Phase 3's `no-unnecessary-condition` sites in `server/src` were
 all "type is lying," never "guard is dead," and the importer refactor was
@@ -238,6 +205,36 @@ the two schemes behind one helper is left as a separate task. This closes the
 work 007 deferred (its Open question 1 and its non-goal "changing `todayNumber`
 itself"). See **L-018**.
 
+**AD-025 — Fly is the source of truth for scheduling state; the repo is a
+lagging replica.** (2026-09-17, `021-fly-deploy` D0) Once Fly writes to its own
+volume there are two live writers to the same logical state, and git is no
+longer one of them. Chosen: **Fly-as-source**, with
+`tools/pull-fly-state.sh` pulling the seven state files into `data/spanish/` so
+the existing git-rollback workflow keeps working, lagged by the pull interval;
+`tools/push-fly-state.sh` is the reverse path for restore and refuses to run
+without `--yes`. Media is excluded from both (252MB, regenerable). Consequence:
+**a local edit to `data/spanish/` is not authoritative and is overwritten by
+the next pull** — the `git checkout -- data/spanish/` habit in CLAUDE.md L-002
+now means "discard a dev-server artefact", never "restore the real state".
+Decided in Phase 1 rather than Phase 2 as the roadmap planned, because the seed
+and restore scripts could not be written without knowing which side wins.
+
+**AD-026 — The empty-store sentinel checks file *content*, and checks two
+files.** (2026-09-17, `021-fly-deploy` §1, `CriticReview.md` C2/R5)
+`FileStore.init()` treats an empty data dir as "seed a fresh collection", so a
+failed volume mount silently starts a blank app and then persists blank state.
+`server/src/store/sentinel.ts` turns that into a failed boot, and two design
+points are load-bearing: **(1) content, not existence** — `init()` *creates*
+`cards.json` as `[]` whenever absent, so an existence check would disarm itself
+on the first seeded boot; **(2) `notes.json` as well as `cards.json`** — an
+interrupted or alphabetical upload lands `cards.json` first, which is the most
+likely partial-seed shape and is invisible to a cards-only check. The escape
+hatch `ALLOW_EMPTY_STORE=1` exists for the one chicken-and-egg boot that seeds
+an empty volume; it is passed transiently via `fly deploy --env` and **must
+never be committed to `fly.toml`**, which would permanently disarm the guard.
+Every throw names the absolute path *and* the literal `ALLOW_EMPTY_STORE`, so
+the operator learns the escape hatch from the failure itself.
+
 ## Blockers
 
 (none open)
@@ -262,6 +259,10 @@ itself"). See **L-018**.
 - **L-016** — A harden pass must re-derive, not re-reason: an unexecuted prescription is a hypothesis.
 - **L-017** — Token cost is a function of *when* a payload lands, not how big the task is.
 - **L-018** — A whole test suite can pass under both the right and the wrong definition of a shared primitive.
+- **L-019** — A `grep -c … → 0` criterion is unfalsifiable without a positive control that the stream was non-empty.
+- **L-020** — A check that never reaches the thing under test reports green about something else.
+- **L-021** — `bash -n` proves syntax, never that the commands a script invokes exist.
+- **L-022** — The delegation hook and the permission classifier can deadlock a step between them.
 
 ## Quick Tasks
 

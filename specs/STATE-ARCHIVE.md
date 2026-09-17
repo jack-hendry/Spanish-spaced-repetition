@@ -251,6 +251,43 @@ drop Phase 2 31 → 5 with no scheduling file reviewed. A relaxation removes a
 full list (widened to 16 files, see AD-018) and reviews files, not residual
 hits; recorded in `INVENTORY.md` so the drop never reads as progress.
 
+**AD-021 — Phase 2 (scheduling-core lint fixes) changed no ESLint rule and
+added no `eslint-disable` comments; the CI gate widened from 13 paths to a
+single directory.** (2026-08-31, `archive/2026-08-31-018-lint-phase2-scheduling/`, all 14
+steps completed) Phase 2 was pure remediation: 24 violations across 7 files
+fixed by hand, no rule or calibration modified. Of its 17 zero-violation files,
+the **five** doing `card.due`/day-number arithmetic were read against
+`scheduling-domain` (2 docs/dead-code findings, recorded not fixed); the other
+12 were confirmed clean and gated, not audited. The CI gate
+`npm run lint:ci` moved from an incremental path list in `package.json` to
+`eslint web/src` — which also picks up nine files Phase 1 never gated (they were
+clean from the start and never had violations to remediate). A green exit code
+from the script cannot prove the gate's scope changed, only that everything it
+already covered is clean; the change is asserted on script text, not behavior
+(see L-015).
+
+**AD-022 — Phase 4 closed `specs/archive/2026-08-31-015-typescript-lint-rollout/ROADMAP.md`: the
+CI gate is now the full repo (`eslint .`), and `eslint.config.mjs`/
+`tools/shoot.mjs` were clean the moment they got a ruleset at all.**
+(2026-08-31, `archive/2026-08-31-020-lint-phase4-full-gate/`, all 5 steps completed)
+`lint:ci` moved from `eslint web/src server/src` to `eslint .`. The only two
+JS/TS-family files at the repo root and in `tools/` — previously excluded by
+name in `eslint.config.mjs`'s own `ignores` array — got a new config block
+(`js.configs.recommended` plus four hand-declared Node globals; no
+type-checked preset applies since neither file is covered by any
+`tsconfig.json`) and carried **zero** violations under it, so this phase was
+pure CI-gate config, not remediation. 280 tests, the build, and
+`format:check` unchanged throughout. Of the roadmap's four inherited open
+questions, one is now a closed decision rather than deferred work:
+`web/src/index.html` stays outside the gate because it is the Angular CLI's
+static host shell (no bindings, no directives), not a component template —
+`angular-eslint`'s `templateRecommended` ruleset, which the existing
+`web/src/app/**/*.html` glob applies, has nothing in it to check there. The
+other three (`noUncheckedIndexedAccess`, test-file
+`no-unsafe-*`/`no-explicit-any`, `templateAccessibility`) remain
+deliberately open — no new evidence surfaced in this phase to reopen any of
+them.
+
 ## Blockers
 
 (nothing rotated yet)

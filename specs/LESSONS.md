@@ -558,3 +558,139 @@ Three practical consequences:
   freedom where a wrong choice silently reinterprets the entire store. It got a
   numbered requirement (day 0 = the study day containing `created`) only because
   the harden pass asked what pinned it.
+
+**L-019 — A `grep -c … → 0` criterion is unfalsifiable without a positive
+control that the stream was non-empty.**
+(2026-09-17, `specs/archive/2026-09-17-021-fly-deploy` Steps 4, 7, 12, 15, 16 —
+five instances in one spec, which is why it is stated as a general rule)
+
+Step 16 had to prove two env vars were absent from a deployed machine:
+
+```
+fly ssh console -C "printenv" | grep -cE '^(ALLOW_EMPTY_STORE|DEV_MODE)='   # → 0
+```
+
+That `0` is produced by *two* different worlds: the flags really are absent, or
+`printenv` emitted nothing at all — a failed SSH, a stopped machine, a typo in
+the command, a container that never booted. The criterion cannot distinguish
+"the thing I feared is absent" from "I looked at nothing". Re-running it with
+two positive controls is what made the `0` mean something: total env lines =
+**23** (the stream was non-empty) and `grep -cE '^DATA_DIR='` = **1** (a
+variable known to be set, so the pattern syntax and the pipe both work).
+
+The same shape appeared four more times in the same spec, each time disguised:
+
+- **Step 4** asserted `mtimeAfter === mtimeBefore` to prove a debounce timer was
+  cleared. Vacuous — after `flushAll()` the file already holds the final
+  content, so an uncleared timer rewrites byte-identical bytes, and the two
+  writes were measured landing at the *same* millisecond. Fixed by asserting on
+  `vi.getTimerCount()`, which observes the `clearTimeout` directly.
+- **Step 7** curled `localhost:3000` to test a container, while the developer's
+  `npm run dev` server held that port and no container was running. See L-020.
+- **Step 12** ran `bash -n` over a script whose every remote call used a
+  subcommand that does not exist. See L-021.
+- **Step 15** checked `ls /data/spanish/media | wc -l` and got a clean
+  `7241 = 7241` while 7250 AppleDouble `._*` files sat in the same directory —
+  **`ls` hides dotfiles, and `._foo.mp3` starts with a dot**, so the check could
+  not see the contamination it existed to detect. `ls -A` or `find` is the fix.
+
+The general rule: **an acceptance criterion that passes when the measurement
+fails is not a criterion.** Before accepting any "absence" check — `grep -c` to
+0, an empty diff, a file count, an unchanged mtime — ask what *else* produces
+that same result, and add the cheapest assertion that separates the two. Absence
+evidence needs a liveness proof; presence evidence usually carries its own.
+
+Practical: pair every `grep -c X → 0` with a `grep -c Y → n>0` over the same
+stream. Prefer asserting on an observable effect (a timer count, a call count, a
+returned body) over filesystem residue (mtime, size, a directory listing), which
+is the class most prone to reading identical under both outcomes.
+
+**L-020 — A check that never reaches the thing under test reports green about
+something else.**
+(2026-09-17, `specs/archive/2026-09-17-021-fly-deploy` Steps 7 and 10,
+`CriticReview.md` R1)
+
+Step 7 built a hardened container, ran it, and curled `localhost:3000` — which
+was held by the developer's `npm run dev` server. In dev mode `app.ts` registers
+`cors()` and skips `basicAuth`, so the step reported an unauthenticated **200**
+with `Access-Control-Allow-Origin: *`, while `docker logs` simultaneously showed
+the *container* reporting `hardened: true`. Two processes, one contradictory
+report, and the container — including the `staticDir` layout proof that was the
+entire reason for building it — was never exercised. The results were discarded
+and the step re-run on port **3100**.
+
+The same defect was found by inspection in Phase 0's `verify.sh`, which takes
+**zero arguments**, hardcodes `localhost:3999` in **15** places, and starts its
+own local server. `bash verify.sh https://spanish-srs.fly.dev` would have
+ignored the argument, tested localhost, and printed an all-green matrix while
+the deployment went completely untested. Its replacement,
+`tools/verify-remote.sh`, takes the target as a required argument (`${1:?}`),
+validates it starts with `http(s)://`, and **echoes it both at the top and in
+the final summary line** — so the output itself names what was tested.
+
+The rule: **a verification tool must take its target as an argument and print
+it.** A hardcoded target does not fail loudly when it is wrong; it silently
+tests something else and reports success. When a check and its subject can
+disagree about which process answered, prove identity *before* asserting
+anything — Step 7's re-run required `docker ps` to show the port mapping and
+`curl -I` against `:3000` vs `:3100` to **differ** before any result counted.
+
+Useful tell: unexpected CORS headers mean you are talking to a dev-mode process.
+
+**L-021 — `bash -n` proves syntax, never that the commands a script invokes
+exist.**
+(2026-09-17, `specs/archive/2026-09-17-021-fly-deploy` Step 12)
+
+`tools/push-fly-state.sh` passed `bash -n` cleanly and could not have worked at
+all: every remote operation used **`fly ssh shell`, which does not exist** —
+`fly ssh` offers only `console`, `issue`, `log`, `sftp`. All four call sites
+(staging-dir creation, the `test -s` verification loop, `get_remote_size`, the
+final `mv` loop) would have failed at the first call. `bash -n` parses; it never
+resolves a command name, so a script of confident nonsense passes.
+
+This would not have surfaced until the restore was actually needed — i.e. the
+one moment it must work. Two further details from the fix are worth carrying:
+`fly ssh console -C` **execs directly and does not invoke a shell**, so anything
+needing shell semantics (pipes, `$(…)`, globs) must be wrapped in
+`/bin/sh -c '…'`; and `fly ssh sftp put`'s argument order was confirmed against
+`fly ssh sftp --help` rather than assumed.
+
+The rule: when a script cannot be run, **verify each external subcommand against
+its `--help`**. A syntax check and a plausible-looking man-page memory are not
+evidence. Related: the assumption that `fly ssh console -C` propagates the
+remote exit code was explicitly *flagged as unverified* and carried forward to a
+step that could test it — where it was confirmed (`test -s /nonexistent` → exit
+1). Flagging an untestable assumption at the call site, in code, and naming the
+step that must settle it, is the pattern that worked here.
+
+**L-022 — The delegation hook and the permission classifier can deadlock a step
+between them.**
+(2026-09-17, `specs/archive/2026-09-17-021-fly-deploy` Steps 17 and 20)
+
+Step 20 needed the app's basic-auth password, and every route to performing it
+was closed at once:
+
+1. **Delegating to `haiku`**, as the step's `Model:` field required — the
+   `Agent` spawn was denied by the auto-mode permission classifier, twice, on
+   two differently-worded prompts.
+2. **Running it at top level instead** — `enforce-haiku-tasks-pretooluse.sh`
+   blocks top-level Bash while a run marker is present, and refused even a
+   read-only `wc -l`.
+
+The hook that enforces delegation and the classifier that refuses the delegation
+are **independent gates with no shared model of what a step is allowed to do**,
+so a step can satisfy one only by violating the other. Step 17 hit the same wall
+from the other side: `fly secrets set` was denied outright as
+`[Secret-Store Writes]`, on two separate occasions, meaning an agent in this
+configuration simply *cannot* write a secret — the planned recovery path did not
+exist. It was resolved by the user supplying the password via the clipboard,
+consumed only as `"jack:$(pbpaste)"` and never echoed.
+
+Two rules follow. **The harness can deny an entire class of command**, so any
+step whose work depends on a secret must name a user-executed fallback *up
+front*, as part of the plan, rather than discovering the denial at the point of
+failure. And when two gates deadlock, the resolution is a **user decision about
+which to stand down** — here, dropping the `## Executing:` marker, justified
+because all remaining steps were top-level by design and the hook had already
+served its purpose. Do not route around a gate silently; the marker exists to be
+removed deliberately, and it must not be re-added by a later step.

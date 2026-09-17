@@ -70,26 +70,60 @@ path-traversal check — but missed being ticked when this doc was updated).
 
 ## Phase 1 — Deploy to Fly.io
 
-- [ ] Dockerfile + `fly.toml`.
-- [ ] Persistent volume mounted over `data/spanish/` so scheduling state
+**Done 2026-09-17** — `specs/021-fly-deploy`, live at
+`https://spanish-srs.fly.dev`.
+
+- [x] Dockerfile + `fly.toml`. Two-stage build on `node:24-bookworm-slim`; the
+      runtime stage runs a production-only install rather than copying the
+      build stage's 287MB `node_modules`. Deployed image **73MB**. The trap
+      worth remembering: `config.ts`/`paths.ts` compute `repoRoot` by walking
+      two levels up from the compiled JS, so the runtime stage must preserve
+      `server/dist` and `web/dist/web/browser` at their exact relative paths —
+      a conventional flattening `COPY` yields `staticDir: null`, an app that
+      404s while `/api` works perfectly.
+- [x] Persistent volume mounted over `data/spanish/` so scheduling state
       survives redeploys/restarts (server writes here on every review —
-      `store/file-store.ts`).
-- [ ] **Refuse to start on an unmounted/empty volume.** `FileStore.init()`
+      `store/file-store.ts`). 1GB `spanish_data` at `/data` (**not**
+      `/data/spanish` — the app appends that), 261M used.
+- [x] **Refuse to start on an unmounted/empty volume.** `FileStore.init()`
       seeds a fresh empty collection when the data dir is empty, so a
       misconfigured mount doesn't error — it silently starts a blank app and
       then persists that blank state. A sentinel check ("expected a populated
       store, found none → exit non-zero") turns the classic Fly data-loss
-      story into a failed boot.
-- [ ] Configure auto-stop/auto-start so the machine sleeps between sessions
-      — usage will be occasional, not continuous.
-- [ ] **Confirm graceful stop actually flushes.** `cards.json` writes are
+      story into a failed boot. Implemented as `server/src/store/sentinel.ts`
+      — **content-based, not existence-based**, and checking `notes.json` as
+      well as `cards.json`; see AD-026 for why both distinctions are
+      load-bearing.
+- [x] Configure auto-stop/auto-start so the machine sleeps between sessions
+      — usage will be occasional, not continuous. **Verified behaviourally,
+      not just in the config**: the machine reached `stopped` after ~7 minutes
+      idle and cold-started in **5.1s** on the next request. A
+      `[[http_service.checks]]` health check does *not* hold the machine awake
+      — checks stop with the machine (`CHECKS 0/1`).
+- [x] **Confirm graceful stop actually flushes.** `cards.json` writes are
       debounced (~400ms) and only `flushAll()` on SIGINT/SIGTERM saves them;
       an auto-stop that hard-kills the machine loses the last few reviews.
       Verify the stop signal and grace period are long enough for the flush.
-- [ ] Automatic HTTPS on the `*.fly.dev` domain (free single-hostname cert,
-      first 10 per org are free).
-- [ ] Verify: data survives a redeploy, phone can reach it over cellular
-      (not just wifi), a 200-card session round-trips correctly.
+      Deterministic proof is the unit test (`file-store.flush.test.ts`,
+      asserting on `vi.getTimerCount()`); the deployed signal path was smoke-
+      tested in Step 20 — clean exit code 0, volume unmounted cleanly.
+      **Fly sends `SIGINT`, not `SIGTERM`** — `file-store.ts` handles both, but
+      a future change that handled only `SIGTERM` would silently lose the
+      deploy-time flush.
+- [x] Automatic HTTPS on the `*.fly.dev` domain (free single-hostname cert,
+      first 10 per org are free). Note plain `http://` is answered by **Fly's
+      edge with a 301**, before the request reaches the machine; `app.ts`'s own
+      308 remains as defence-in-depth.
+- [x] Verify: data survives a redeploy ✅ (Step 20 — a card answered, then
+      `fly deploy`; `interval` 1→3, `due` 72→87, did not return to the queue),
+      phone can reach it over cellular ✅ (Step 21 — login, audio, and correct
+      counts after a reload and re-login).
+      ⚠️ **The "200-card session" was not performed** — the spec reduced it to
+      ~20 as a smoke sample and the real run was **12 cards**. Deliberate: the
+      safety property is the *verified restore* (Step 18), not the sample size,
+      and 12 exercised both scheduler outcomes (8 graduating to `review`, 4 on
+      a 10-minute learning step). No throughput or rate-limit behaviour at
+      200-card scale has been observed.
 
 **Cost estimate** (checked against [Fly.io's pricing page](https://fly.io/docs/about/pricing/) 2026-08-26):
 shared-cpu-1x/256MB ≈ $2.02/mo if always-on, likely much less with
@@ -135,6 +169,29 @@ single copy on a single host: it is not a backup.
       - Whichever is chosen, write it down here before Phase 2 is marked
         done — an unstated answer means the next person (or agent) re-derives
         it mid-incident.
+      - ✅ **DECIDED 2026-09-17: Fly-as-source** (`specs/021-fly-deploy`
+        Analyst D0, AD-025). Settled during Phase 1 rather than Phase 2,
+        because Phase 1 could not write a seed or a restore script without
+        first knowing which side wins a conflict. `tools/pull-fly-state.sh`
+        is the reconciliation: it pulls the seven state files into the repo so
+        the existing git-rollback workflow keeps working, lagged by the pull
+        interval. `tools/push-fly-state.sh` is the reverse path, for restore.
+        **The desktop copy is no longer authoritative** — it is a lagging
+        replica, and any local edit to `data/spanish/` is overwritten by the
+        next pull.
+
+**What Phase 2 still needs after Phase 1** — Phase 1 built the *mechanism* but
+not the *policy*:
+
+- The pull is **manual**; nothing schedules it. Until something does, the
+  off-Fly copy is only as fresh as the last time someone remembered.
+- **`push-fly-state.sh` has never run against production.** It is dry-run
+  tested and was exercised on a scratch round-trip in Step 18, but the planned
+  post-phone-test restore was dropped once those reviews became real study. The
+  restore path is proven at scratch scale, not at production scale.
+- Retention is undecided: pulls overwrite the same seven files, so history
+  depends entirely on how often someone commits them.
+- Fly volume snapshots remain unconfigured.
 - [ ] Back up the *state*, not the media — `cards.json`, `notes.json`,
       `decks.json`, `collection.json`, `deckoptions.json`, `revlog.ndjson`.
       Media is 250MB and regenerable from the converter; state is 5MB and is
@@ -242,3 +299,20 @@ Checked during this session — current state:
   — the rollback habit stops covering whatever happened on Fly unless a
   reconciliation step closes the loop. Folded into Phase 2 as a required
   decision (Fly-as-source-pulled-into-git vs. desktop-as-source-synced-to-Fly).
+  **Resolved 2026-09-17: Fly-as-source** — see Phase 2 above and AD-025.
+- (2026-09-17) **Phase 5 input from the Phase 1 phone test.** A real cellular
+  session on an iPhone found **no blocking UI problems** — the user's verdict
+  was "good enough for now, come back to mobile UI in Phase 5". Two
+  qualifications matter for whoever picks Phase 5 up:
+  - The session ran against **already-fixed** layout. Two uncommitted mobile
+    breakpoints (`web/src/app/app.scss` 768px — stack the shell instead of a
+    fixed 280px side rail, cap `.tree-scroll` at 35vh; and
+    `review.scss` 480px — tighten the card panel and rating grid) were written
+    and deployed the same morning. So "good enough" describes the *patched*
+    UI. Without them the sidebar's fixed width squeezed the review screen's
+    rating row to an unusable sliver — which is precisely the mis-tap /
+    data-integrity risk the Phase 5 bullet above calls acceptance, not polish.
+  - **No systematic sweep was performed** — 12 cards, one device, one
+    orientation, two of the five routes (`/`, `study/:deckId`). `browse`,
+    `stats` and `options/:optionsId` have never been opened on a phone.
+    "No blocking issues" is a deferral, not a clean bill of health.

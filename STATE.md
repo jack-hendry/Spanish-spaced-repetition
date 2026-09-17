@@ -54,3 +54,9 @@ regression matrix for `tools/session_report.py`.
 
 Format while a run is in progress: `<spec> — step N of M` (see
 `specs/TEMPLATE.md`'s `Status:` field convention, AD-016).
+
+Marker for `021-fly-deploy` removed at Step 20 (2026-09-16). Steps 1–19 ran
+delegated; the three remaining steps (20, 21, 22) are all top-level — 21 and 22
+by design, 20 by necessity after the classifier refused the `haiku` spawn twice.
+The hook had therefore already done its job of keeping top-level out of the
+implementation steps. Restore the marker if delegated work resumes.
