@@ -21,8 +21,14 @@ lines). Step 17 is the first step that writes to `specs/STATE.md` and **must
 not run before that rotation lands**. Steps 7–11 do not touch `STATE.md` and
 can proceed meanwhile.
 
+Steps 1–6 are committed as `7b78ab3` on branch `spec-022-backup-and-restore`,
+open as **PR #23**, CI green (`clean-table-gate`, `hooks`, `lint`, `tests`).
+Steps 7–11 need that PR **merged to `main`**, because `workflow_dispatch` only
+sees workflows on the default branch.
+
 **Carried caveats, not to be lost at Step 19:**
-- Step 3's bash-5 half of A12 is pending the first CI run on `ubuntu-latest`.
+- ~~Step 3's bash-5 half of A12 is pending the first CI run~~ → **now met** on
+  PR #23's `hooks` job: `GNU bash, version 5.2.21(1)-release`, 21/21 green.
 - Step 11's `Done when` is **vacuous as written** — see the ⚠️ in that step.
 - Whether the `ssh`-scoped token can `fly machine start`/`stop` is unverified
   until Step 7.
@@ -187,8 +193,27 @@ the path that matters.
 
 **Model:** haiku
 
-**Status:** ✅ **done locally** (2026-09-17); the bash-5 half of A12 is
-**pending the first CI run** — see the caveat at the end.
+**Status:** ✅ **done — and the bash-5 half of A12 is now MET** (2026-09-17).
+The caveat at the end of this step is **resolved**; it is kept below for the
+record rather than deleted, because the reasoning is the point.
+
+**Evidence — PR #23's `hooks` job, the first CI run of this branch**
+(`actions/runs/35270754369`, conclusion `success`):
+
+```
+Run ./tools/state-scripts.bash5.test.sh
+  bash --version
+  GNU bash, version 5.2.21(1)-release (x86_64-pc-linux-gnu)
+  ...
+state-scripts.bash5.test: 21 passed, 0 failed
+```
+
+That is exactly what the third Done-when item asked for: `GNU bash, version 5.`
+in the log, and the suite green. Step 2's `((VAR++))` fix is therefore now
+verified **on the version where the bug actually fires**, not merely on the
+macOS bash 3.2 where it never could. Printing `bash --version` inside the suite
+(item 4) is what makes this checkable at all — without it the log would show 21
+passes and no way to know which interpreter produced them.
 
 Created `tools/state-scripts.bash5.test.sh` (executable, ~170 lines) in the
 shape of the existing matrices (`scripts/clean-table-check.test.sh`,
