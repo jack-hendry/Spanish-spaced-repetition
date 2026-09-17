@@ -264,6 +264,7 @@ the operator learns the escape hatch from the failure itself.
 - **L-021** — `bash -n` proves syntax, never that the commands a script invokes exist.
 - **L-022** — The delegation hook and the permission classifier can deadlock a step between them.
 - **L-023** — A pre-push hook that never runs lint or format only catches those errors after a PR is already open.
+- **L-024** — "Add it to the backlog" means `specs/BACKLOG.md`, never a Quick Tasks row in `STATE.md`.
 
 ## Quick Tasks
 

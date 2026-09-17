@@ -716,3 +716,27 @@ errors in two test files already committed on the branch
 (`file-store.flush.test.ts`, `sentinel.test.ts`, from the Fly deploy work) —
 proof that without this hook, code with lint errors already reaches `main`
 undetected until a PR's CI run happens to touch that job.
+
+**L-024 — "Add it to the backlog" means `specs/BACKLOG.md`, never a Quick
+Tasks row in `STATE.md`.**
+(2026-09-17, a Fly billing conversation where the user said "log this as a
+backlog perhaps we can explore this in the future")
+
+Asked to log an unscoped idea (mitigating bot/scanner traffic waking the Fly
+machine) for later, the idea was written as a Quick Tasks row in
+`specs/STATE.md` instead of an entry in `specs/BACKLOG.md`. The two files
+look similar — both are dated, append-only, narrative logs — but
+`specs/STATE.md`'s own header table is explicit: Quick Tasks is for "Small
+task done without a spec," i.e. **completed** work with no spec overhead.
+`specs/BACKLOG.md`'s header is equally explicit: "ideas that aren't scoped or
+scheduled yet... not worth a spec *today*." Nothing had been done here; the
+whole point was to defer it. The user caught the mismatch by asking "why did
+you add it to STATE.md and not BACKLOG.md?" rather than by it silently
+rotting in the wrong file — but the fix (move the row) cost a second round
+trip that a straightforward keyword match would have avoided.
+
+The generalizable trigger: **when the user's own words signal which file
+they mean — "backlog," "later," "not now," "someday" → `BACKLOG.md`; "did
+X," "fixed X," "added X" → Quick Tasks in `STATE.md`** — match the file to
+that word, not to the topic. A billing/ops conversation with no code change
+still belongs in `BACKLOG.md` if nothing was actually done yet.

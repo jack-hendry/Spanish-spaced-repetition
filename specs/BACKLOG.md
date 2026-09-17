@@ -54,3 +54,22 @@ at that point, strike it here with the date and a pointer to where it went.
   qualify, what still requires a stop-and-ask) before it's safe to adopt.
   Not scoped yet; worth checking whether cost savings and reduced
   interruption are worth the loss of a manual gate before every commit.
+- [ ] (2026-09-17) Keep bot/scanner traffic from waking the Fly machine.
+  The deployed app (`fly.toml`, spec 021, archived
+  `archive/2026-09-17-021-fly-deploy`) is public at `spanish-srs.fly.dev`
+  with `auto_start_machines = true`, so any inbound request — including
+  bot/scanner probes, e.g. via CT-log discovery of the TLS cert — wakes the
+  sleeping machine before basic auth ever runs, since the wake happens at
+  Fly's proxy layer, before the app's own auth middleware. Cost per wake is
+  small (shared-cpu-1x:256MB, confirmed via `fly status`/`fly machine list`)
+  so not urgent, but worth fixing eventually since it's the one gap in an
+  otherwise scale-to-zero setup. Options surfaced so far, none scoped:
+  (1) put a bot-filtering proxy (e.g. Cloudflare) in front — needs the user
+  to own a custom domain, since `.fly.dev` can't be proxied through one;
+  (2) accept the noise and rely on a Fly billing/spending alert instead
+  (dashboard-only, not set up yet); (3) Fly WireGuard private networking —
+  fully blocks public ingress but breaks the phone-over-cellular access
+  spec 021 was built for; (4) lightweight app-level tweaks (hostname
+  rotation, tighter `express-rate-limit` tiers in `server/src/app.ts`) —
+  reduces opportunistic scanning only, doesn't stop the proxy-level wake.
+  Needs sizing before it becomes a Quick Task or a spec.
