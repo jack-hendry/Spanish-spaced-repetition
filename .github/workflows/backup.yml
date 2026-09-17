@@ -1,0 +1,57 @@
+# Nightly backup to Fly.io and push to git history.
+# See specs/BACKUP-RUNBOOK.md for operational runbook and incident procedures.
+
+name: Backup
+
+on:
+  schedule:
+    # Every 6 hours at UTC 00/06/12/18 = Toronto 20:00/02:00/08:00/14:00 (offset -4/-5)
+    # GitHub cron is best-effort and can run late under load; this is a ceiling on
+    # scheduling frequency, not a guarantee of punctuality.
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: superfly/flyctl-actions/setup-flyctl@fc53c09e1bc3be6f54706524e3b82c4f462f77be # v1.5
+
+      - name: Resolve production machine ID
+        id: machine
+        run: |
+          # Resolved dynamically: a redeploy replaces the machine id.
+          MACHINE_ID=$(fly machine list --app spanish-srs --json | jq -r '.[0].id // empty')
+          if [ -z "$MACHINE_ID" ]; then
+            echo "::error::No machine found for app spanish-srs" >&2
+            exit 1
+          fi
+          echo "id=$MACHINE_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Start production machine
+        run: fly machine start ${{ steps.machine.outputs.id }} --app spanish-srs
+
+      - name: Pull scheduling state from Fly
+        run: bash tools/pull-fly-state.sh
+
+      - name: Commit and push if changed
+        run: |
+          if [ -z "$(git status --porcelain -- data/spanish/)" ]; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git config user.name "Backup Bot"
+          git config user.email "noreply@github.com"
+          git add data/spanish/
+          git commit -m "Automated backup from Fly.io"
+          git push
+
+      - name: Stop production machine
+        if: always()
+        run: fly machine stop ${{ steps.machine.outputs.id }} --app spanish-srs

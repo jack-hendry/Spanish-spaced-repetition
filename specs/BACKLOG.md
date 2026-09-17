@@ -73,3 +73,40 @@ at that point, strike it here with the date and a pointer to where it went.
   rotation, tighter `express-rate-limit` tiers in `server/src/app.ts`) —
   reduces opportunistic scanning only, doesn't stop the proxy-level wake.
   Needs sizing before it becomes a Quick Task or a spec.
+- [ ] (2026-09-17) **A `revlog.ndjson` → `cards.json` repair tool.** Deferred
+  out of spec `022-backup-and-restore` as its **O1** (Analyst §3); the idea
+  originates in `specs/011-mobile-remote-access/ROADMAP.md` Phase 2's last
+  bullet, "worth a one-off repair tool if it ever proves cheap". The safety
+  net it would cash in: `revlog.ndjson` is append-only and holds every review
+  ever answered, so a damaged or truncated `cards.json` is *in principle*
+  rebuildable from it — nothing does that today, so in practice a corrupt
+  `cards.json` is only recoverable by rolling back to an older git commit or
+  a Fly volume snapshot (see AD on retention from 022). Why it is not cheap:
+  rebuilding card state means **replaying SM-2/FSRS over the entire review
+  history**, which is a scheduling-domain change, and `CLAUDE.md` classes
+  anything touching scheduling, the study queue, `card.due` or the on-disk
+  shape as **at least Large on its own** — read
+  `.claude/skills/scheduling-domain` before scoping it. Extra wrinkles a
+  future spec must answer: a card's FSRS `stability`/`difficulty` are null
+  until FSRS first schedules it, so a replay has to know *which* scheduler
+  each deck used at the time; `revlog` does not record deck-options changes;
+  and cards created after the last review have no revlog rows at all, so a
+  pure replay cannot reconstruct the "new" queue positions. Not scoped.
+- [ ] (2026-09-17) **`/api/review` can leave `revlog.ndjson` ahead of
+  `cards.json` on a hard kill.** Deferred out of spec `022-backup-and-restore`
+  as its **O2** (Analyst §3); also recorded in `ROADMAP.md`'s Discovered list
+  (2026-09-17), promoted there out of `021-fly-deploy` C9. `routes/index.ts`
+  (~116-123) calls `store.saveCardsSoon()` — debounced ~400ms so a burst of
+  reviews coalesces into one rewrite — but `await`s `store.appendRevlog(...)`
+  immediately. A **hard** kill inside that ~400ms window (a crash, an OOM, a
+  `SIGKILL`) therefore leaves the append-only revlog claiming a review that
+  `cards.json` does not reflect. The **signalled** path is fine and was
+  verified in spec 021 Step 20 — `flushAll()` runs on SIGINT/SIGTERM and exits
+  0 — so this is only about kills that skip the handler. It is not new, but
+  Fly's auto-stop made the window **reachable for the first time**. Two
+  separable halves, either of which could be its own task: *detecting* the
+  divergence (compare the revlog tail against `cards.json`, e.g. on boot in
+  `FileStore.init()`) and *repairing* it (which collapses into O1 above). Left
+  out of 022 because that spec is infrastructure and tooling only — this is a
+  server-side durability bug on the persistence path (022's O5 forbids it),
+  and it is a scheduling-domain change, so **at least Large**. Not scoped.

@@ -86,3 +86,8 @@ jobs:
       # reported clean while still over the push gate's 20 KB cap -- surface
       # only as a refused push or a silently half-gone spec.
       - run: ./tools/archive_spec.test.sh
+      # These scripts run by hand on macOS bash 3.2, but the backup workflow runs
+      # them on ubuntu-latest's bash 5. The bash 5 fixes (Step 1's local removal,
+      # Step 2's post-increment replacement) are not testable locally and only
+      # surface as failures on CI.
+      - run: ./tools/state-scripts.bash5.test.sh
