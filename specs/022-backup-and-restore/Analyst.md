@@ -454,4 +454,90 @@ exactly what non-negotiable #1 requires.
 
 ## Retrospective
 
-(filled in before archiving)
+**All 13 acceptance criteria met.** Step 19's Status carries the matrix with
+per-criterion evidence. Three things are deliberately left open and named
+there: the orphan Fly token still needs revoking (blocked by a permission
+classifier, commands recorded in the runbook), `specs/STATE.md` needs rotating
+(25 lines over budget, and `--apply` is a human's call), and the first green run
+at the real `0 */6 * * *` cadence cannot happen until this branch is on `main`.
+
+### What the phase was actually for, versus what it found
+
+The spec was framed as "schedule the pull, write down a retention policy, drill
+the restore." Two of those went roughly to plan. The third did not, and it is
+the reason this phase mattered:
+
+**The restore path had never run. Not once.** `tools/push-fly-state.sh` carried
+`local FILES_PUSHED=0` at file scope, which is fatal under `set -euo pipefail`,
+so it aborted at line 173 before uploading a single byte — while
+`ROADMAP.md` recorded it as "exercised on a scratch round-trip in Step 18". The
+dry-run path returned *before* that line, so every dry run had passed. A backup
+system whose restore half has never executed is not a backup system; it is a
+belief about one. **The whole phase paid for itself at Step 1, a one-word fix,
+found by a harden round reading a past-tense sentence sceptically** (**L-025**).
+
+### Where the plan was wrong, and how it was caught
+
+Four times, and three of the four were caught by measuring something the plan
+had asserted:
+
+1. **A1 and A2 were unreachable as written** — every step dispatched the
+   workflow by hand, so nothing earned "non-manual", and the repo was already
+   byte-identical to Fly, so no step produced the commit A2 needed. Harden
+   round 2 found this by walking criteria *against* steps rather than step by
+   step: each step was individually checkable while no step owned the
+   *condition* the criterion required. Steps 8b and 10 exist because of it.
+2. **A11's justification was wrong twice.** First, the "silent always-on cost"
+   it was meant to guard against did not exist (auto-stop reclaims an
+   `sftp`-woken machine). Then the criterion itself became unimplementable: the
+   `ssh` token cannot take a machine lease, so the workflow can neither start
+   nor stop the machine. The user chose to drop the requirement rather than
+   widen the credential — CI's blast radius **shrank** as a result (AD-028,
+   **L-026**).
+3. **Step 11's stated saving did not exist.** "Every nightly backup commit runs
+   the full CI suite" was false: `GITHUB_TOKEN` pushes never trigger runs.
+   Measured before claiming it, which turned a documented-but-imaginary saving
+   into an accurate note about three historical human pushes (**L-027**).
+4. **Snapshots were not "unconfigured"** — they were on, with retention 5, and
+   had simply produced nothing yet because the volume was 19 hours old. Wrong
+   on configuration, right on outcome, and only measurement separated the two.
+
+### The pattern underneath all of it
+
+Every finding above has the same shape: **a green signal produced by a path
+that never reached the thing under test.** A dry run that returns early. An
+absence-assertion on an empty stream (Step 3's Case 9, **L-019**). An
+`if: always()` stop step that fired and failed. A bot commit that produced no CI
+run for a reason unrelated to the change being tested. A criterion satisfied
+incidentally reads exactly like one satisfied by design, and only the log tells
+them apart. The habit that kept catching it was cheap and mechanical: **before
+believing a negative result, prove the stream was non-empty.**
+
+### What the process cost, and whether it was worth it
+
+Nineteen steps, three of them repairs discovered mid-run (6b, 6c, 8b) and one
+(16b) whose premise turned out to be wrong. Seven workflow runs were burned on
+two environment problems — `flyctl` not being on PATH as `fly`, and the lease
+permission — neither of which any amount of YAML review would have found, since
+both are properties of the runner and the credential rather than the file. The
+temporary `*/30` cron was the right call for exactly that reason: iterating
+against a 6-hour feedback loop on a problem only CI can reproduce is the
+expensive failure mode, not the deviation.
+
+Sizing was correct. This was Large, it touched CI, a deploy platform, two shell
+scripts and the project's memory files, and the two harden rounds each found
+something that would otherwise have shipped as a false claim in a document
+people trust.
+
+### What is genuinely still at risk
+
+- **A review lost in flight never reaches Fly**, so no backup interval recovers
+  it. That is Phase 3's problem and remains open.
+- **Nothing detects a backup that has stopped running.** A stopped backup
+  produces no failure — only an absence. Three silent-failure modes are accepted
+  and made visible rather than engineered away (AD-027's two, AD-028's third);
+  the calendar reminder is the only mechanism here that interrupts a human
+  unprompted.
+- **Production has never been restored over.** The drill proved the mechanism
+  at production *scale*, against a throwaway app. That is the right place to
+  stop, and it is not the same thing.

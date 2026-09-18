@@ -141,12 +141,12 @@ only on this machine. Once it also lives on a Fly volume, a host/volume
 loss becomes a real risk to the scheduling history. A Fly volume is a
 single copy on a single host: it is not a backup.
 
-- [ ] Decide a backup mechanism, with at least one copy **off Fly** (periodic
+- [x] Decide a backup mechanism, with at least one copy **off Fly** (periodic
       pull to this machine, a small cron job pushing elsewhere, Fly volume
       snapshots as a convenience layer — first 10GB/mo free per the pricing
       page). Snapshots alone don't survive losing the account or a bad write
       that gets snapshotted.
-- [ ] **Reconcile the Fly volume with the existing git-history workflow.**
+- [x] **Reconcile the Fly volume with the existing git-history workflow.**
       Today `data/spanish/*.json` + `revlog.ndjson` are tracked in git (only
       `media/` is gitignored) — commits like "Progress"/"Paused cards" are a
       running log of scheduling state, and rollback today means checking out
@@ -185,12 +185,29 @@ not the *policy*:
 
 - ~~The pull is **manual**; nothing schedules it.~~ **Done 2026-09-17
   (spec 022):** `.github/workflows/backup.yml` runs it every 6 hours.
-- **`push-fly-state.sh` has never run against production.** It is dry-run
-  tested and was exercised on a scratch round-trip in Step 18, but the planned
-  post-phone-test restore was dropped once those reviews became real study. The
-  restore path is proven at scratch scale, not at production scale.
-- Retention is undecided: pulls overwrite the same seven files, so history
-  depends entirely on how often someone commits them.
+- ~~**`push-fly-state.sh` has never run against production.** It is dry-run
+  tested and was exercised on a scratch round-trip in Step 18…~~
+  **Both halves of that were wrong, and spec 022 corrected them by measurement:**
+  - It was **never** "exercised on a scratch round-trip in Step 18". It *could
+    not* have been — `local FILES_PUSHED=0` sat at function scope in a
+    non-function context, so under `set -e` the script aborted at line 173
+    before uploading a byte. Every dry run passed because `print_plan()`
+    returned *before* that line: the dry-run mode took a different code path
+    from the one nobody ran (spec 022 harden C1, Step 1). "Exercised in Step N"
+    was a claim in a spec document; `git log` was the evidence, and they
+    disagreed. See **L-025**.
+  - It is now proven at **production scale**, not scratch scale. Spec 022
+    Steps 12–15 restored all 7 state files (3,638 notes / 7,276 cards /
+    3,915 revlog lines) into a throwaway Fly app
+    (`spanish-srs-restoredrill`), matched every deck/note/card/queue/type
+    count against production's recorded numbers, **studied one card against
+    the restored app** so the restore is writable and not merely readable,
+    and tore the app and its volume down. That run is the first time
+    `push-fly-state.sh` has ever completed.
+- ~~Retention is undecided~~ **Decided 2026-09-17 — see the retention
+  checkbox below and `specs/STATE.md` AD-027.** The pull still overwrites the
+  same seven files; what closed the gap is that `backup.yml` now commits them
+  on a schedule, so history no longer depends on someone remembering.
 - ~~Fly volume snapshots remain unconfigured.~~ **Corrected 2026-09-17 by
   measurement (spec 022 Step 16):** they were already configured
   (`Scheduled snapshots: true`, `Snapshot retention: 5`) but had produced
@@ -198,11 +215,11 @@ not the *policy*:
   (`vs_yeo71KGwpvPXTKZ25653LKp7`, 345 MiB) appeared 2026-09-17. They are a
   ≤5-day fast-rollback layer that lives on Fly, so they never satisfy the
   "at least one copy off Fly" non-negotiable.
-- [ ] Back up the *state*, not the media — `cards.json`, `notes.json`,
+- [x] Back up the *state*, not the media — `cards.json`, `notes.json`,
       `decks.json`, `collection.json`, `deckoptions.json`, `revlog.ndjson`.
       Media is 250MB and regenerable from the converter; state is 5MB and is
       not regenerable at all.
-- [ ] Confirm the **restore path** works end to end, not just that a backup
+- [x] Confirm the **restore path** works end to end, not just that a backup
       file exists. An untested backup is a guess. Restore into a scratch
       `DATA_DIR` and study one card against it.
 - [x] Decide a retention window (how far back can we roll a bad state?) and
@@ -220,7 +237,7 @@ not the *policy*:
         made visible rather than engineered away: GitHub auto-disabling the
         schedule after 60 days of repository inactivity (its email is the
         designated signal), and Fly token expiry.
-- [ ] Note the safety net that already exists: `revlog.ndjson` is append-only
+- [x] Note the safety net that already exists: `revlog.ndjson` is append-only
       and holds every review ever answered, so a damaged `cards.json` is in
       principle rebuildable from it. Nothing does that today — worth a
       one-off repair tool if it ever proves cheap.

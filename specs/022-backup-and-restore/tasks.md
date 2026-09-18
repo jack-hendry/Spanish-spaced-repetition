@@ -12,28 +12,37 @@ Read `.claude/skills/testing-playbook` before checking off any step.
 under `web/src/app/core/scheduling/`** — Analyst O5. If a step finds itself
 there, STOP and re-classify.
 
-**Progress (2026-09-17):** Steps 1–6, 12–16 and 18 are ✅ done. Step 5's token
-and secret were created by the user, so **Steps 6–11 are unblocked**.
+**Progress (2026-09-18): ALL steps are ✅ done.** Every acceptance criterion
+**A1–A13 is met** — Step 19's Status carries the matrix with the evidence for
+each. No blockers remain.
 
-**Remaining blocker:** **Step 16b** — the user chose *rotate now* but
-`state_rotate.py --apply` has not been run yet (`--check` still reports 291
-lines). Step 17 is the first step that writes to `specs/STATE.md` and **must
-not run before that rotation lands**. Steps 7–11 do not touch `STATE.md` and
-can proceed meanwhile.
+Steps 1–6 were committed as `7b78ab3` on branch `spec-022-backup-and-restore`,
+open as **PR #23**, CI green. Steps 7–11 needed that PR **merged to `main`**,
+because `workflow_dispatch` only sees workflows on the default branch.
 
-Steps 1–6 are committed as `7b78ab3` on branch `spec-022-backup-and-restore`,
-open as **PR #23**, CI green (`clean-table-gate`, `hooks`, `lint`, `tests`).
-Steps 7–11 need that PR **merged to `main`**, because `workflow_dispatch` only
-sees workflows on the default branch.
-
-**Carried caveats, not to be lost at Step 19:**
-- ~~Step 3's bash-5 half of A12 is pending the first CI run~~ → **now met** on
+**Carried caveats — all resolved at Step 19, kept here as the audit trail:**
+- ~~Step 3's bash-5 half of A12 is pending the first CI run~~ → **met** on
   PR #23's `hooks` job: `GNU bash, version 5.2.21(1)-release`, 21/21 green.
-- Step 11's `Done when` is **vacuous as written** — see the ⚠️ in that step.
-- Whether the `ssh`-scoped token can `fly machine start`/`stop` is unverified
-  until Step 7.
-- A second, orphaned live Fly token is to be revoked once Step 7 is green
-  (see Step 5).
+- Step 11's `Done when` is **vacuous as written** → confirmed vacuous,
+  deliberately **not** claimed as met, and the step's stated motivation was
+  *disproven* by measurement (**L-027**).
+- ~~Whether the `ssh`-scoped token can `fly machine start`/`stop` is
+  unverified~~ → **answered: it cannot.** The workflow dropped the requirement
+  instead of widening the token (**AD-028**, **L-026**).
+- ~~Step 16b — rotation must land before Step 17 writes to `STATE.md`~~ →
+  the step's premise was wrong; the rotation landed as `f46f711` (AD-023 and
+  AD-024 into `STATE-ARCHIVE.md`).
+
+**Still open after Step 19, and named there rather than closed quietly:**
+1. **The orphaned live Fly token has never been revoked** (`MAwawkKV1G…`). The
+   decision to revoke it "once Step 7 is green" was made 2026-09-17, Step 7 went
+   green that day, and it was missed. Commands are in
+   `specs/BACKUP-RUNBOOK.md` under a 🔴 OUTSTANDING banner.
+2. ~~`specs/STATE.md` is 25 lines over budget~~ → **rotated by the user
+   2026-09-18**, 325 → 299 lines; AD-025 and AD-026 are now stubs pointing at
+   `specs/STATE-ARCHIVE.md`.
+3. **No green run at the shipping `0 */6 * * *` cadence yet** — the cron is
+   reverted in the working tree but not on `main`.
 
 ---
 
@@ -1247,7 +1256,50 @@ forbids.
 
 **Model:** haiku
 
-**Status:** not started
+**Status:** ✅ **done — A1 and A2 both MET** (2026-09-18). Recorded here after
+the fact: the work was carried out and written into commit `fcf6302`'s message,
+but that commit's diff touched only Step 11's Status line, so this step's own
+record was missing. Re-verified before writing it.
+
+**A1 — the first genuine scheduled run in this project's history.** Run
+[35337739105](https://github.com/jack-hendry/Spanish-spaced-repetition/actions/runs/35337739105),
+`event == "schedule"`, `conclusion == "success"`, 2026-09-18T11:03:32Z. Two
+further scheduled successes have landed since
+([35340087002](https://github.com/jack-hendry/Spanish-spaced-repetition/actions/runs/35340087002)
+11:31:53Z,
+[35342859916](https://github.com/jack-hendry/Spanish-spaced-repetition/actions/runs/35342859916)
+12:05:33Z), so this is a repeating capability, not a single lucky fire. **Stated
+plainly: all three ran under the temporary `*/30` cron, not the `0 */6 * * *`
+the system ships with.** What A1 demands is a *non-manual* trigger, and the
+schedule event is the same event either way — but the cadence under test was not
+the shipping cadence, and Step 19 does not pass until the line reads
+`0 */6 * * *` again.
+
+**A2 — the scheduled pull produced a real commit.** `eff78ca` ("Automated backup
+from Fly.io", author `Backup Bot`, 2026-09-18T11:04:15Z) — 43 seconds after run
+35337739105 started, so it is *that* run's commit, not an assumed one. It
+carries Step 8b's studied card: `revlog.ndjson` gained 8 lines and `decks.json`
+moved.
+
+**A mass `due` shift in that commit was investigated before it was accepted.**
+646 cards all moved `due` +1 in a single bot commit, which mid-incident reads
+exactly like corruption. It is not: it is the pause/resume feature
+(`dayDelta` 1, day 85 → 86), corroborated by `lastUnburyDay`, `daily.day`, and a
+`collection.created` that did not move. **Rolling this back would have destroyed
+the resume** — runbook material, carried into Step 19's runbook reconciliation.
+
+**Three run URLs, as the `Done when` requires** — all already recorded in their
+own steps' Status lines and re-confirmed here:
+
+| Case | Run | Step |
+|---|---|---|
+| success from a *stopped* machine | [35274589387](https://github.com/jack-hendry/Spanish-spaced-repetition/actions/runs/35274589387) | 7 (attempt 3) |
+| no-op commits nothing | [35275578508](https://github.com/jack-hendry/Spanish-spaced-repetition/actions/runs/35275578508) | 8 |
+| failing pull fails the workflow | [35277152866](https://github.com/jack-hendry/Spanish-spaced-repetition/actions/runs/35277152866) | 9 |
+
+**Items 4–5:** full regression green (`npm run test`, `npm run build`,
+`pre-commit run --hook-stage pre-push --all-files`); `git status` clean, with
+`data/spanish/` changed by the bot commit only.
 
 **Depends on:** Steps 5–9.
 
@@ -2030,8 +2082,155 @@ Tasks row in `STATE.md`.
 
 **Model:** top-level
 
-**Status:** not started
+**Status:** ✅ **done, with three things left open and named** (2026-09-18).
+Nothing below is committed — the `Done when` forbids it until the user says so.
 
+**The cron gate is CLEARED.** `.github/workflows/backup.yml` reads
+`- cron: '0 */6 * * *'` again and the whole TEMPORARY DEVIATION comment block
+is gone. **It is not yet on `main`** — that needs the push this step is not
+allowed to make, so the gate is satisfied in the working tree and closes for
+real on merge. `AD-027`'s ~6h loss window is true again the moment it lands.
+
+---
+
+#### 1. Acceptance walk — A1–A13, as a matrix against the steps
+
+| # | Verdict | Evidence |
+|---|---|---|
+| **A1** — scheduled run, non-manual, from a stopped machine | ✅ **MET** | Run [35337739105](https://github.com/jack-hendry/Spanish-spaced-repetition/actions/runs/35337739105), `event == "schedule"`, `success`, 2026-09-18T11:03:32Z; two more since (11:31:53Z, 12:05:33Z), so it repeats. **The stopped-machine half is proven independently** — see the note below. |
+| **A2** — the scheduled pull produced a real commit | ✅ **MET** | `eff78ca`, author `Backup Bot`, 11:04:15Z — 43s into run 35337739105, so it is *that* run's commit. `git show --stat` lists the state files; `revlog.ndjson` gained the 8 lines from Step 8b's studied card. |
+| **A3** — a no-op run commits nothing | ✅ **MET** | Runs [35274589387](https://github.com/jack-hendry/Spanish-spaced-repetition/actions/runs/35274589387) and [35275578508](https://github.com/jack-hendry/Spanish-spaced-repetition/actions/runs/35275578508), both `success`, both `updated 0, unchanged 7`, `No changes to commit`; `git log` shows one commit, not two. Checked before any card was studied, per harden C6's ordering constraint. |
+| **A4** — a failing pull fails the workflow | ✅ **MET** | Run [35277152866](https://github.com/jack-hendry/Spanish-spaced-repetition/actions/runs/35277152866) — caused, not read off the YAML. One `Done when` criterion was met differently than written; Step 9 records which. |
+| **A5** — restore drill on a real throwaway app, card studied against it | ✅ **MET** | `spanish-srs-restoredrill`; `Successfully pushed 7 state files`; one card answered against the restored app (Step 14), so it is **writable, not merely readable**; torn down in Step 15 (`fly apps destroy`, volume gone). |
+| **A6** — the restored app matched production | ✅ **MET** | Recorded *before* the push, then compared: decks 2/2, notes 3638/3638, cards 7276/7276, and both the by-queue and by-type breakdowns identical, each summing to 7276. |
+| **A7** — retention policy written down | ✅ **MET** | `AD-027` in `specs/STATE.md` (three layers, and the cron interval *is* the loss window); `ROADMAP.md` Phase 2's retention checkbox states the same ~6h figure. Sized against measured volume, not a guess: 30 active days in 73, median 118 reviews/active day, max 263. |
+| **A8** — snapshot configuration recorded, measured not assumed | ✅ **MET** | Step 16 measured `Scheduled snapshots: true`, `Snapshot retention: 5`, **zero snapshots** (volume 19h old); first snapshot 2026-09-17; **one** snapshot today (`vs_yeo71KGwpvPXTKZ25653LKp7`, 345 MiB). What it does not cover is stated: snapshots live on Fly, so they never satisfy "one copy off Fly". |
+| **A9** — out-of-scope items recorded where they'll be found | ✅ **MET** | O1 and O2 both in `specs/BACKLOG.md` (Step 18), per **L-024** — not Quick Tasks rows. |
+| **A10** — the tree is clean and honest | ✅ **MET** | `npm run test` 82 server + 216 web green; `npm run build` clean; `pre-commit run --hook-stage pre-push --all-files` all three hooks Passed. `git status` shows only this step's six intended files. `data/spanish/` untouched by this step. |
+| **A11 (as amended)** — the machine is *reclaimed* to `stopped` | ✅ **MET** | Two independent measurements: 426s after Step 7's dispatched run (polled), and **413s after a scheduled run**, read from the machine's own event log — `start` 12:05:49Z, `exit … requested_stop=true` 12:12:42Z. Operative claim is "well under 15 minutes", never a constant. See **AD-028**. |
+| **A12** — both state scripts proven under bash 5 | ✅ **MET — the Step 3 caveat is now resolved** | PR #23's `hooks` job, `actions/runs/35270754369`, `success`: log shows `GNU bash, version 5.2.21(1)-release` followed by `state-scripts.bash5.test: 21 passed, 0 failed`. Step 2's `((VAR++))` fix is verified on the version where the bug actually fires. |
+| **A13** — `push-fly-state.sh --yes` reaches its upload stage | ✅ **MET** | Step 13: `Successfully pushed 7 state files to Fly app 'spanish-srs-restoredrill'` — **the first time this script has ever completed.** Before Step 1 it aborted at line 173 before uploading a byte. |
+
+**A1's two halves, and why they are proven by different runs.** A1 asks for a
+non-manual run *and* a stopped machine at the start. No single run was observed
+satisfying both at the moment it happened, and rather than let that slide:
+
+- the **non-manual** half is run 35337739105 (`event == "schedule"`);
+- the **stopped-machine** half is proven for a *scheduled* run by the machine's
+  event log, which shows a `start` event at 12:05:49Z for the 12:05:33Z
+  scheduled run. A machine that is `start`ed was `stopped` — the event is the
+  proof, and it is Fly's record, not this repo's.
+
+That is stronger than the plan asked for, since it proves the wake path works
+unattended rather than only under a dispatch. **The honest limit:** Fly's event
+log retains only the last few events, so the 11:03Z run's own start event is
+already gone. The claim rests on the 12:05Z run.
+
+**Stated plainly, once: all three scheduled runs fired under the temporary
+`*/30` cron, not the `0 */6 * * *` the system ships with.** A1 demands a
+non-manual *trigger*, and the `schedule` event is the same event at either
+cadence, so this does not weaken A1 — but the shipping cadence has fired only
+into *failing* runs (00:43Z and 06:27Z on 2026-09-18, both dying at
+`fly: command not found`, i.e. at the job, never at the trigger). **The first
+green run at the real cadence has not happened yet, and will not until this
+branch is on `main`.** That is the one A1-adjacent fact this step cannot close.
+
+#### 2. `ROADMAP.md` Phase 2
+
+Five checkboxes ticked (backup mechanism, git reconciliation, state-not-media,
+restore path end-to-end, the `revlog` safety net — the last as **deferred to
+`specs/BACKLOG.md`**, not done). Both wrong statements corrected:
+
+- **"snapshots remain unconfigured"** — already corrected by Step 16; verified
+  still correct here.
+- **"`push-fly-state.sh` was exercised on a scratch round-trip in Step 18"** —
+  corrected, and *both* its halves were wrong. It was never exercised (it could
+  not have been), and it is now proven at **production** scale rather than
+  scratch scale. See **L-025**.
+- Also corrected: "Retention is undecided", superseded by `AD-027`.
+
+#### 3. `AD`/`L` entries
+
+Added here, because they were the findings this step's own walk surfaced:
+
+- **`AD-028`** — the backup workflow wakes production with an anonymous HTTP
+  request and never stops it; CI's Fly token holds no machine permission. This
+  is also where A11's third accepted silent-failure mode lives (Fly changing
+  its auto-stop policy), which `AD-027` was supposed to carry and did not.
+- **`L-025`** — "Exercised in Step N" is a claim; `git log` is the evidence, and
+  the two can disagree. *(harden round 1 candidate, confirmed)*
+- **`L-026`** — A credential that authenticates is not a credential that can
+  act. *(this is the durable form of harden's "a wake-on-demand machine is only
+  awake for the protocol that wakes it" — the root cause was the token's
+  per-verb scope, not the machine)*
+- **`L-027`** — An unmeasured saving may not exist; measure before writing the
+  justification down. *(from Step 11, whose stated motivation the measurement
+  disproved)*
+
+Harden's third candidate, "a dry-run mode that takes a different code path
+validates the path nobody runs", was **not** given its own `L`. It is the same
+defect as **L-020** ("a check that never reaches the thing under test reports
+green about something else") and is written into L-025's body as an instance,
+rather than splitting one lesson across two numbers.
+
+Verified: 27 `L-NNN` headlines in `specs/STATE.md`, 27 bodies in
+`specs/LESSONS.md` — the push gate's pairing check passes.
+
+#### 5 / 5a. `specs/BACKUP-RUNBOOK.md` reconciled
+
+The "not yet live" banner is gone, replaced by a LIVE banner citing the three
+run URLs and the production-scale restore. All three **UNVERIFIED** markers
+resolved honestly — two to an answer, one to "still unverified, and here is why
+it could not be answered and what it would cost to answer":
+
+| Marker | Resolution |
+|---|---|
+| Can an `ssh` token run `fly machine start`/`stop`? | **No.** Both need a machine lease; both fail `unauthorized` while `fly machine list` succeeds. The workflow changed instead of the token (AD-028). |
+| Which token type was used? | **`ssh`** — recorded as the durable security fact the runbook asked for. The blast-radius paragraph was corrected with it: the token cannot reach volume-management APIs, so `fly volumes destroy` is out of reach, but it can SSH into the app, which writes the volume. |
+| Can the workflow self-check token expiry? | **Still unverified, and it stays that way.** The token's value exists only inside the GitHub secret by design, so this cannot be tested from a developer machine. The cheap experiment is written down. |
+
+Also: the "restore path is broken" note is deleted; the snapshot section now
+distinguishes **retention setting (5 days) from actual rollback depth (one
+snapshot, under a day old)**, which the old text conflated.
+
+**5a needed no change** — Step 5 already established that `fly tokens list
+--app spanish-srs` is the scope that lists the token, so the documented command
+is correct. (`--scope org` is additionally unusable non-interactively.) D7's
+"query, never copy" argument stands.
+
+#### 6 / 7. Regression
+
+`npm run test` → server 82/82, web 216/216. `npm run build` clean.
+`pre-commit run --hook-stage pre-push --all-files` → clean-table check, prettier
+and eslint all **Passed**. `git status` shows six modified files, all intended,
+`data/spanish/` clean.
+
+`python3 tools/state_rotate.py --check` → first reported **325 lines, 25 over
+the 300 budget**; this step's `AD-028` plus three `L` headlines are what pushed
+it over. Surfaced to the user rather than applied, per `CLAUDE.md` — `--apply`
+is a human's decision and no hook ever runs it for you. **The user ran it**
+(2026-09-18): `AD-025` and `AD-026` rotated into `specs/STATE-ARCHIVE.md`
+leaving one-line stubs, **325 → 299 lines**, back under budget and the fourth
+push gate clear.
+
+#### Left open, deliberately
+
+1. **The orphan Fly token is still live.** `fly tokens list --app spanish-srs`
+   shows two unrevoked `ssh` tokens; the secret's `updatedAt` matches
+   `0wj3jnOmeL…`, so `MAwawkKV1G…` is a live credential with no consumer. The
+   user decided on 2026-09-17 to revoke it once Step 7 was green; Step 7 went
+   green that day and **the revoke was never run**. Attempted here and blocked
+   by the permission classifier (secret-store write). The exact commands are now
+   in the runbook's revoke procedure under a 🔴 OUTSTANDING banner so it cannot
+   be lost again.
+2. ~~**`specs/STATE.md` rotation**~~ → **done by the user 2026-09-18**, 325 →
+   299 lines. See item 7 above.
+3. **The first green run at the real `0 */6 * * *` cadence**, which cannot
+   happen until this branch is on `main`.
+
+> ✅ **REVERTED in the working tree 2026-09-18 — pending the push. Original
+> gate kept below, because the reasoning is the point.**
+>
 > ⚠️ **MUST VERIFY BEFORE CLOSING — temporary cron deviation (2026-09-18, user
 > decision).** `.github/workflows/backup.yml` was dropped from `0 */6 * * *` to
 > `*/30 * * * *` to shorten Step 10's feedback loop: every scheduled run had

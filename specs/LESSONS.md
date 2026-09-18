@@ -740,3 +740,96 @@ they mean — "backlog," "later," "not now," "someday" → `BACKLOG.md`; "did
 X," "fixed X," "added X" → Quick Tasks in `STATE.md`** — match the file to
 that word, not to the topic. A billing/ops conversation with no code change
 still belongs in `BACKLOG.md` if nothing was actually done yet.
+
+**L-025 — "Exercised in Step N" is a claim; `git log` is the evidence, and the
+two can disagree.**
+(2026-09-18, `022-backup-and-restore` harden C1 and Steps 1/13)
+
+`specs/011-mobile-remote-access/ROADMAP.md` stated flatly that
+`tools/push-fly-state.sh` "was exercised on a scratch round-trip in Step 18."
+It could not have been. The script carried `local FILES_PUSHED=0` at *file*
+scope, outside any function; under `set -e` bash errors on that and the script
+aborted at line 173 before uploading a single byte. So the restore half of the
+backup story — the half the whole phase exists for — had never once run, while
+the roadmap recorded it as proven.
+
+Two things let the claim survive. First, the **dry-run mode took a different
+code path**: `print_plan()` returns *before* line 173, so every dry run passed,
+and every dry run was testing something the real run never reached — the same
+shape as **L-020**. Second, and the durable half: the sentence "exercised in
+Step 18" was written into a document *by the same pass that planned Step 18*,
+and nobody afterwards was required to check it against anything. A prose claim
+in a spec is an assertion about the past with no mechanism keeping it true.
+
+The rule: **when a spec document asserts that something ran, treat it as a
+hypothesis until an artifact outside the document agrees** — a run URL, a
+commit SHA, a log line, a `git log` entry. A harden round should read a
+roadmap's past-tense sentences as the *least* trustworthy content in it, not
+the most, precisely because they read like settled fact. Here the check cost
+one `git log` and turned a "verify the restore still works" step into "fix the
+restore, which has never worked."
+
+Corollary for writing: prefer "Step 18 *plans to* exercise it" until it has,
+and once it has, cite the artifact inline. `push-fly-state.sh` first completed
+in Step 13 of this spec, against a 7,276-card production-scale restore.
+
+**L-026 — A credential that authenticates is not a credential that can act.**
+(2026-09-18, `022-backup-and-restore` Steps 5/7/6c, AD-028)
+
+The CI Fly token was created with `ssh` scope, which is exactly what
+`tools/pull-fly-state.sh` needs (`fly ssh sftp`). `backup.yml`'s first working
+run then failed at `fly machine start` with
+`failed to obtain lease: failed to get lease on VM 850d53cd95d668: unauthorized`.
+The token was **valid** — `fly machine list` had already succeeded with it
+moments earlier in the same job. It simply could not take a machine *lease*,
+which both `start` and `stop` require.
+
+The trap is that the two outcomes look nothing alike from the outside but read
+identically in a plan: "the token works" was established by a **read**, then
+silently extended to cover writes nobody had tried. A permission model with
+per-verb granularity turns "is the secret configured correctly?" into a
+question with one answer per verb, and a smoke test that only reads answers the
+easiest one.
+
+Worse, the failure was **misreported as a success** on the way past. The
+executing subagent recorded A11 ("the workflow leaves the machine stopped") as
+satisfied, because the `if: always()` stop step ran and the machine did read
+`stopped` afterwards. The stop step had *also* failed `unauthorized`; the
+machine was stopped only because `start` had failed and it never woke.
+`if: always()` was proven to fire, never to work — **a criterion satisfied
+incidentally reads exactly like one satisfied by design, and only the log
+distinguishes them.**
+
+The rule: **exercise each verb the job actually performs before believing a
+credential covers it**, and when a criterion is confirmed, confirm it from the
+mechanism that was supposed to produce it, not from the end state alone. The
+resolution here was to delete the verbs rather than widen the token (AD-028):
+the narrow credential was kept, the machine is now woken by an anonymous HTTP
+request, and CI's blast radius shrank instead of growing.
+
+**L-027 — An unmeasured saving may not exist; measure before writing the
+justification down.**
+(2026-09-18, `022-backup-and-restore` Step 11, C8)
+
+The spec asked for `paths-ignore: ['data/spanish/**']` on CI's `push` trigger,
+justified by: "every nightly data-only backup commit runs `tests`,
+`clean-table-gate`, `lint` and `hooks` for nothing." Measuring `main`'s history
+before claiming the saving showed the premise was false. Of 24 commits touching
+`data/spanish/`, only **6** ever triggered a push CI run, and only **3** of
+those changed `data/spanish/` exclusively — all three from **human** pushes.
+Nightly bot commits had never cost a single run, because `backup.yml` pushes
+with the default `GITHUB_TOKEN` and GitHub refuses to start a workflow from
+such a push regardless of `paths-ignore`.
+
+The change is still correct — it is hygiene for the human data-only push — but
+the *reason* recorded for it would have been a documented saving that never
+existed, in a file future readers would trust. The same run supplied the
+negative control, and it was worthless: the post-change bot commit produced no
+CI run, which proves nothing, since it would have produced none either way.
+That is **L-019**'s shape again, one spec later.
+
+The rule: **a change justified by "this wastes N" is not done until N is
+measured**, and the measurement is written down even when — especially when —
+it contradicts the plan that ordered the change. A plan's stated motivation is
+a hypothesis with the same standing as any other, and it is the easiest one to
+skip testing, because acting on it already feels like agreement.

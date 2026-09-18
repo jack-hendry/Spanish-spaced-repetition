@@ -331,6 +331,36 @@ the two schemes behind one helper is left as a separate task. This closes the
 work 007 deferred (its Open question 1 and its non-goal "changing `todayNumber`
 itself"). See **L-018**.
 
+**AD-025 — Fly is the source of truth for scheduling state; the repo is a
+lagging replica.** (2026-09-17, `archive/2026-09-17-021-fly-deploy` D0) Once Fly writes to its own
+volume there are two live writers to the same logical state, and git is no
+longer one of them. Chosen: **Fly-as-source**, with
+`tools/pull-fly-state.sh` pulling the seven state files into `data/spanish/` so
+the existing git-rollback workflow keeps working, lagged by the pull interval;
+`tools/push-fly-state.sh` is the reverse path for restore and refuses to run
+without `--yes`. Media is excluded from both (252MB, regenerable). Consequence:
+**a local edit to `data/spanish/` is not authoritative and is overwritten by
+the next pull** — the `git checkout -- data/spanish/` habit in CLAUDE.md L-002
+now means "discard a dev-server artefact", never "restore the real state".
+Decided in Phase 1 rather than Phase 2 as the roadmap planned, because the seed
+and restore scripts could not be written without knowing which side wins.
+
+**AD-026 — The empty-store sentinel checks file *content*, and checks two
+files.** (2026-09-17, `archive/2026-09-17-021-fly-deploy` §1, C2/R5)
+`FileStore.init()` treats an empty data dir as "seed a fresh collection", so a
+failed volume mount silently starts a blank app and then persists blank state.
+`server/src/store/sentinel.ts` turns that into a failed boot, and two design
+points are load-bearing: **(1) content, not existence** — `init()` *creates*
+`cards.json` as `[]` whenever absent, so an existence check would disarm itself
+on the first seeded boot; **(2) `notes.json` as well as `cards.json`** — an
+interrupted or alphabetical upload lands `cards.json` first, which is the most
+likely partial-seed shape and is invisible to a cards-only check. The escape
+hatch `ALLOW_EMPTY_STORE=1` exists for the one chicken-and-egg boot that seeds
+an empty volume; it is passed transiently via `fly deploy --env` and **must
+never be committed to `fly.toml`**, which would permanently disarm the guard.
+Every throw names the absolute path *and* the literal `ALLOW_EMPTY_STORE`, so
+the operator learns the escape hatch from the failure itself.
+
 ## Blockers
 
 (nothing rotated yet)
