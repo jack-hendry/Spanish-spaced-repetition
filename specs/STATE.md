@@ -171,8 +171,8 @@ is enough; the cost is that renaming a deck recolours it.
 **AD-026 — The empty-store sentinel checks file *content*, and checks two files.** → moved to `STATE-ARCHIVE.md`
 
 **AD-027 — Retention is three layers with different depths; the 6-hour cron
-interval *is* the loss window.** (2026-09-17, `022-backup-and-restore` D5/D6,
-Steps 7/8/16) Cadence and retention are the same question, so they get one
+interval *is* the loss window.** (`archive/2026-09-18-022-backup-and-restore`
+D5/D6, Steps 7/8/16, 2026-09-17) Cadence and retention are the same question, so they get one
 answer. `backup.yml` runs `0 */6 * * *`, so **a total Fly loss costs at most
 ~6 hours of reviews** (plus GitHub cron's best-effort lateness). Measured
 against real volume — 30 active study days in the 73 from 2026-07-06, median
@@ -210,7 +210,8 @@ backup interval recovers it — Phase 3's residual risk.
 
 **AD-028 — The backup workflow wakes production with an anonymous HTTP request
 and never stops it; CI's Fly token holds no machine permission.**
-(2026-09-18, `022-backup-and-restore` Steps 6c/7, user decision; amends A11)
+(`archive/2026-09-18-022-backup-and-restore` Steps 6c/7, user decision,
+2026-09-18; amends A11)
 `fly machine start` and `fly machine stop` both require a **machine lease**,
 and the narrow `ssh`-scoped token from Step 5 cannot take one — it
 authenticates fine (`fly machine list` works) and then fails

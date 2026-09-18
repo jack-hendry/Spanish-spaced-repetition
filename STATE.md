@@ -47,6 +47,15 @@ shape change and `server/` untouched. See AD-024, L-018.
 and AD-020 moved to `specs/STATE-ARCHIVE.md` leaving one-line stubs, 326 -> 287
 lines, back under the ~300-line budget.
 
+Backups and restore (`specs/archive/2026-09-18-022-backup-and-restore/`) is
+**finished and archived** (2026-09-18). `.github/workflows/backup.yml` pulls
+Fly's scheduling state every 6 hours and commits it, and the restore path — which
+had **never once run** before this spec — is proven at production scale. All 13
+acceptance criteria met; see AD-027, AD-028, L-019 through L-027, and
+`specs/BACKUP-RUNBOOK.md` for the operator-facing half. Two things are open and
+named there: an orphaned live Fly token still needs revoking, and no green run
+has yet happened at the shipping 6-hour cadence.
+
 No spec is currently live. Two follow-ups are recorded rather than started:
 consolidating `todayNumber` and `heatDateKey` behind one day-bucketing helper
 (they disagree on 4 minutes a year, both on DST-transition days), and a

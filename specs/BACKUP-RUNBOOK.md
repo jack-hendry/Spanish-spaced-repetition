@@ -7,7 +7,8 @@ deliberately **not** linked from `CLAUDE.md` so it costs nothing per turn
 
 > **STATUS — 2026-09-18: LIVE.** `.github/workflows/backup.yml` runs
 > `0 */6 * * *` against `spanish-srs` using the `FLY_API_TOKEN` repository
-> secret. Proven by `specs/022-backup-and-restore/`: the first successful
+> secret. Proven by `specs/archive/2026-09-18-022-backup-and-restore/`: the
+> first successful
 > **scheduled** (not dispatched) run was
 > [35337739105](https://github.com/jack-hendry/Spanish-spaced-repetition/actions/runs/35337739105)
 > on 2026-09-18, and it produced the backup commit `eff78ca`. A failing pull
@@ -276,7 +277,8 @@ fly volumes snapshots list vol_vjyq28pjgdn335xv
 
 ## Related
 
-- `specs/022-backup-and-restore/` — the spec building this (Analyst D5–D7, S6)
+- `specs/archive/2026-09-18-022-backup-and-restore/` — the spec that built this
+  (Analyst D5–D7, S6; `tasks.md` carries the A1–A13 evidence)
 - `specs/011-mobile-remote-access/ROADMAP.md` — Phase 2, and Phase 3 for the
   in-flight gap this cannot cover
 - `AD-025` (Fly-as-source), `AD-026` (empty-store sentinel), `AD-027`
