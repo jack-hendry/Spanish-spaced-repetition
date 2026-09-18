@@ -1979,6 +1979,26 @@ Tasks row in `STATE.md`.
 
 **Status:** not started
 
+> ⚠️ **MUST VERIFY BEFORE CLOSING — temporary cron deviation (2026-09-18, user
+> decision).** `.github/workflows/backup.yml` was dropped from `0 */6 * * *` to
+> `*/30 * * * *` to shorten Step 10's feedback loop: every scheduled run had
+> failed, and at 6h each fix-test iteration costs six hours. **Step 19 does not
+> pass until that line reads `0 */6 * * *` again on `main`.**
+>
+> Why the revert is safe rather than a fresh risk: `0 */6 * * *` is already
+> proven to *fire* (2026-09-18T00:43Z and 06:27Z); both failed **inside the
+> job** at `fly: command not found`, never at the trigger. Switching back
+> therefore exercises nothing untested.
+>
+> While the deviation is live, **`AD-027`'s stated ~6h loss window is wrong in
+> the safe direction** — the real window is 30 minutes, so no one is misled into
+> believing they are better protected than they are. No `AD-027` edit is
+> warranted for a deliberately temporary state; reverting the cron makes the
+> document true again. If the deviation ever becomes permanent, `AD-027`,
+> `ROADMAP.md` Phase 2 and the cron comment all change together — and the cost
+> changes with it: `*/30` is ~1,440 GitHub Actions min/month, **72% of the
+> 2,000-minute free allowance for a private repo**, against ~240 at 6h.
+
 **Depends on:** all previous steps.
 
 **Do**
