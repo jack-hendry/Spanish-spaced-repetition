@@ -23,6 +23,8 @@ Add that line when starting a `tasks.md` run, and delete it when the run
 finishes. Without the marker the hook stays dormant and top-level edits are not
 blocked; with a stale marker every direct edit is blocked.
 
+## Executing: 022-backup-and-restore
+
 ## Current work
 
 `specs/013-server-hardening/` and `specs/014-spec-continuity/` are both
