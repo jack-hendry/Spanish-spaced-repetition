@@ -110,3 +110,17 @@ at that point, strike it here with the date and a pointer to where it went.
   out of 022 because that spec is infrastructure and tooling only — this is a
   server-side durability bug on the persistence path (022's O5 forbids it),
   and it is a scheduling-domain change, so **at least Large**. Not scoped.
+- [ ] (2026-09-18) **Offline capability for the web app.** Raised by the user
+  ahead of a trip to Guatemala with uncertain connectivity. The review loop
+  currently requires a live round-trip (`SPA rates a card → POSTs card state +
+  RevlogEntry to /api/review`) — there's no local-first/offline storage today.
+  Real support means the Angular frontend caching the collection/cards
+  (service worker + cached snapshot for `CollectionStore` init) for read-only
+  offline study, plus a local write-behind queue (e.g. IndexedDB) for reviews
+  taken offline, synced to `/api/review` on reconnect. Main risk: scheduling
+  state lives entirely in the frontend (`web/src/app/core/`), so reconciling a
+  batch of offline reviews without clobbering state from a concurrent
+  multi-device session needs real thought. At least **Large** per the sizing
+  table — touches persistence, the data model, and the review loop. A lighter
+  first cut was floated: cache collection/cards for read-only offline study
+  only, defer the write-behind queue to a later pass. Not scoped yet.
