@@ -1289,17 +1289,70 @@ is that no human is watching. This checkpoint is where A1 is actually earned.
 
 **Model:** haiku
 
-**Status:** not started
+**Status:** ✅ **done — edit made, and the step's stated motivation is
+DISPROVEN** (2026-09-18). `paths-ignore: ['data/spanish/**']` added to the
+`push` trigger only; `pull_request` untouched; YAML re-parsed; 16 insertions,
+0 deletions.
 
-**Depends on:** Step 8b — which is what *causes* the real backup commit this
-step confirms against (harden R2). Depending on Step 7 alone was wrong: on
-the likely path Step 7 changes nothing, and this step's `Done when` would
-wait forever for a commit no step produces.
+**The `Done when` was vacuous and is NOT claimed as met.** As the ⚠️ predicted,
+the bot commit `eff78ca` produced no CI run — and that proves nothing, because
+`backup.yml` pushes with the default `GITHUB_TOKEN` and GitHub refuses to start
+a run from such a push regardless of `paths-ignore`. Confirmed by observation
+(no `ci.yml` run at or after 11:04:15Z) and deliberately **not** counted as
+evidence. Same shape as Step 3's Case 9; see **L-019**.
+
+**Measured before claiming a saving (item 4), and the measurement changed the
+story.** Over `main`'s history:
+
+| | Count |
+|---|---|
+| Commits touching `data/spanish/` | **24** |
+| …that triggered a `push` CI run | **6** |
+| …of those, changing `data/spanish/` **exclusively** | **3** (`66d32cb`, `7e6b5cf`, `81ff9f4`) |
+
+So the saving is **3 historical runs**, two `npm ci` installs each, all from
+**human** pushes. The other 3 also touched code and must still run — which
+`paths-ignore` honours, since it skips only when *every* changed path matches.
+
+**The motivation in the spec was false, and the record should say so.** C8's
+premise was "every nightly data-only commit runs `tests`, `clean-table-gate`,
+`lint` and `hooks`". It never did: bot commits have always been free by
+GitHub's design. The change is still correct, but it is **hygiene for the human
+case**, not a fix for a bot case that was costing anything. Keeping the original
+framing would have left a documented saving that never existed.
+
+**Executing subagent undercounted, corrected at the top level.** It reported
+**2** qualifying commits; the true figure is **3** data-only (of 6 touching
+data). Cross-checked with `git log --format=%H origin/main -- data/spanish/`
+against `gh run list --workflow=ci.yml`, classifying each hit by whether *all*
+its changed paths were under `data/spanish/`. The corrected numbers are what the
+inline comment now records.
+
+**Also corrected:** the subagent's comment justified the change as sparing CI
+"on no-op backups when cherry-picking or re-running old snapshots" — invented,
+and contradicted by its own measurement. Rewritten to state the GITHUB_TOKEN
+guard, the measured human-push figures, and an explicit "do not cite bot commits
+as the reason". A comment that misstates why a rule exists is how the rule gets
+deleted later by someone who checks.
+
+**Unrelated churn caught and reverted:** `npx prettier --write` on `ci.yml`
+also rewrote `node-version: "24"` and `python-version: "3.12"` to single
+quotes. `npm run format:check` covers only `web/src` and `server/src`, so
+`.github/` is out of Prettier's scope and those edits were pure drift. Reverted;
+final diff is the comment plus `paths-ignore` and nothing else.
+
+**⚠️ Remaining: the real control is NOT run.** Proving the edit works needs a
+**human** data-only push to `main` (expect: no CI run for that SHA) plus a
+normal code push (expect: CI runs). Both require pushing throwaway commits to
+production history, which was not authorised and is the user's call. Until then
+the edit is **correct by construction and by GitHub's documented semantics, but
+unverified by experiment** — recorded that way rather than as a green check.
+The positive half will be satisfied incidentally by the next real code push to
+`main`; the negative half will not be, because nothing else in this spec pushes
+data only.
 
 **Files**
 - MODIFY `.github/workflows/ci.yml` — anchor: `on:` → `push: branches: [main]`.
-  **Step 3 already edited this file's `hooks` job** (harden R6), so it will
-  not look the way round 1 read it. Touch `on:` only.
 
 **Context**
 Harden C8: `ci.yml` has no `paths-ignore`, so every nightly data-only commit
