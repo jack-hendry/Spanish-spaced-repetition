@@ -279,6 +279,34 @@ measurement**: auto-stop *does* reclaim a machine woken for `sftp` alone
 A11 survives as a cheap determinism check — end state commanded, not
 inferred — and to avoid ~9 minutes of idle runtime per run.
 
+**A11 amended 2026-09-17 — downgraded from "commanded" to "reclaimed", with
+the user's decision.** Both justifications above are **forfeited**, knowingly.
+Step 7 proved the CI token cannot take a machine lease (`failed to obtain
+lease: ... unauthorized`), which `fly machine start` *and* `fly machine stop`
+both require. The three ways out were: a deploy token, an org token, or
+dropping the lease requirement. The user chose the third: the workflow now
+wakes the machine with `curl` against the anonymous `GET /api/health`
+(`fly.toml:20-22` — `auto_start_machines = true`, `min_machines_running = 0`)
+and has **no stop step at all**.
+
+So A11 now reads: **after a run, Fly's auto-stop reclaims the machine to
+`stopped` within ~10 minutes.** Evidence changes from a state read immediately
+after the run to a *polled* read until reclaimed. What was gained: the CI
+secret needs no machine scope, so its blast radius shrank rather than grew —
+the same reasoning as S6's action-SHA pinning. What was paid: the end state is
+inferred from measured auto-stop behaviour, not commanded, and ~9 minutes of
+idle runtime per run returns. That idle cost was the *original*, already-wrong
+justification for this criterion (see above), and at 4 runs/day it is ~36
+min/day on a machine that is free when stopped — accepted.
+
+The determinism this criterion wanted is not wholly lost: Step 6's measurement
+of auto-stop (539s after an `sftp`-only wake, zero HTTP requests) is what makes
+the reclaim predictable rather than hopeful. But it is now a property of Fly's
+behaviour, which this repo does not control and cannot test in CI, so a change
+in Fly's auto-stop policy would silently re-introduce an always-on machine.
+That is a third accepted silent-failure mode and belongs in Step 17's `AD`
+alongside D6's two.
+
 **A12 — Both state scripts are proven under bash 5.** (added by harden C5)
 `pull-fly-state.sh` and `push-fly-state.sh` complete their argument-parsing
 and counting paths under bash 5.x, not only the local bash 3.2. Evidence: the

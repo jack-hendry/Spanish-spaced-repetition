@@ -620,13 +620,343 @@ state, the same shape as C7. `data/spanish/media/` is gitignored
 
 ---
 
+### Step 6b — Put `fly` on the runner's PATH (repair, found by Step 7)
+
+**Model:** haiku
+
+**Status:** ✅ **done** (2026-09-17) — file corrected, **not yet exercised**;
+Step 7's retry owns that. Took two rounds; round 1's guard fix was sent back.
+
+**Verified by reading the final file at the top level, not taken on the
+subagent's report** (which claimed a `Status:` update it had not written):
+
+| Claim | Check | Result |
+|---|---|---|
+| Tarball really lacks `fly` | `tar tzvf flyctl_0.4.104_Linux_x86_64.tar.gz` | one entry, `flyctl` — confirms the cause |
+| Action does set PATH | read `setup-flyctl/src/main.ts` at the pinned SHA | ends in `core.addPath(cachedPath)` — the "PATH is broken" reading was wrong |
+| Shim precedes first `fly` | read lines 24–55 | shim at 26–35, `setup-flyctl` at 24, first `fly` at 43 |
+| No softening | `grep -cE 'continue-on-error\|\|\| *true'` | **0** |
+
+**Round 1 was sent back — the guard fix reproduced the defect it was meant to
+remove.** It added a `command -v fly` check, which covers only the cause we
+happened to hit. The resolve line was still
+`fly machine list ... | jq -r ...`, and GitHub runs `run:` blocks under
+`bash -e {0}` — `-e` but **not** `-o pipefail` — so the pipeline's status is
+jq's, always 0. Any *other* `fly` failure (narrow token, API error, wrong app)
+would still be swallowed and still print "No machine found for app
+spanish-srs" about a healthy app.
+
+That is not hypothetical: Step 7's **If blocked** path *is* a too-narrow token,
+and the token is still unexercised for `machine start`/`stop`. The guard as
+first written would have sent the next reader hunting a missing machine instead
+of a token scope — the same lie, a second time, about the same app. Final form
+captures status and output separately, so a failing `fly` reports its own
+stderr and only a genuinely empty list says "no machine found"; the explicit
+`command -v fly` branch was dropped as redundant (exit 127 lands in the first
+branch with bash's own message).
+
+**The transferable lesson, for Step 19:** a guard that cannot distinguish *the
+command failed* from *the command returned nothing* misattributes as
+confidently as no guard at all — and `$(cmd | filter)` under `bash -e` without
+`pipefail` is the standard way to build one by accident.
+
+**Depends on:** Step 6. **Blocks Step 7**, which cannot reach any of its
+criteria until this lands.
+
+**Context**
+
+Step 7's first dispatch failed, twice identically, at the very first `fly`
+call. Step 6 had verified everything about this workflow *except* that its
+central command exists on a runner — the one thing only a real run can show.
+
+The cause is **not** that `setup-flyctl` fails to set PATH; that was the first
+reading and it is wrong. The action's source at the pinned SHA ends in
+`core.addPath(cachedPath)`, and the run log shows the download and
+`flyctl 0.4.104 is installed` both succeeding. The actual cause is a **binary
+name mismatch**:
+
+```
+$ tar tzvf flyctl_0.4.104_Linux_x86_64.tar.gz
+-rwxr-xr-x  runner runner 113119903  flyctl
+```
+
+The release tarball ships **only `flyctl`** — there is no `fly` in it. Homebrew
+and the official install script create the `fly` symlink, so every local
+invocation and every one of Steps 1–3's proofs used a name that exists only on
+a developer machine. `data/spanish/` has a live-state analogue of this
+(`CLAUDE.md`); this is the same shape in the tooling.
+
+| Run | Conclusion | Failure |
+|---|---|---|
+| [35272533757](https://github.com/jack-hendry/Spanish-spaced-repetition/actions/runs/35272533757) | `failure` | `fly: command not found` at "Resolve production machine ID" |
+| [35272676581](https://github.com/jack-hendry/Spanish-spaced-repetition/actions/runs/35272676581) | `failure` | identical — not transient |
+
+**Renaming the call sites is the wrong fix.** `tools/pull-fly-state.sh:64` and
+seven sites in `tools/push-fly-state.sh` also call `fly`. Those two scripts are
+what a human runs by hand and what Steps 1–3 proved under bash 5; rewriting
+them to `flyctl` would reopen verified work and split the name between the
+script and the runbook. Add the missing symlink once instead, in the one place
+that lacks it.
+
+**Also record — Step 6's "loudening" named the wrong cause.** Step 6 added
+`// empty` plus an explicit `::error::No machine found for app spanish-srs` so
+that "the failure names its own cause". On this failure it printed exactly
+that, and it was **false**: the machine existed and was healthy; `fly` was
+missing. `$(...)` of a missing command is empty and the guard cannot tell
+"command absent" from "no machines". A guard that assumes its command ran can
+misattribute as confidently as no guard at all. Fix this too — see item 2.
+
+**Files**
+- EDIT `.github/workflows/backup.yml`
+- DO NOT TOUCH: `tools/pull-fly-state.sh`, `tools/push-fly-state.sh` (see
+  above — they stay on `fly` deliberately), `.github/workflows/ci.yml`
+  (Step 11 owns its `on:` trigger).
+
+**Do**
+1. After the `setup-flyctl` step, add a step that exposes `flyctl` as `fly` on
+   `$GITHUB_PATH`, failing loudly if `flyctl` itself is absent:
+   ```yaml
+   - name: Expose flyctl as `fly`
+     run: |
+       # The flyctl release tarball ships only `flyctl`; Homebrew and the
+       # official installer add the `fly` symlink, setup-flyctl does not.
+       # tools/*-fly-state.sh and the steps below all invoke `fly`.
+       FLYCTL=$(command -v flyctl) || {
+         echo "::error::setup-flyctl did not put flyctl on PATH"; exit 1; }
+       mkdir -p "$RUNNER_TEMP/fly-shim"
+       ln -sf "$FLYCTL" "$RUNNER_TEMP/fly-shim/fly"
+       echo "$RUNNER_TEMP/fly-shim" >> "$GITHUB_PATH"
+   ```
+   Use `$RUNNER_TEMP` + `$GITHUB_PATH`, not `/usr/local/bin`, so the step does
+   not depend on runner write permissions outside its own workspace.
+2. Make the machine-id guard distinguish the two causes it currently conflates
+   — check `fly` is invokable before blaming the app, e.g. resolve into a
+   variable and emit a different `::error::` when the command itself failed
+   versus when it returned no machines. Keep it loud; do not soften either
+   branch.
+3. Re-read the whole file afterwards and confirm no `continue-on-error` or
+   `|| true` crept in.
+
+**Done when**
+- `python3 -c 'import yaml,sys; yaml.safe_load(open(sys.argv[1]))' .github/workflows/backup.yml`
+  parses clean.
+- `grep -c 'continue-on-error\|| true' .github/workflows/backup.yml` → 0
+  (the `|| {` guards are not `|| true` — confirm by reading, not only grep).
+- The shim step sits **after** `setup-flyctl` and **before** the first `fly`
+  call.
+- Step 7 is handed a workflow whose first `fly` call can succeed; Step 7, not
+  this step, is what proves it.
+
+---
+
+### Step 6c — Wake by HTTP instead of machine lease (user decision, 2026-09-17)
+
+**Model:** haiku
+
+**Status:** ✅ **done** (2026-09-17) — file correct, **not yet exercised**;
+Step 7 attempt 3 owns that.
+
+**Verified by reading the final file at the top level**, not from the
+subagent's report:
+
+| Done-when check | Result |
+|---|---|
+| `yaml.safe_load` | clean |
+| `grep -c 'fly machine'` | **0** — all three lease-dependent steps gone |
+| `grep -c 'continue-on-error\|\|\| true'` | **0** |
+| Shim survives, precedes the pull | shim at 26–35, pull at 49–50 |
+| No comment claims the workflow stops the machine | header reworded to "Backup scheduling state from Fly.io" |
+
+Final step list: checkout → setup-flyctl → expose `fly` shim → **wake by curl**
+→ pull → commit-if-changed. Six steps, down from eight; `-f` retained on curl
+so an HTTP 5xx fails the step rather than pulling from a machine that never
+came up.
+
+**Process note, recorded because it caused two false "I updated the Status"
+reports earlier in this run:** subagents are blocked from writing spec docs by
+`protect-spec-docs-from-subagents.sh`, so a `tasks.md` `Status:` block can only
+be written by the top-level session. That is the harness working as designed
+(`CLAUDE.md` calls it out as guarding specs "from the other direction"), but
+the step prompts had been asking subagents to do something the hook forbids.
+Ask them to *report* the evidence table and have the orchestrator write it.
+
+**Depends on:** Step 6b. **Blocks Step 7**'s third attempt.
+
+**Context**
+Step 7 attempt 2 proved the `ssh` token cannot take a machine lease. The user
+was given three options (deploy token / org token / drop the lease need) and
+chose **dropping the lease requirement**: the narrow token stays, and CI's
+blast radius shrinks instead of growing.
+
+`fly.toml:20-22` has `auto_start_machines = true`, `min_machines_running = 0`,
+so any HTTP request wakes the machine, and `GET /api/health` is this app's one
+deliberately anonymous route (`server/src/app.ts` — registered first,
+pre-auth, on purpose). No Fly machine permission is involved.
+
+**A11 has been formally amended in `Analyst.md`** from "the workflow leaves the
+machine stopped (commanded)" to "Fly's auto-stop reclaims it within ~10min
+(inferred)". Read that amendment before starting — the criterion's *evidence*
+changes shape, and Step 7 checks it differently as a result.
+
+**Files**
+- EDIT `.github/workflows/backup.yml`
+- DO NOT TOUCH: `fly.toml` (the auto-start config is already correct — this
+  step depends on it, it does not change it), `tools/pull-fly-state.sh`,
+  `tools/push-fly-state.sh`, `.github/workflows/ci.yml` (Step 11 owns it).
+
+**Do**
+1. **Delete three steps:** "Resolve production machine ID", "Start production
+   machine", "Stop production machine". The machine id is no longer needed
+   anywhere, so the whole resolve step goes — including the guard Step 6b just
+   fixed. That guard's *lesson* is already recorded in Step 6b and is destined
+   for a Step 19 `L-NNN`; deleting the code does not retract the finding.
+2. **Add a wake step** before the pull:
+   ```yaml
+   - name: Wake production machine
+     run: |
+       # fly.toml: auto_start_machines = true, min_machines_running = 0, so an
+       # HTTP request wakes the machine. /api/health is the one anonymous
+       # route (server/src/app.ts). This avoids `fly machine start`, which
+       # needs a machine lease the CI token deliberately does not have.
+       # Fly holds the request while the machine boots, so a 200 means it is
+       # serving. Retries cover a cold-start timeout, not a failing app: if
+       # every attempt fails the step still exits non-zero.
+       curl -fsS --retry 5 --retry-delay 5 --retry-all-errors \
+         --max-time 90 https://spanish-srs.fly.dev/api/health
+   ```
+   `-f` is load-bearing: without it curl exits 0 on an HTTP 5xx and the pull
+   would run against a machine that never came up.
+3. **Keep the `flyctl`→`fly` shim step.** Still required —
+   `tools/pull-fly-state.sh:64` calls `fly ssh sftp get`.
+4. Update the cron/header comments so nothing still claims the workflow stops
+   the machine.
+
+**Done when**
+- `python3 -c 'import yaml,sys; yaml.safe_load(open(sys.argv[1]))' .github/workflows/backup.yml`
+  parses clean.
+- `grep -c 'fly machine' .github/workflows/backup.yml` → **0**.
+- `grep -c 'continue-on-error\|| true' .github/workflows/backup.yml` → **0**.
+  Note `--retry-all-errors` is **not** softening: it retries, then still fails.
+- The shim step survives and still precedes `pull-fly-state.sh`.
+- No comment anywhere in the file claims the machine is stopped by the
+  workflow.
+
+---
+
 ### Step 7 — Prove it from a *stopped* machine (A1, A11)
 
 **Model:** haiku
 
-**Status:** not started
+**Status:** ✅ **done — attempt 3 green** (2026-09-17). The workflow completed
+end-to-end from a genuinely stopped machine. Took three attempts; the first two
+are kept below because each failure is a recorded finding, not noise.
 
-**Depends on:** Step 6.
+**Attempt 3** — run
+[35274589387](https://github.com/jack-hendry/Spanish-spaced-repetition/actions/runs/35274589387),
+`workflow_dispatch` on ref `spec-022-backup-and-restore`, 21:04:31→21:04:55Z
+(24s):
+
+| Criterion | Observed |
+|---|---|
+| Machine state before | `stopped` |
+| Run conclusion | **`success`** — verified per-step at the top level: all 9 steps `success`, including `Wake production machine`, `Pull scheduling state from Fly`, `Commit and push if changed` |
+| HTTP wake | worked; `{"ok":true}` from `/api/health` — **no machine lease needed**, which is the whole point of Step 6c |
+| Pull | 7 files, `updated 0, unchanged 7` |
+| Commit | **none** — expected. The repo still equals Fly, which is exactly the precondition Step 8 needs. **A2 remains unproven**; Step 8b is what makes it reachable |
+| A11 (amended) | `started` immediately after the run — now the *correct* reading — then reclaimed to `stopped` |
+
+**A11's reclaim timeline** (subagent's 60s polling; **reported, not
+independently re-derived** — the transition cannot be re-observed after the
+fact, though the machine reads `stopped` at the top level now, which
+corroborates that a reclaim occurred): `started` through 365s, flipped to
+`stopped` by **426s** (~7min).
+
+That is **faster than Step 6's measured 539s**, and the direction makes sense —
+this run did one `sftp` pull and a single health request. Both figures are
+single observations of someone else's timer, so the operative claim is "Fly
+reclaims it in well under 15 minutes", not a constant. The runbook should not
+quote 426s as a guarantee.
+
+**Attempt 1** (runs [35272533757](https://github.com/jack-hendry/Spanish-spaced-repetition/actions/runs/35272533757),
+[35272676581](https://github.com/jack-hendry/Spanish-spaced-repetition/actions/runs/35272676581)):
+both failed at the first `fly` call, `fly: command not found` — the release
+tarball ships no `fly`. Cause and fix in **Step 6b**.
+
+**Attempt 2** (run [35273590615](https://github.com/jack-hendry/Spanish-spaced-repetition/actions/runs/35273590615)):
+Step 6b's shim worked, then Fly refused the machine lease —
+`failed to obtain lease: failed to get lease on VM 850d53cd95d668: unauthorized`
+(Request ID `01M2RJEDNWA7BQZTJ8ATAXVQAF-ord`). This step's documented **If
+blocked** path, reached for real; resolved by the user's choice in **Step 6c**
+to drop the lease requirement entirely rather than widen the token.
+
+**A11 was misreported on attempt 2 and the correction matters.** The executing
+subagent recorded A11 as holding because the `if: always()` stop step ran and
+the machine was `stopped` afterwards. The stop step *also* failed
+`unauthorized` (Request ID `01M2RJG80DATM465NRG00M4Y8J-ord`); the machine was
+`stopped` only because `start` had failed and it never woke. `if: always()` was
+proven to *fire*, never to *work* — and the stop step no longer exists after
+Step 6c, so it never will be. A criterion satisfied incidentally reads exactly
+like one satisfied by design; only the log distinguishes them.
+
+**Attempt 1** (runs [35272533757](https://github.com/jack-hendry/Spanish-spaced-repetition/actions/runs/35272533757),
+[35272676581](https://github.com/jack-hendry/Spanish-spaced-repetition/actions/runs/35272676581)):
+both failed at the first `fly` call, `fly: command not found`. Cause and fix in
+**Step 6b**. Not the If-blocked path.
+
+**Attempt 2**, after Step 6b (run
+[35273590615](https://github.com/jack-hendry/Spanish-spaced-repetition/actions/runs/35273590615),
+`workflow_dispatch` on ref `spec-022-backup-and-restore` — `main` still carried
+the broken file, so the `--ref` discipline Step 9 mandates was used here too):
+
+| Criterion | Evidence |
+|---|---|
+| Machine state before | `stopped`, verified via `fly machine list` |
+| Step 6b's fix | **worked** — `fly` resolved and executed; no `command not found` |
+| Run conclusion | `failure` at **Start production machine** |
+| Fly's error | `failed to obtain lease: failed to get lease on VM 850d53cd95d668: unauthorized` (Request ID `01M2RJEDNWA7BQZTJ8ATAXVQAF-ord`) |
+| Commits | none — never reached the pull step. **A2 not proven** (expected; Step 8b is what makes it reachable) |
+| A11 | **not proven — see below** |
+
+**A11 is *not* satisfied by this run, contrary to the executing subagent's
+report.** It claimed A11 held because the `if: always()` stop step ran and the
+machine was `stopped` afterwards. The stop step *ran*, but the log shows it
+**also failed `unauthorized`** (Request ID `01M2RJG80DATM465NRG00M4Y8J-ord`).
+The machine is `stopped` only because `start` failed and it never woke. The
+workflow's stop command has still never successfully stopped anything, so A11
+is untested — satisfied incidentally, not demonstrated. `if: always()` was
+proven to *fire*; it was not proven to *work*.
+
+**What this rules in and out.** The `ssh`-type token from Step 5 authenticates
+(no auth error at `fly machine list`) but cannot take a **machine lease**, which
+both `start` and `stop` require. Step 6's "still unverified, by design" note is
+now resolved in the negative.
+
+**⚠️ USER decision — three options, and the third does not touch the token.**
+`fly.toml:20-22` has `auto_start_machines = true`, `min_machines_running = 0`,
+so *any HTTP request wakes the machine*, and `GET /api/health` is this app's one
+deliberately anonymous route (`server/src/app.ts`). Auto-stop was already
+**measured** in Step 6 to reclaim the machine ~539s after an `sftp`-only wake,
+and Step 6 recorded the explicit stop as "hygiene, not load-bearing".
+
+1. **Deploy token** (`fly tokens create deploy --app spanish-srs`) — app-scoped,
+   can lease machines. Needs verifying that it also permits `fly ssh sftp`,
+   which `tools/pull-fly-state.sh` depends on.
+2. **Org token** — certainly works, widest blast radius. Worst fit for a secret
+   living in CI, against Analyst S6's reasoning for pinning the action SHA.
+3. **Drop the machine-lease requirement entirely** — replace `fly machine start`
+   with `curl -fsS https://spanish-srs.fly.dev/api/health` and delete the stop
+   step, relying on measured auto-stop. This needs **no** machine permissions,
+   so the existing narrow `ssh` token suffices and the token's blast radius
+   *shrinks* instead of growing. Costs: ~9min of idle machine per run, and A11
+   changes meaning from "the workflow commands the machine to sleep" to "Fly
+   reclaims it", which must be re-stated rather than quietly re-scoped.
+
+**Recommended: option 3**, then option 1 if an explicit commanded stop is wanted.
+It is the only one that satisfies non-negotiable #2 without handing CI a
+broader credential, and it deletes the two steps that just failed.
+
+**Depends on:** Step 6; **Step 6b**; **Step 6c** — attempt 3 runs the
+HTTP-wake workflow, so it must not start before 6c lands.
 
 **Context**
 Analyst A1 as corrected by harden C2: a run that begins while the machine
@@ -634,21 +964,36 @@ happens to be awake proves nothing about the nightly case, which is the only
 case that will ever occur.
 
 **Do**
-1. `fly machine stop <id> --app spanish-srs`; confirm `stopped`.
-2. Trigger `gh workflow run backup.yml`; watch it.
+1. `fly machine stop <id> --app spanish-srs`; confirm `stopped`. This is done
+   from a **developer machine**, whose token *can* lease — only CI's token
+   cannot. Setting up the precondition by hand is legitimate; the workflow
+   itself must not need it.
+2. Trigger the workflow and watch it. Use
+   `gh workflow run backup.yml --ref <branch>` while the fix is not yet on
+   `main` (see Step 9's R8 note on why the bare form silently tests `main`).
 3. Record machine state before, during and after.
 
 **Done when**
 - Machine state was `stopped` immediately before the run — record it.
 - The run concludes `success`. Record the URL.
-- Machine state after the run is `stopped` (**A11**). Record it.
+- **A11, as amended 2026-09-17** (see `Analyst.md`): the machine is *reclaimed*
+  to `stopped` by Fly's auto-stop, not commanded. So poll after the run —
+  e.g. every 60s for ~15min — and record the state **and the elapsed time** at
+  which it flipped. Immediately after a successful run the correct observation
+  is `started`; that is no longer a failure. Recording "still `started` at
+  15min" is a real finding, not a blocked step: it would mean Step 6's 539s
+  auto-stop measurement no longer holds.
 - If state changed, `git log --oneline -1 -- data/spanish/` shows the bot
-  commit (**A2**). Record the SHA.
+  commit (**A2**). Record the SHA. A no-op run here is the expected outcome
+  until Step 8b; A2 stays unproven and that is not a failure of this step.
 
 **If blocked**
-If the run fails at `fly machine start` with a permissions error, the token
-from Step 5 is too narrow — go back to Step 5's **If blocked**, do not widen
-the token unilaterally.
+The lease-permission path is **resolved, not open** — attempt 2 hit it and
+Step 6c removed the requirement. If a *new* permissions error appears, it is
+about `fly ssh sftp` (the only Fly operation left, in
+`tools/pull-fly-state.sh:64`), which is what the Step 5 `ssh` token exists for.
+That would be a genuinely new finding: report it, and do not widen the token
+unilaterally.
 
 ---
 
@@ -656,7 +1001,35 @@ the token unilaterally.
 
 **Model:** haiku
 
-**Status:** not started
+**Status:** ✅ **done — A3 met** (2026-09-17).
+
+**Precondition held:** all 7 canonical files `cmp`-equal between `data/spanish/`
+and Fly (pulled into a temp dir, never over the live store):
+`collection.json`, `notetypes.json`, `decks.json`, `deckoptions.json`,
+`notes.json`, `cards.json`, `revlog.ndjson`.
+
+| Run | Conclusion | Pull | Commit step |
+|---|---|---|---|
+| [35274589387](https://github.com/jack-hendry/Spanish-spaced-repetition/actions/runs/35274589387) (Step 7 attempt 3) | `success` | `updated 0, unchanged 7` | no commit |
+| [35275578508](https://github.com/jack-hendry/Spanish-spaced-repetition/actions/runs/35275578508) | `success` | `updated 0, unchanged 7` | **`No changes to commit`** |
+
+Commit count across the second run: `git log --oneline -- data/spanish/cards.json | wc -l`
+= **20 before, 20 after**. Remote `origin/spec-022-backup-and-restore` still
+shows `65532a0 Pull Fly scheduling state (restore point)` as the last commit
+touching `data/spanish/` — no bot commit.
+
+**The second run's pull/commit log was fetched at the top level, not taken from
+the report,** which had recorded that run's pull result as "(no logs…)" while
+still concluding A3 was satisfied. The actual log line
+`No changes to commit` is the evidence A3 turns on; without it the claim rested
+on a green tick and a 32s duration. Verified:
+`gh run view 35275578508 --log | grep -E 'unchanged|No changes to commit'`.
+
+**What this specifically proves:** the `git status --porcelain -- data/spanish/`
+guard (harden R5, chosen over `git diff --quiet` so an untracked eighth state
+file could not be silently skipped) takes its no-op branch correctly on a real
+run. It does **not** yet prove the *other* branch — that a genuine change
+produces a commit. That is A2, and Step 8b exists to make it reachable.
 
 **Depends on:** Step 7.
 
@@ -725,7 +1098,68 @@ that change on **production**.
 
 **Model:** haiku
 
-**Status:** not started
+**Status:** ✅ **done — A4 met** (2026-09-17), with one Done-when criterion
+found **unsatisfiable as written** (see the branch note below).
+
+Run [35277152866](https://github.com/jack-hendry/Spanish-spaced-repetition/actions/runs/35277152866),
+`--ref spec022-step9-failing-pull`, 14s. Per-step conclusions read at the top
+level, because *which* step failed is the whole criterion:
+
+| Step | Conclusion |
+|---|---|
+| checkout / setup-flyctl / expose `fly` shim | `success` |
+| Wake production machine | `success` — deliberately left pointing at the real host, so the failure is isolated to the pull |
+| **Pull scheduling state from Fly** | **`failure`** |
+| **Commit and push if changed** | **`skipped`** |
+| Run conclusion | **`failure`** |
+
+Error: `get app: app not found (Request ID 01M2RMGM3TK2VQGT5V4YHD5V2T-lax)`,
+then `Failed to download collection.json from Fly volume`.
+
+`skipped`, not `success`, is the load-bearing detail: the commit step never ran,
+so there was no opportunity to commit a partial or empty pull. A4 asks that a
+failing pull fail the *workflow*; this shows it fails **and** short-circuits.
+No commit was created — last commit touching `data/spanish/` is still
+`65532a0`. Remote throwaway branch deleted.
+
+**Step 9 was written against the pre-6c workflow** and said to point "the
+workflow" at a nonexistent app. Post-6c only the pull takes an `--app`, so the
+edit was `bash tools/pull-fly-state.sh --app spanish-srs-does-not-exist` on the
+throwaway branch. Basing that branch on the current HEAD rather than
+`origin/main` mattered: `main` still carries the pre-6c file, which would have
+failed at the machine lease instead and proved nothing about the pull.
+
+**Finding — `Done when`'s "the throwaway branch is gone (`git branch -d`, never
+`-D`)" cannot be satisfied.** The branch exists *only* to carry a deliberately
+wrong commit (`f77d67d`) that must never reach `main`, so it is permanently
+unmerged and `git branch -d` will always refuse. The executing subagent hit
+exactly this, correctly refused to reach for `-D`, and left the branch — the
+right call under `CLAUDE.md`, and it means the step self-reports as incomplete
+for doing the right thing.
+
+The rule is not wrong; the step is. `CLAUDE.md`'s `-d`-never-`-D` exists so git
+refuses when a branch *turns out* not to be merged — it protects unmerged
+**work**. A test fixture is not work. The fix needs no exception: **reset the
+throwaway branch to its base commit before deleting it**, after which its tip
+is an ancestor of the working branch, `-d` considers it merged, and it deletes
+cleanly.
+
+```sh
+git branch -f spec022-step9-failing-pull 2bb51fc   # base it was cut from
+git branch -d spec022-step9-failing-pull           # now succeeds
+```
+
+**Applied and verified 2026-09-17:** `Deleted branch spec022-step9-failing-pull
+(was 2bb51fc)` — `-d`, never `-D`; `git branch --list 'spec022*'` now empty,
+remote copy already gone, and the fixture commit `f77d67d` is unreachable from
+any ref. The criterion is now genuinely met rather than waived. `git branch -f`
+was used to move the pointer — deliberately **not** `git reset --hard`, which
+would have destroyed the uncommitted spec evidence in the working tree.
+
+Step 9's `Do` step 3 should say that for any future re-run. Lesson candidate
+for Step 19: *a cleanup rule written for real branches silently forbids
+cleaning up a deliberately-unmerged test branch; discard the commit first, then
+the safe delete works.*
 
 **Depends on:** Step 6.
 
@@ -1256,9 +1690,47 @@ mistake Step 1 punishes. At harden time: `Scheduled snapshots: true`,
 
 **Model:** top-level
 
-**Status:** ⏸️ **decided, awaiting the user's `--apply`.** Asked 2026-09-17;
-the user chose **rotate now**. Nothing is written to `specs/STATE.md` until it
-lands, which is exactly what this step exists to enforce.
+**Status:** ⚠️ **cannot be done as written — this step's premise is wrong.**
+The user chose "rotate now" and **ran `--apply` on 2026-09-17. It was a
+no-op**, and will stay one.
+
+`tools/state_rotate.py --apply` runs the *same budget check* as `--check`
+before rotating anything, and returns "ok" without touching the file while it
+is under 300 lines. Observed, both before and after the user's run:
+
+```
+$ python3 tools/state_rotate.py --apply
+state_rotate: specs/STATE.md is 291 lines, budget 300 — ok
+$ git status --porcelain -- specs/       # no STATE.md, no STATE-ARCHIVE.md
+```
+
+So this step's `Done when` — "`--check` passes with **at least ~17 lines of
+headroom**" — is **unachievable by the tool at 291 lines**. Harden R3 assumed
+`--apply` rotates aged entries on demand; it does not. It rotates only what is
+already over budget. "Rotate before writing" cannot be ordered first, because
+nothing is rotatable until the writing has pushed the file over.
+
+Actual headroom for Steps 17 and 19 is **9 lines, not 17.** Step 17's `AD`
+alone measures ~14 (the `AD-025`→`AD-026` span is 15), so the budget *will* be
+exceeded, and gate 4 of `scripts/clean-table-check.sh` refuses that push.
+
+**Resolution — invert the order (decided 2026-09-17, needs the user to run the
+second command):** write Step 17 and Step 19 normally, at whatever length the
+content honestly needs, then rotate *after* the file goes over budget and
+before the closing push:
+
+1. Step 17 + Step 19 write to `specs/STATE.md` as specified. Do not compress
+   an `AD` to dodge a gate — a terse-to-fit decision record is the failure
+   this budget exists to prevent.
+2. **User runs** `python3 tools/state_rotate.py --apply`. Now over budget, it
+   will actually rotate aged `AD`/`B` entries into `specs/STATE-ARCHIVE.md`.
+3. Confirm `--check` passes and **no `L-NNN` headline moved** (lesson headlines
+   never move — gate 3 fails the push if one does), then
+   `bash scripts/clean-table-check.sh` for lessons in sync.
+
+This keeps the human-decides-the-rotation rule in `CLAUDE.md` intact; only the
+*timing* changes. **Step 17 is therefore unblocked** — it no longer waits on
+this step, and the ⚠️ USER action moves to just before Step 19's push.
 
 The arithmetic presented:
 
