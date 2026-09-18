@@ -3913,3 +3913,11 @@
 {"id":"r1789647107078-wntg2v","cardId":"cc474fad415f09644-1","reviewedAt":1789647107078,"button":1,"type":"review","interval":0.006944444444444444,"lastInterval":1,"factorOrStability":2300,"timeMs":43308}
 {"id":"r1789647117900-qrglp7","cardId":"c55f93a141bf3fc63-1","reviewedAt":1789647117900,"button":3,"type":"review","interval":3,"lastInterval":1,"factorOrStability":2500,"timeMs":10496}
 {"id":"r1789647130129-kt8iiy","cardId":"c9af99548efbcde60-1","reviewedAt":1789647130129,"button":3,"type":"review","interval":3,"lastInterval":1,"factorOrStability":2500,"timeMs":11845}
+{"id":"r1789680572919-2vk20p","cardId":"cfcf515cb75695207-1","reviewedAt":1789680572919,"button":3,"type":"relearn","interval":1,"lastInterval":1,"factorOrStability":2300,"timeMs":13351}
+{"id":"r1789680637491-6tc3xg","cardId":"c084430f35e7052dd-1","reviewedAt":1789680637491,"button":1,"type":"relearn","interval":0.006944444444444444,"lastInterval":1,"factorOrStability":1900,"timeMs":64291}
+{"id":"r1789680669794-c8hocv","cardId":"ca3312a38f59cf352-1","reviewedAt":1789680669794,"button":1,"type":"relearn","interval":0.006944444444444444,"lastInterval":1,"factorOrStability":2100,"timeMs":31772}
+{"id":"r1789691616948-5a232d","cardId":"ccc5d3a221d49156d-0","reviewedAt":1789691616948,"button":3,"type":"relearn","interval":1,"lastInterval":1,"factorOrStability":1500,"timeMs":31729}
+{"id":"r1789726890756-icpznp","cardId":"cc474fad415f09644-1","reviewedAt":1789726890756,"button":3,"type":"relearn","interval":1,"lastInterval":1,"factorOrStability":2300,"timeMs":25355}
+{"id":"r1789726905534-8ss5kr","cardId":"c084430f35e7052dd-1","reviewedAt":1789726905534,"button":3,"type":"relearn","interval":1,"lastInterval":1,"factorOrStability":1900,"timeMs":14292}
+{"id":"r1789726924286-x0syk8","cardId":"ca3312a38f59cf352-1","reviewedAt":1789726924286,"button":3,"type":"relearn","interval":1,"lastInterval":1,"factorOrStability":2100,"timeMs":18459}
+{"id":"r1789726933944-abauz4","cardId":"c4790e58d12743a16-1","reviewedAt":1789726933944,"button":3,"type":"review","interval":3,"lastInterval":1,"factorOrStability":2500,"timeMs":9374}
