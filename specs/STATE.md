@@ -162,48 +162,9 @@ is enough; the cost is that renaming a deck recolours it.
 
 **AD-022 — Phase 4 closed `specs/archive/2026-08-31-015-typescript-lint-rollout/ROADMAP.md`: the CI gate is now the full repo (`eslint .`), and `eslint.config.mjs`/ `tools/shoot.mjs` were clean the moment they got a ruleset at all.** → moved to `STATE-ARCHIVE.md`
 
-**AD-023 — Phase 3's `no-unnecessary-condition` sites in `server/src` were
-all "type is lying," never "guard is dead," and the importer refactor was
-proven byte-identical over the real corpus rather than trusted on its unit
-tests.** (2026-08-31, `archive/2026-08-31-019-lint-phase3-server/`, all 11
-steps) `server/src` 41 → 0; repo-wide 254 → 0 across all four phases. All
-four `no-unnecessary-condition` violations were fixed by narrowing types
-(three `req.body` casts, one array-index chain `noUncheckedIndexedAccess`
-being off types as always-present), never by deleting a guard.
-`import/transform.ts`'s complexity fix (`walk` split into
-`buildNote`/`buildCard`) was verified by negative-controlled differential
-testing over the real 3,638-card corpus, not by its 9 unit tests alone.
+**AD-023 — Phase 3's `no-unnecessary-condition` sites in `server/src` were all "type is lying," never "guard is dead," and the importer refactor was proven byte-identical over the real corpus rather than trusted on its unit tests.** → moved to `STATE-ARCHIVE.md`
 
-**AD-024 — Day numbers are local calendar days from the study day of
-`created`, and the one-day reinterpretation of persisted values was accepted
-rather than migrated.** (2026-09-01, `specs/archive/2026-09-02-010-day-rollover-anchoring`, all 8 steps)
-`todayNumber` no longer subtracts `collection.created` as a raw epoch instant —
-that anchored the daily rollover to `created`'s *time of day* (14:20:35 local
-on the live store) instead of `dayCutoffHour`:00, which is why the daily
-new-card allowance would not renew. It is now
-`studyDayIndex(now) - studyDayIndex(created)`, where `studyDayIndex` shifts by
-local **wall-clock** hours and reads the resulting calendar date, so day 0 is
-the study day containing `created` and the boundary is exactly
-`dayCutoffHour`:00 on every date, DST included. Three consequences worth
-keeping: (1) **nothing on disk was rewritten** — no `card.due`, no
-`collection.created`, no migration, no schema bump; the correction is purely a
-change in where the boundaries fall, and the resulting <=1-day reinterpretation
-of persisted values is the accepted cost. Adding an origin offset to keep
-today's integer stable was explicitly rejected, since that would preserve the
-stale `deck.daily.day` match and leave the bug unfixed. (2) The two schemes
-differ **only** inside a daily window from `dayCutoffHour`:00 to `created`'s
-time-of-day (04:00:00-14:20:35 here); outside it they are equal, so the whole
-transition is a no-op unless the app is first opened inside that window.
-Measured on the live store at the time of the change: day 68 -> 69, one deck's
-`daily {day: 68, newStudied: 20}` tally discarded (the fix), 84 of 611 review
-cards surfacing early once, and one extra `unburyForNewDay` pass over 78
-`schedBuried` cards. (3) `heatDateKey` was deliberately **not** touched — it
-shifts by absolute hours, so over all of 2026 the two place their boundaries
-differently on exactly 4 minutes, all on the two DST-transition days. That
-divergence is documented in the code and in `scheduling-domain`; consolidating
-the two schemes behind one helper is left as a separate task. This closes the
-work 007 deferred (its Open question 1 and its non-goal "changing `todayNumber`
-itself"). See **L-018**.
+**AD-024 — Day numbers are local calendar days from the study day of `created`, and the one-day reinterpretation of persisted values was accepted rather than migrated.** → moved to `STATE-ARCHIVE.md`
 
 **AD-025 — Fly is the source of truth for scheduling state; the repo is a
 lagging replica.** (2026-09-17, `archive/2026-09-17-021-fly-deploy` D0) Once Fly writes to its own
