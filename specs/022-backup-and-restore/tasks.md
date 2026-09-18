@@ -1056,7 +1056,61 @@ phone session would.)
 
 **Model:** haiku
 
-**Status:** not started
+**Status:** ✅ **done** (2026-09-18). Both `Done when` criteria met. The user
+studied one card on production; evidence gathered by pulling Fly into a
+**scratch dir**, never `data/spanish/` — the change still has to arrive through
+the workflow, which is the point of item 3.
+
+**Fly now differs from the repo — by observation, not assumption.** Four of the
+seven state files changed: `collection.json`, `decks.json`, `cards.json`,
+`revlog.ndjson`. (`notetypes.json`, `deckoptions.json`, `notes.json` unchanged,
+as expected — studying touches scheduling state, not content.)
+
+**The card**, `c4790e58d12743a16-1`, revlog entry `1789726933944` =
+2026-09-18 10:22:13 UTC, rating **3** ("Good"), `type: review`:
+
+| Field | Before (repo) | After (Fly) |
+|---|---|---|
+| `queue` / `type` | `review` / `review` | unchanged |
+| `due` | `73` (day number) | **`89`** |
+| `interval` | `1` (day) | **`3`** |
+| `reps` | `2` | **`3`** |
+| `lapses` | `0` | `0` |
+| `ease` | `2500` (permille) | `2500` — unchanged, correct for "Good" |
+| `stability` / `difficulty` | `null` / `null` | unchanged — SM-2 deck, FSRS never scheduled it |
+
+**The `due` jump was checked, not accepted.** The executing subagent first
+reported +16 as "consistent with the interval increase" of +2 — which is not an
+explanation, it is two numbers that disagree. Re-derived against
+`scheduling-domain`: `due` on a `review` card is a **day number**, and
+`collection.created` = 1782310835661 with `dayCutoffHour` = 4 puts today at day
+**86**. So `86 + 3 = 89` ✅ — the invariant holds. The +16 decomposes as **13
+days overdue** (86 − 73) **+ 3 days of new interval**; the card's overdue status
+dominates, and interval growth contributes only 3 of the 16. A day-number bug is
+silent (AD-003), so this is exactly the arithmetic that has to be re-derived
+rather than nodded through.
+
+**⚠️ Finding — the broken cron had a measured cost, and it is not zero.** Eight
+revlog entries were appended, not one. All eight **postdate the last successful
+backup** (2026-09-17 21:14:55 UTC), so none of them had ever been backed up.
+They cluster into three study sessions:
+
+| Session | When (UTC) | Entries |
+|---|---|---|
+| 1 | 2026-09-17 21:29–21:31 | 3 × `relearn` |
+| 2 | 2026-09-18 00:33 | 1 × `relearn` |
+| 3 | 2026-09-18 10:21–10:22 | 3 × `relearn` + the `review` above |
+
+Only session 3 is this step's deliberate change; sessions 1 and 2 are **real
+study that the failed scheduled runs silently left unprotected**. This is the
+concrete answer to "what did the `fly: command not found` outage actually cost"
+— 8 reviews across ~13 hours, recoverable only because the volume survived.
+It also shows the outage's shape: the workflow failed *loudly* in the Actions
+tab and *silently* everywhere the user would have looked. See Step 19's lesson.
+
+**Ordering held:** this step ran after Step 8 (which needed repo == Fly) and
+before the next scheduled run, so that run carries a genuine bot commit and
+makes **A2** and **Step 11** reachable.
 
 **Depends on:** Step 8 — and **must not run before it**. Step 8 needs the
 repo to equal Fly; this step deliberately breaks that equality. Order is
