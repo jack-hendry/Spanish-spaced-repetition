@@ -7,6 +7,22 @@ name: CI
 on:
   push:
     branches: [main]
+    # Skip CI for pushes that change ONLY the live scheduling store.
+    #
+    # NOT for the backup workflow's commits: those push with the default
+    # GITHUB_TOKEN, and GitHub refuses to start a run from such a push
+    # (its recursion guard). They already cost nothing, so "nightly bot
+    # commits burn CI minutes" was never true -- do not cite it as the reason.
+    #
+    # The real case is a HUMAN pushing data only. Measured over this repo's
+    # history: 24 commits touch data/spanish/ on main; 6 triggered a push run,
+    # and 3 of those changed data/spanish/ EXCLUSIVELY (66d32cb, 7e6b5cf,
+    # 81ff9f4) -- two npm ci installs each for a pure-JSON change. The other 3
+    # also touched code and must still run, which paths-ignore honours: it
+    # skips only when every changed path matches.
+    #
+    # push only. A pull_request that changes data is still checked.
+    paths-ignore: ['data/spanish/**']
   pull_request:
 
 jobs:

@@ -23,8 +23,6 @@ Add that line when starting a `tasks.md` run, and delete it when the run
 finishes. Without the marker the hook stays dormant and top-level edits are not
 blocked; with a stale marker every direct edit is blocked.
 
-## Executing: 022-backup-and-restore
-
 ## Current work
 
 `specs/013-server-hardening/` and `specs/014-spec-continuity/` are both
@@ -49,6 +47,15 @@ shape change and `server/` untouched. See AD-024, L-018.
 and AD-020 moved to `specs/STATE-ARCHIVE.md` leaving one-line stubs, 326 -> 287
 lines, back under the ~300-line budget.
 
+Backups and restore (`specs/archive/2026-09-18-022-backup-and-restore/`) is
+**finished and archived** (2026-09-18). `.github/workflows/backup.yml` pulls
+Fly's scheduling state every 6 hours and commits it, and the restore path — which
+had **never once run** before this spec — is proven at production scale. All 13
+acceptance criteria met; see AD-027, AD-028, L-019 through L-027, and
+`specs/BACKUP-RUNBOOK.md` for the operator-facing half. Two things are open and
+named there: an orphaned live Fly token still needs revoking, and no green run
+has yet happened at the shipping 6-hour cadence.
+
 No spec is currently live. Two follow-ups are recorded rather than started:
 consolidating `todayNumber` and `heatDateKey` behind one day-bucketing helper
 (they disagree on 4 minutes a year, both on DST-transition days), and a
@@ -56,6 +63,11 @@ regression matrix for `tools/session_report.py`.
 
 Format while a run is in progress: `<spec> — step N of M` (see
 `specs/TEMPLATE.md`'s `Status:` field convention, AD-016).
+
+Marker for `022-backup-and-restore` removed 2026-09-18 at the end of Step 19,
+its last step. All 19 steps are recorded done in that spec's `tasks.md`; what
+remains is the archive ritual, which is top-level work by design. Restore the
+marker only if delegated work resumes on it.
 
 Marker for `021-fly-deploy` removed at Step 20 (2026-09-16). Steps 1–19 ran
 delegated; the three remaining steps (20, 21, 22) are all top-level — 21 and 22

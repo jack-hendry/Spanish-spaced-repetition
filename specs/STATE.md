@@ -166,39 +166,13 @@ is enough; the cost is that renaming a deck recolours it.
 
 **AD-024 — Day numbers are local calendar days from the study day of `created`, and the one-day reinterpretation of persisted values was accepted rather than migrated.** → moved to `STATE-ARCHIVE.md`
 
-**AD-025 — Fly is the source of truth for scheduling state; the repo is a
-lagging replica.** (2026-09-17, `archive/2026-09-17-021-fly-deploy` D0) Once Fly writes to its own
-volume there are two live writers to the same logical state, and git is no
-longer one of them. Chosen: **Fly-as-source**, with
-`tools/pull-fly-state.sh` pulling the seven state files into `data/spanish/` so
-the existing git-rollback workflow keeps working, lagged by the pull interval;
-`tools/push-fly-state.sh` is the reverse path for restore and refuses to run
-without `--yes`. Media is excluded from both (252MB, regenerable). Consequence:
-**a local edit to `data/spanish/` is not authoritative and is overwritten by
-the next pull** — the `git checkout -- data/spanish/` habit in CLAUDE.md L-002
-now means "discard a dev-server artefact", never "restore the real state".
-Decided in Phase 1 rather than Phase 2 as the roadmap planned, because the seed
-and restore scripts could not be written without knowing which side wins.
+**AD-025 — Fly is the source of truth for scheduling state; the repo is a lagging replica.** → moved to `STATE-ARCHIVE.md`
 
-**AD-026 — The empty-store sentinel checks file *content*, and checks two
-files.** (2026-09-17, `archive/2026-09-17-021-fly-deploy` §1, C2/R5)
-`FileStore.init()` treats an empty data dir as "seed a fresh collection", so a
-failed volume mount silently starts a blank app and then persists blank state.
-`server/src/store/sentinel.ts` turns that into a failed boot, and two design
-points are load-bearing: **(1) content, not existence** — `init()` *creates*
-`cards.json` as `[]` whenever absent, so an existence check would disarm itself
-on the first seeded boot; **(2) `notes.json` as well as `cards.json`** — an
-interrupted or alphabetical upload lands `cards.json` first, which is the most
-likely partial-seed shape and is invisible to a cards-only check. The escape
-hatch `ALLOW_EMPTY_STORE=1` exists for the one chicken-and-egg boot that seeds
-an empty volume; it is passed transiently via `fly deploy --env` and **must
-never be committed to `fly.toml`**, which would permanently disarm the guard.
-Every throw names the absolute path *and* the literal `ALLOW_EMPTY_STORE`, so
-the operator learns the escape hatch from the failure itself.
+**AD-026 — The empty-store sentinel checks file *content*, and checks two files.** → moved to `STATE-ARCHIVE.md`
 
 **AD-027 — Retention is three layers with different depths; the 6-hour cron
-interval *is* the loss window.** (2026-09-17, `022-backup-and-restore` D5/D6,
-Steps 7/8/16) Cadence and retention are the same question, so they get one
+interval *is* the loss window.** (`archive/2026-09-18-022-backup-and-restore`
+D5/D6, Steps 7/8/16, 2026-09-17) Cadence and retention are the same question, so they get one
 answer. `backup.yml` runs `0 */6 * * *`, so **a total Fly loss costs at most
 ~6 hours of reviews** (plus GitHub cron's best-effort lateness). Measured
 against real volume — 30 active study days in the 73 from 2026-07-06, median
@@ -234,6 +208,38 @@ notification, only an absence.
 **What no cadence fixes:** a review lost *in flight* never reaches Fly, so no
 backup interval recovers it — Phase 3's residual risk.
 
+**AD-028 — The backup workflow wakes production with an anonymous HTTP request
+and never stops it; CI's Fly token holds no machine permission.**
+(`archive/2026-09-18-022-backup-and-restore` Steps 6c/7, user decision,
+2026-09-18; amends A11)
+`fly machine start` and `fly machine stop` both require a **machine lease**,
+and the narrow `ssh`-scoped token from Step 5 cannot take one — it
+authenticates fine (`fly machine list` works) and then fails
+`failed to obtain lease: ... unauthorized`. The three ways out were a deploy
+token, an org token, or dropping the lease requirement. **Chosen: drop it.**
+`backup.yml` now wakes the machine with `curl -f .../api/health` -- `fly.toml`'s
+`auto_start_machines = true` / `min_machines_running = 0` means any HTTP request
+wakes it, and `GET /api/health` is this app's one deliberately anonymous route
+(AD-015) -- and has **no stop step at all**. The workflow contains no
+`fly machine` call.
+
+What was gained: CI's secret needs no machine scope, so its blast radius
+*shrank* rather than grew -- the same reasoning as pinning the `setup-flyctl`
+action to a SHA. What was paid: the machine's end state is **inferred from
+measured auto-stop behaviour, not commanded**. Measured twice -- 539s after an
+`sftp`-only wake (Step 6), and 413s after the scheduled run of
+2026-09-18T12:05Z (Step 19, read from the machine's own event log:
+`start` 12:05:49Z, `exit requested_stop=true` 12:12:42Z). Operative claim:
+"Fly reclaims it in well under 15 minutes", never a constant.
+
+**This is a third accepted silent-failure mode, alongside AD-027's two:** if
+Fly changes its auto-stop policy the machine stays up and nothing here notices
+-- auto-stop is Fly's behaviour, not something CI can test. The cost if it
+happens is idle-machine time, not lost data. If an explicitly commanded stop is
+ever wanted, the replacement is a **deploy** token (`fly tokens create deploy`),
+which must first be shown to permit `fly ssh sftp` -- the pull script depends
+on it.
+
 ## Blockers
 
 (none open)
@@ -264,6 +270,9 @@ backup interval recovers it — Phase 3's residual risk.
 - **L-022** — The delegation hook and the permission classifier can deadlock a step between them.
 - **L-023** — A pre-push hook that never runs lint or format only catches those errors after a PR is already open.
 - **L-024** — "Add it to the backlog" means `specs/BACKLOG.md`, never a Quick Tasks row in `STATE.md`.
+- **L-025** — "Exercised in Step N" is a claim; `git log` is the evidence, and the two can disagree.
+- **L-026** — A credential that authenticates is not a credential that can act.
+- **L-027** — An unmeasured saving may not exist; measure before writing the justification down.
 
 ## Quick Tasks
 
