@@ -162,48 +162,9 @@ is enough; the cost is that renaming a deck recolours it.
 
 **AD-022 — Phase 4 closed `specs/archive/2026-08-31-015-typescript-lint-rollout/ROADMAP.md`: the CI gate is now the full repo (`eslint .`), and `eslint.config.mjs`/ `tools/shoot.mjs` were clean the moment they got a ruleset at all.** → moved to `STATE-ARCHIVE.md`
 
-**AD-023 — Phase 3's `no-unnecessary-condition` sites in `server/src` were
-all "type is lying," never "guard is dead," and the importer refactor was
-proven byte-identical over the real corpus rather than trusted on its unit
-tests.** (2026-08-31, `archive/2026-08-31-019-lint-phase3-server/`, all 11
-steps) `server/src` 41 → 0; repo-wide 254 → 0 across all four phases. All
-four `no-unnecessary-condition` violations were fixed by narrowing types
-(three `req.body` casts, one array-index chain `noUncheckedIndexedAccess`
-being off types as always-present), never by deleting a guard.
-`import/transform.ts`'s complexity fix (`walk` split into
-`buildNote`/`buildCard`) was verified by negative-controlled differential
-testing over the real 3,638-card corpus, not by its 9 unit tests alone.
+**AD-023 — Phase 3's `no-unnecessary-condition` sites in `server/src` were all "type is lying," never "guard is dead," and the importer refactor was proven byte-identical over the real corpus rather than trusted on its unit tests.** → moved to `STATE-ARCHIVE.md`
 
-**AD-024 — Day numbers are local calendar days from the study day of
-`created`, and the one-day reinterpretation of persisted values was accepted
-rather than migrated.** (2026-09-01, `specs/archive/2026-09-02-010-day-rollover-anchoring`, all 8 steps)
-`todayNumber` no longer subtracts `collection.created` as a raw epoch instant —
-that anchored the daily rollover to `created`'s *time of day* (14:20:35 local
-on the live store) instead of `dayCutoffHour`:00, which is why the daily
-new-card allowance would not renew. It is now
-`studyDayIndex(now) - studyDayIndex(created)`, where `studyDayIndex` shifts by
-local **wall-clock** hours and reads the resulting calendar date, so day 0 is
-the study day containing `created` and the boundary is exactly
-`dayCutoffHour`:00 on every date, DST included. Three consequences worth
-keeping: (1) **nothing on disk was rewritten** — no `card.due`, no
-`collection.created`, no migration, no schema bump; the correction is purely a
-change in where the boundaries fall, and the resulting <=1-day reinterpretation
-of persisted values is the accepted cost. Adding an origin offset to keep
-today's integer stable was explicitly rejected, since that would preserve the
-stale `deck.daily.day` match and leave the bug unfixed. (2) The two schemes
-differ **only** inside a daily window from `dayCutoffHour`:00 to `created`'s
-time-of-day (04:00:00-14:20:35 here); outside it they are equal, so the whole
-transition is a no-op unless the app is first opened inside that window.
-Measured on the live store at the time of the change: day 68 -> 69, one deck's
-`daily {day: 68, newStudied: 20}` tally discarded (the fix), 84 of 611 review
-cards surfacing early once, and one extra `unburyForNewDay` pass over 78
-`schedBuried` cards. (3) `heatDateKey` was deliberately **not** touched — it
-shifts by absolute hours, so over all of 2026 the two place their boundaries
-differently on exactly 4 minutes, all on the two DST-transition days. That
-divergence is documented in the code and in `scheduling-domain`; consolidating
-the two schemes behind one helper is left as a separate task. This closes the
-work 007 deferred (its Open question 1 and its non-goal "changing `todayNumber`
-itself"). See **L-018**.
+**AD-024 — Day numbers are local calendar days from the study day of `created`, and the one-day reinterpretation of persisted values was accepted rather than migrated.** → moved to `STATE-ARCHIVE.md`
 
 **AD-025 — Fly is the source of truth for scheduling state; the repo is a
 lagging replica.** (2026-09-17, `archive/2026-09-17-021-fly-deploy` D0) Once Fly writes to its own
@@ -234,6 +195,44 @@ an empty volume; it is passed transiently via `fly deploy --env` and **must
 never be committed to `fly.toml`**, which would permanently disarm the guard.
 Every throw names the absolute path *and* the literal `ALLOW_EMPTY_STORE`, so
 the operator learns the escape hatch from the failure itself.
+
+**AD-027 — Retention is three layers with different depths; the 6-hour cron
+interval *is* the loss window.** (2026-09-17, `022-backup-and-restore` D5/D6,
+Steps 7/8/16) Cadence and retention are the same question, so they get one
+answer. `backup.yml` runs `0 */6 * * *`, so **a total Fly loss costs at most
+~6 hours of reviews** (plus GitHub cron's best-effort lateness). Measured
+against real volume — 30 active study days in the 73 from 2026-07-06, median
+118 reviews on an active day, max 263 — that ceiling is a fraction of one
+session, where a 24-hour window would have admitted a whole one. Which layer
+answers which failure:
+
+| Layer | Depth | Survives losing Fly? | Answers |
+|---|---|---|---|
+| **git history** (the backup commits) | unbounded — every commit ever | **yes** — the only layer that does | deep rollback; a bad write that was faithfully backed up |
+| **Fly volume snapshots** | ≤ **5 days** (`Snapshot retention: 5`) | **no** — lives on Fly | fast rollback, cheap and quick |
+| the volume itself | none — it is the live writer | no | *nothing*; it is not a backup |
+
+Snapshots were measured, not assumed: zero existed at Step 16 (volume 19h
+old); the first appeared 2026-09-17. So the roadmap's "snapshots remain
+unconfigured" was wrong on configuration and, until then, right on outcome.
+They never satisfy "at least one copy off Fly" — they do not survive losing
+the account, a billing termination, or an org-wide mistake.
+
+**Two silent-failure modes are accepted and made visible, not engineered
+away** (D6). (1) GitHub auto-disables scheduled workflows after **60 days of
+repository inactivity** — which interacts with A3, because no-op runs
+deliberately commit nothing, so a study break longer than 60 days with no
+other push could disable the backup. GitHub emails the repository owner when
+it does; **that email is the designated signal**, so it must not be filtered.
+(2) The **Fly token expires** — the default is 175,200h (20 years), and a
+deliberately shorter expiry shrinks the leak window but guarantees an
+eventual silent stop. The token's dates are queried from Fly, never recorded
+here (D7), because a written-down expiry drifts. Neither mode is detected by
+the workflow itself: a backup that has stopped running produces no failure
+notification, only an absence.
+
+**What no cadence fixes:** a review lost *in flight* never reaches Fly, so no
+backup interval recovers it — Phase 3's residual risk.
 
 ## Blockers
 
@@ -289,3 +288,4 @@ the operator learns the escape hatch from the failure itself.
 | 2026-09-01 | `SessionEnd` hook + `session_report.py --append-log`: record token metrics per session | Small, tooling. Transcripts are deleted after `cleanupPeriodDays` (30 by default), so every measurement behind L-017 and `specs/SESSION-HYGIENE.md` is unreproducible next month — the log is the durable half. The hook (in **`.claude/settings.local.json`**, gitignored: personal telemetry, not a project contract like the delegation hooks in `settings.json`) pipes `session_id` into the tool and appends one compact JSON row to `~/.claude/token-logs/spanish-srs.ndjson`. Runs outside the model's context, so it costs **zero tokens**. Rows carry *ratios* (`fat_payload_share`, `batch_rate`) not just raw sizes, because raw size tracks task length and is not comparable across sessions. `--append-log` is idempotent (skips a session already logged at that turn count) and exits 0 with no output when nothing matches, so the same command doubles as a backfill — necessary because `SessionEnd` only fires on a clean exit, and a killed terminal writes nothing. Backfilled 35 existing sessions. **CI was considered and rejected:** transcripts live in `~/.claude/projects/`, never in the repo, so CI structurally cannot see them, and token spend is a property of how work was done rather than of the diff — there is no gate worth writing. **Open:** `tools/session_report.py` still has no regression matrix, unlike `state_rotate.py` and `archive_spec.py`; three attribution traps were found in it by hand, which is the argument for one. |
 | 2026-09-01 | Deduplicated `L-017` in this file's `## Lessons` list | Small, noticed while running `specs/archive/2026-09-02-010-day-rollover-anchoring` and logged as a `## Discovered` note rather than fixed inline. The headline was listed twice, verbatim. It got resolved as a side effect of adding **L-018**: the second copy was the line replaced, so the list went 18 headlines / 18 bodies instead of gaining a 19th duplicate row. Recording it here rather than claiming it is still open. No `LESSONS.md` change — there was only ever one L-017 body, which is why the push gate (headline/body pairing) never caught the duplicate: it checks that every headline has a body, not that every headline appears once. |
 | 2026-09-17 | Added `format-check` + `eslint-check` as local `pre-push` hooks | Small. PR #22's CI `lint` job failed on `npm run lint:ci` for the second time — prompted by the user noticing it in the Actions log. `.pre-commit-config.yaml` had only ever run `clean-table-check`; added two more local hooks at the same `pre-push` stage running `npm run format:check` and `npm run lint:ci`, reinstalled via `pre-commit install --hook-type pre-push --overwrite`. Turning the hook on immediately failed on 12 pre-existing ESLint errors already committed on this branch (`server/src/store/file-store.flush.test.ts`: 3× `no-unsafe-member-access` on `JSON.parse(...)[0].reps`, fixed with a `Card[]` cast; `server/src/store/sentinel.test.ts`: 9× `no-confusing-void-expression`, fixed via `eslint --fix` then `prettier --write` to reconcile brace style) — user chose to fix rather than defer. All 8 affected tests still pass; `pre-commit run --hook-stage pre-push --all-files` is green. See **L-023**. |
+| 2026-09-18 | **Open:** four stale worktrees under `.claude/worktrees/`, at least two on merged branches | Noticed while running spec 022 Step 17 and deliberately not fixed inline (scope discipline). `git worktree list` shows `backlog+subagent-commit-delegation`, `lint-phase4-full-gate` (on the archive-spec-script branch, merged as PR #19), `redo-011-analysis`, and `spec-010-day-rollover` (merged as PR #21). CLAUDE.md's rule is that a worktree dies with its branch: `git worktree remove` then `git branch -d` — never `rm -rf`, which strands `.git/worktrees/<name>/` and a phantom row until someone prunes. `-d` not `-D`, so git refuses any that turn out unmerged. Check `git diff --cached --quiet` in each before touching it (AD-017, L-010). They also inflate every repo-wide search — this task's own roadmap lookup returned 13 hits, 9 of them worktree copies. Small. |

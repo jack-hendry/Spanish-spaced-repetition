@@ -183,15 +183,21 @@ single copy on a single host: it is not a backup.
 **What Phase 2 still needs after Phase 1** — Phase 1 built the *mechanism* but
 not the *policy*:
 
-- The pull is **manual**; nothing schedules it. Until something does, the
-  off-Fly copy is only as fresh as the last time someone remembered.
+- ~~The pull is **manual**; nothing schedules it.~~ **Done 2026-09-17
+  (spec 022):** `.github/workflows/backup.yml` runs it every 6 hours.
 - **`push-fly-state.sh` has never run against production.** It is dry-run
   tested and was exercised on a scratch round-trip in Step 18, but the planned
   post-phone-test restore was dropped once those reviews became real study. The
   restore path is proven at scratch scale, not at production scale.
 - Retention is undecided: pulls overwrite the same seven files, so history
   depends entirely on how often someone commits them.
-- Fly volume snapshots remain unconfigured.
+- ~~Fly volume snapshots remain unconfigured.~~ **Corrected 2026-09-17 by
+  measurement (spec 022 Step 16):** they were already configured
+  (`Scheduled snapshots: true`, `Snapshot retention: 5`) but had produced
+  *nothing* — wrong on configuration, right on outcome. The first snapshot
+  (`vs_yeo71KGwpvPXTKZ25653LKp7`, 345 MiB) appeared 2026-09-17. They are a
+  ≤5-day fast-rollback layer that lives on Fly, so they never satisfy the
+  "at least one copy off Fly" non-negotiable.
 - [ ] Back up the *state*, not the media — `cards.json`, `notes.json`,
       `decks.json`, `collection.json`, `deckoptions.json`, `revlog.ndjson`.
       Media is 250MB and regenerable from the converter; state is 5MB and is
@@ -199,9 +205,21 @@ not the *policy*:
 - [ ] Confirm the **restore path** works end to end, not just that a backup
       file exists. An untested backup is a guess. Restore into a scratch
       `DATA_DIR` and study one card against it.
-- [ ] Decide a retention window (how far back can we roll a bad state?) and
+- [x] Decide a retention window (how far back can we roll a bad state?) and
       write it down — a corrupting write that gets faithfully backed up needs
       an older copy to escape to.
+      - ✅ **DECIDED 2026-09-17: three layers, and the cron interval *is* the
+        loss window** (`specs/STATE.md` **AD-027**, spec 022 D5/D6).
+        `backup.yml` runs `0 */6 * * *`, so **a total Fly loss costs at most
+        ~6 hours of reviews** — against measured volume (30 active days in 73,
+        median 118 reviews per active day, max 263) that is a fraction of one
+        session. Depth by layer: **git history** = deep rollback, unbounded,
+        and the only layer that survives losing Fly; **Fly volume snapshots**
+        = fast rollback, ≤ 5 days, **on-Fly only**; the **volume itself** is
+        live state, not a backup. Two silent-failure modes are accepted and
+        made visible rather than engineered away: GitHub auto-disabling the
+        schedule after 60 days of repository inactivity (its email is the
+        designated signal), and Fly token expiry.
 - [ ] Note the safety net that already exists: `revlog.ndjson` is append-only
       and holds every review ever answered, so a damaged `cards.json` is in
       principle rebuildable from it. Nothing does that today — worth a

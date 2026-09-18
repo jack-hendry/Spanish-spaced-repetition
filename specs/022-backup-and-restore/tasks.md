@@ -1056,7 +1056,61 @@ phone session would.)
 
 **Model:** haiku
 
-**Status:** not started
+**Status:** ✅ **done** (2026-09-18). Both `Done when` criteria met. The user
+studied one card on production; evidence gathered by pulling Fly into a
+**scratch dir**, never `data/spanish/` — the change still has to arrive through
+the workflow, which is the point of item 3.
+
+**Fly now differs from the repo — by observation, not assumption.** Four of the
+seven state files changed: `collection.json`, `decks.json`, `cards.json`,
+`revlog.ndjson`. (`notetypes.json`, `deckoptions.json`, `notes.json` unchanged,
+as expected — studying touches scheduling state, not content.)
+
+**The card**, `c4790e58d12743a16-1`, revlog entry `1789726933944` =
+2026-09-18 10:22:13 UTC, rating **3** ("Good"), `type: review`:
+
+| Field | Before (repo) | After (Fly) |
+|---|---|---|
+| `queue` / `type` | `review` / `review` | unchanged |
+| `due` | `73` (day number) | **`89`** |
+| `interval` | `1` (day) | **`3`** |
+| `reps` | `2` | **`3`** |
+| `lapses` | `0` | `0` |
+| `ease` | `2500` (permille) | `2500` — unchanged, correct for "Good" |
+| `stability` / `difficulty` | `null` / `null` | unchanged — SM-2 deck, FSRS never scheduled it |
+
+**The `due` jump was checked, not accepted.** The executing subagent first
+reported +16 as "consistent with the interval increase" of +2 — which is not an
+explanation, it is two numbers that disagree. Re-derived against
+`scheduling-domain`: `due` on a `review` card is a **day number**, and
+`collection.created` = 1782310835661 with `dayCutoffHour` = 4 puts today at day
+**86**. So `86 + 3 = 89` ✅ — the invariant holds. The +16 decomposes as **13
+days overdue** (86 − 73) **+ 3 days of new interval**; the card's overdue status
+dominates, and interval growth contributes only 3 of the 16. A day-number bug is
+silent (AD-003), so this is exactly the arithmetic that has to be re-derived
+rather than nodded through.
+
+**⚠️ Finding — the broken cron had a measured cost, and it is not zero.** Eight
+revlog entries were appended, not one. All eight **postdate the last successful
+backup** (2026-09-17 21:14:55 UTC), so none of them had ever been backed up.
+They cluster into three study sessions:
+
+| Session | When (UTC) | Entries |
+|---|---|---|
+| 1 | 2026-09-17 21:29–21:31 | 3 × `relearn` |
+| 2 | 2026-09-18 00:33 | 1 × `relearn` |
+| 3 | 2026-09-18 10:21–10:22 | 3 × `relearn` + the `review` above |
+
+Only session 3 is this step's deliberate change; sessions 1 and 2 are **real
+study that the failed scheduled runs silently left unprotected**. This is the
+concrete answer to "what did the `fly: command not found` outage actually cost"
+— 8 reviews across ~13 hours, recoverable only because the volume survived.
+It also shows the outage's shape: the workflow failed *loudly* in the Actions
+tab and *silently* everywhere the user would have looked. See Step 19's lesson.
+
+**Ordering held:** this step ran after Step 8 (which needed repo == Fly) and
+before the next scheduled run, so that run carries a genuine bot commit and
+makes **A2** and **Step 11** reachable.
 
 **Depends on:** Step 8 — and **must not run before it**. Step 8 needs the
 repo to equal Fly; this step deliberately breaks that equality. Order is
@@ -1800,7 +1854,42 @@ side effect. Hence a named decision point, and hence ⚠️ USER.
 
 **Model:** top-level
 
-**Status:** not started
+**Status:** ✅ **done** (2026-09-18).
+
+- **`AD-027`** written to `specs/STATE.md`, dated, with the reasoning and
+  not just the number: the three layers and their differing depths (git
+  history = unbounded and the only layer surviving a Fly loss; snapshots =
+  ≤5 days, on-Fly only; the volume = live state, not a backup), the measured
+  volume that makes ~6h a defensible ceiling, and D6's two silent-failure
+  modes with the signal that surfaces each.
+- **`specs/011-mobile-remote-access/ROADMAP.md` Phase 2** states the same
+  window. Three bullets updated: the retention bullet ticked with the
+  decision, the now-false "the pull is **manual**" struck, and
+  "Fly volume snapshots remain unconfigured" corrected.
+- **Step 6's cron comment** now names the interval *as* the loss figure and
+  points at both documents, so changing `0 */6 * * *` cannot silently
+  desynchronise the policy from the schedule.
+
+**Live correction to Step 16, found while gathering inputs.** Step 16 recorded
+**zero snapshots** (volume 19h old). Re-measured today, one now exists:
+
+```
+$ fly volumes snapshots list vol_vjyq28pjgdn335xv --app spanish-srs
+ vs_yeo71KGwpvPXTKZ25653LKp7 │ created │ 345 MiB │ 1.0 GiB │ 14 hours ago │ 5
+```
+
+The scheduled snapshot job does fire; Step 16's finding was a true observation
+of a volume too young to have been snapshotted, not a broken config. The
+≤5-day fast-rollback layer is therefore real rather than theoretical — but
+A8's conclusion is unchanged, because it still lives entirely on Fly.
+
+**Budget consequence, exactly as Step 16b predicted.** `AD-027` is ~38 lines,
+not the estimated 14 — the layer table and D6 both earn their space, and 16b
+forbids compressing an `AD` to dodge a gate. `specs/STATE.md` is now **329
+lines against the 300 budget**, and `--apply` is no longer a no-op: it offers
+`AD-023` (11 lines) and `AD-024` (30) for **39 lines freed → 290**, leaving
+~10 for Step 19's `L-NNN` headlines. The ⚠️ USER rotation is now genuinely
+actionable and must run before Step 19's push.
 
 **Depends on:** Steps 7, 8, 16 — the policy must describe what was built.
 
@@ -1889,6 +1978,26 @@ Tasks row in `STATE.md`.
 **Model:** top-level
 
 **Status:** not started
+
+> ⚠️ **MUST VERIFY BEFORE CLOSING — temporary cron deviation (2026-09-18, user
+> decision).** `.github/workflows/backup.yml` was dropped from `0 */6 * * *` to
+> `*/30 * * * *` to shorten Step 10's feedback loop: every scheduled run had
+> failed, and at 6h each fix-test iteration costs six hours. **Step 19 does not
+> pass until that line reads `0 */6 * * *` again on `main`.**
+>
+> Why the revert is safe rather than a fresh risk: `0 */6 * * *` is already
+> proven to *fire* (2026-09-18T00:43Z and 06:27Z); both failed **inside the
+> job** at `fly: command not found`, never at the trigger. Switching back
+> therefore exercises nothing untested.
+>
+> While the deviation is live, **`AD-027`'s stated ~6h loss window is wrong in
+> the safe direction** — the real window is 30 minutes, so no one is misled into
+> believing they are better protected than they are. No `AD-027` edit is
+> warranted for a deliberately temporary state; reverting the cron makes the
+> document true again. If the deviation ever becomes permanent, `AD-027`,
+> `ROADMAP.md` Phase 2 and the cron comment all change together — and the cost
+> changes with it: `*/30` is ~1,440 GitHub Actions min/month, **72% of the
+> 2,000-minute free allowance for a private repo**, against ~240 at 6h.
 
 **Depends on:** all previous steps.
 

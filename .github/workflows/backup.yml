@@ -8,7 +8,23 @@ on:
     # Every 6 hours at UTC 00/06/12/18 = Toronto 20:00/02:00/08:00/14:00 (offset -4/-5)
     # GitHub cron is best-effort and can run late under load; this is a ceiling on
     # scheduling frequency, not a guarantee of punctuality.
-    - cron: '0 */6 * * *'
+    #
+    # This interval IS the retention policy's loss figure: a total Fly loss costs
+    # at most ~6h of reviews. Changing it changes the documented window, so change
+    # specs/STATE.md AD-027 and ROADMAP.md Phase 2 with it.
+    #
+    # >>> TEMPORARY DEVIATION 2026-09-18 -- REVERT TO '0 */6 * * *' <<<
+    # Dropped to every 30 minutes ONLY to shorten the feedback loop while
+    # proving A1 (spec 022 Step 10 needs a successful event=="schedule" run,
+    # and a dispatched run may not be substituted). Every prior scheduled run
+    # failed, so at 6h each fix-test iteration costs six hours.
+    # Safe to revert: '0 */6 * * *' is already proven to FIRE -- it fired at
+    # 2026-09-18T00:43Z and 06:27Z; those runs failed inside the job (fly not
+    # on PATH), never at the trigger. So switching back exercises nothing new.
+    # While this is in effect AD-027's stated 6h loss window is wrong in the
+    # SAFE direction (actual window is smaller than documented).
+    # Step 19 must verify this line is back to '0 */6 * * *'.
+    - cron: '*/30 * * * *'
   workflow_dispatch:
 
 jobs:
