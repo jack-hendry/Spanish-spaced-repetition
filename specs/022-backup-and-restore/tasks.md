@@ -1800,7 +1800,42 @@ side effect. Hence a named decision point, and hence ⚠️ USER.
 
 **Model:** top-level
 
-**Status:** not started
+**Status:** ✅ **done** (2026-09-18).
+
+- **`AD-027`** written to `specs/STATE.md`, dated, with the reasoning and
+  not just the number: the three layers and their differing depths (git
+  history = unbounded and the only layer surviving a Fly loss; snapshots =
+  ≤5 days, on-Fly only; the volume = live state, not a backup), the measured
+  volume that makes ~6h a defensible ceiling, and D6's two silent-failure
+  modes with the signal that surfaces each.
+- **`specs/011-mobile-remote-access/ROADMAP.md` Phase 2** states the same
+  window. Three bullets updated: the retention bullet ticked with the
+  decision, the now-false "the pull is **manual**" struck, and
+  "Fly volume snapshots remain unconfigured" corrected.
+- **Step 6's cron comment** now names the interval *as* the loss figure and
+  points at both documents, so changing `0 */6 * * *` cannot silently
+  desynchronise the policy from the schedule.
+
+**Live correction to Step 16, found while gathering inputs.** Step 16 recorded
+**zero snapshots** (volume 19h old). Re-measured today, one now exists:
+
+```
+$ fly volumes snapshots list vol_vjyq28pjgdn335xv --app spanish-srs
+ vs_yeo71KGwpvPXTKZ25653LKp7 │ created │ 345 MiB │ 1.0 GiB │ 14 hours ago │ 5
+```
+
+The scheduled snapshot job does fire; Step 16's finding was a true observation
+of a volume too young to have been snapshotted, not a broken config. The
+≤5-day fast-rollback layer is therefore real rather than theoretical — but
+A8's conclusion is unchanged, because it still lives entirely on Fly.
+
+**Budget consequence, exactly as Step 16b predicted.** `AD-027` is ~38 lines,
+not the estimated 14 — the layer table and D6 both earn their space, and 16b
+forbids compressing an `AD` to dodge a gate. `specs/STATE.md` is now **329
+lines against the 300 budget**, and `--apply` is no longer a no-op: it offers
+`AD-023` (11 lines) and `AD-024` (30) for **39 lines freed → 290**, leaving
+~10 for Step 19's `L-NNN` headlines. The ⚠️ USER rotation is now genuinely
+actionable and must run before Step 19's push.
 
 **Depends on:** Steps 7, 8, 16 — the policy must describe what was built.
 

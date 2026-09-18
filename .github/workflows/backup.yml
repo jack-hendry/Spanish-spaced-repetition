@@ -8,6 +8,10 @@ on:
     # Every 6 hours at UTC 00/06/12/18 = Toronto 20:00/02:00/08:00/14:00 (offset -4/-5)
     # GitHub cron is best-effort and can run late under load; this is a ceiling on
     # scheduling frequency, not a guarantee of punctuality.
+    #
+    # This interval IS the retention policy's loss figure: a total Fly loss costs
+    # at most ~6h of reviews. Changing it changes the documented window, so change
+    # specs/STATE.md AD-027 and ROADMAP.md Phase 2 with it.
     - cron: '0 */6 * * *'
   workflow_dispatch:
 
