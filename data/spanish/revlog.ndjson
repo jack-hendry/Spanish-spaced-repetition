@@ -3921,3 +3921,8 @@
 {"id":"r1789726905534-8ss5kr","cardId":"c084430f35e7052dd-1","reviewedAt":1789726905534,"button":3,"type":"relearn","interval":1,"lastInterval":1,"factorOrStability":1900,"timeMs":14292}
 {"id":"r1789726924286-x0syk8","cardId":"ca3312a38f59cf352-1","reviewedAt":1789726924286,"button":3,"type":"relearn","interval":1,"lastInterval":1,"factorOrStability":2100,"timeMs":18459}
 {"id":"r1789726933944-abauz4","cardId":"c4790e58d12743a16-1","reviewedAt":1789726933944,"button":3,"type":"review","interval":3,"lastInterval":1,"factorOrStability":2500,"timeMs":9374}
+{"id":"r1789763456730-9sxiz1","cardId":"ccfebd21da39cabb1-0","reviewedAt":1789763456730,"button":3,"type":"relearn","interval":1,"lastInterval":1,"factorOrStability":2100,"timeMs":8912}
+{"id":"r1789763491812-cmbpsv","cardId":"ca5a150488dcdfde3-0","reviewedAt":1789763491812,"button":3,"type":"relearn","interval":1,"lastInterval":1,"factorOrStability":2150,"timeMs":35071}
+{"id":"r1789763508337-fjch3z","cardId":"c9ee0fe1988042ebe-0","reviewedAt":1789763508337,"button":3,"type":"relearn","interval":1,"lastInterval":1,"factorOrStability":2300,"timeMs":16516}
+{"id":"r1789763522065-kc7mf5","cardId":"cb01ecc63e4ee8181-0","reviewedAt":1789763522065,"button":3,"type":"review","interval":9,"lastInterval":5,"factorOrStability":1800,"timeMs":13720}
+{"id":"r1789763535961-mq4bp1","cardId":"c54848a0cbb9b8ca5-0","reviewedAt":1789763535961,"button":3,"type":"review","interval":21,"lastInterval":9,"factorOrStability":2350,"timeMs":13889}
