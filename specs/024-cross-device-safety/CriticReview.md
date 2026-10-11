@@ -261,3 +261,166 @@ A1 as the manual acceptance; make A2 a property of the automated test.
 8. **Add to scope** — a conflict counter (C-8).
 9. **Note** — revlog-id set completeness is now a correctness input (C-6), and
    the resolver must not trust `load()` to have reloaded (C-2 / L-028).
+
+---
+
+# Critic review — round 2 (against `tasks.md`)
+
+Run 2026-10-11, top-level. Harden round 2 of 2 (Large). Same discipline as
+round 1: every assumed signature, file path and grep count below was checked by
+opening the file or running the command. Round 1's nine required changes are all
+present in `Analyst.md`; this round reviews the **13-step plan** built from it.
+
+Verdict: **the sequence is sound and every step ends at a green build, but eight
+defects in the step text would each have cost a run.** R-1, R-2 and R-8 are
+the ones that break a step outright; R-6 is a regression the plan would have
+*introduced*.
+
+## R-1 — BLOCKING. Step 8's handler registration references a variable that does not exist.
+
+As written:
+
+```ts
+outbox.setConflictHandler(op => this.resolve(op, body));
+```
+
+`body` is not in scope in that lambda — it is a parameter of the handler, which
+the arrow function never declares. The step's own `ConflictHandler` type (Step 7)
+is `(op: OutboxOp, body: unknown) => Promise<ConflictOutcome>`, so this does not
+compile. Must be:
+
+```ts
+outbox.setConflictHandler((op, body) => this.resolve(op, body));
+```
+
+Exactly the class of defect round 1's charter names: a plan can be perfectly
+self-consistent and still not compile.
+
+## R-2 — BLOCKING. Step 7's restore would set the `conflicts` signal to `undefined`.
+
+`parseState` ends with `JSON.parse(JSON.stringify(obj))` — it deep-copies the
+**stored** object wholesale rather than building a known shape
+(`outbox-ops.ts`). So for every client whose `localStorage` predates this spec,
+the parsed state has **no `conflicts` key at all**, and
+`this.conflicts.set(state.conflicts)` sets a signal typed `OutboxOp[]` to
+`undefined`. Every later `.length` read throws, inside the constructor, on app
+boot — for exactly the users who have queued reviews.
+
+Two fixes, both required: `parseState` must *write* the defaulted key
+(`obj['conflicts'] = Array.isArray(obj['conflicts']) ? obj['conflicts'] : []`
+before the deep copy), **and** the constructor must still read
+`state.conflicts ?? []` as a belt-and-braces guard. Step 7's instruction to
+"treat a missing `conflicts` array as `[]`" is correct in intent and
+unimplementable as phrased.
+
+The step's identification of the version-bump trap is right and is the more
+dangerous half: bumping to `version: 2` would route every existing state through
+`EMPTY_STATE` and **silently discard queued reviews**. Keep that warning.
+
+## R-3 — A wrong `Done when` count fails a correct implementation.
+
+Step 6 asserts `grep -c "expectedRev" review.ts` returns `3`. The step's own
+`Do` adds exactly two lines containing the token (the `const` and the body
+property). `grep -c` counts matching **lines**, so a correct implementation
+returns `2` and the step reports failure. Changed to `2`.
+
+Step 7's "`grep -c "version: 1"` is unchanged from before the step" is not a
+command with a checkable answer. It is `1` today; say `1`.
+
+## R-4 — Step 8 calls `optionsFor` with the wrong argument type.
+
+Verified: `optionsFor(deck: Deck): DeckOptions | undefined`
+(`collection.store.ts:219`) takes a **`Deck`**, not a deck id, and
+`deckById(id)` (line 215) is the lookup. The step says "resolve options via
+`store.optionsFor(deck) ?? store.defaultDeckOptions()` for the server card's
+`deckId`", which reads as if a `deckId` can be passed. Spell out the two-step
+lookup, including the `deckById` miss returning `unresolved`.
+
+## R-5 — Step 3's falsifiability instruction risks the work it is checking.
+
+`git stash` over a single path, with a brand-new untracked test file in the
+tree, is fiddly and can lose the test. Replace with: comment out the
+precondition block, run the single test, see it fail, uncomment. Same evidence,
+no stash.
+
+## R-6 — REGRESSION the plan would have introduced. Step 10 makes the tab permanently un-closable.
+
+`onBeforeUnload` fires whenever the banner has text:
+
+```ts
+// app.ts:128-133
+onBeforeUnload(event: BeforeUnloadEvent): void {
+  if (this.outboxBannerText() !== null) event.preventDefault();
+}
+```
+
+Step 10 adds a conflict branch to `outboxBannerText`, and a parked conflict is
+**never auto-deleted** by design. So after a single unmergeable conflict the
+user gets a "leave site?" prompt on every tab close, forever, with no way to
+clear it — a worse outcome than the problem being solved.
+
+Fix: the unload guard must key on genuinely unsent work, not on "the banner says
+something". Step 10 must change `onBeforeUnload` to read
+`pendingCount() > 0 || failed().length > 0` and **exclude** `conflicts`. Note
+the pre-existing `failed` behaviour is deliberately left as-is (a poisoned op
+blocking close is 023's existing choice, in no step's scope here) — this is only
+about not extending it to conflicts.
+
+## R-7 — Step 9's dev-server check cannot see a DI cycle the build already rejects.
+
+Minor, but worth stating so the step is not read as stronger than it is: an
+Angular cyclic dependency between two `providedIn: 'root'` services surfaces at
+**injection** time, and `ConflictResolver` is only injected once `App`
+instantiates it (Step 8). So Step 9's "load the app, confirm no cycle warning"
+genuinely does test something — good — but the `grep` for `collection.store` in
+`outbox.service.ts` is the load-bearing check, because a cycle introduced
+through a *type-only* import would not fail at runtime at all. Keep both, and
+say which one is authoritative.
+
+## R-8 — BLOCKING for the executor. Steps 11 and 12 have no `Model:`-legal fallback if the user is unavailable.
+
+Both are `Model: top-level` and require the **user** to drive two browser
+profiles / a phone. That is correct — 023's retrospective says its equivalent
+step should have been `top-level` + user "from the start". But neither step says
+what to do if the user is not present, and a `tasks.md` run that reaches Step 11
+unattended will either stall silently or improvise automation that 023 already
+proved cannot drive it.
+
+Add to both: if the user is not available, mark the step `in progress`, report
+that the run is paused pending manual verification, and **stop** — do not
+attempt browser automation, and do not proceed to the next step. Steps 11 and 12
+are the only two steps in this plan that cannot be completed by an agent alone,
+so saying so is cheap and prevents the failure mode.
+
+## Also checked and found correct (no change needed)
+
+- `RATINGS[button - 1]` is a safe reverse mapping for **both** schedulers:
+  `RATING_BUTTON` is `{again:1,hard:2,good:3,easy:4}` (`types.ts:7-12`) and
+  `fsrs.ts:21` is literally `const GRADE = RATING_BUTTON`.
+- `todayNumber(collection, now)` takes an explicit instant
+  (`collection.store.ts:51`), so D10 is implementable as written.
+- `schedulerFor` is imported in `review.ts` from
+  `../../core/scheduling/scheduler-factory` (line 17) and `Card` is already
+  imported (line 16), so Step 6 adds no new import.
+- All three spec files Steps 5, 6 and 10 modify exist
+  (`collection.store.spec.ts`, `review.spec.ts`, `app.spec.ts`).
+- `web/src/app/core/models/index.ts` is a single file holding the mirror, so
+  Step 1's two-file edit is right.
+- `revlogIds` is a private `Set<string>` with no public accessor
+  (`file-store.ts:71`), so Step 2 genuinely must add `hasRevlogId`.
+- Step 3's `rev: revlog?.id ?? cards[idx].rev` reads the old value correctly —
+  the RHS is evaluated before the assignment.
+- Every step carries `Model:` and `Status:`, and the gate command in
+  `specs/TEMPLATE.md` passes (13 steps, 13 of each).
+- No two steps share a file *and* lack a `Depends on` link, so nothing here is
+  accidentally parallelisable in a way the ordering rules would miss.
+
+## One standing rule to add to the preamble
+
+023's Step 12 found that a `tasks.md` step pinning an exact code shape can be
+invalidated by a lint rule the planner never ran (`require-await` forced four
+methods from `async` to sync `void`; the deprecated `e.returnValue` was
+replaced by `preventDefault()`). Step 5 prescribes turning `load()` from `async`
+into a promise-returning method, which is exactly the shape that could trip such
+a rule. The preamble should say: if a lint rule rejects a prescribed shape,
+**report it and stop** — do not silently redesign, and do not disable the rule.
