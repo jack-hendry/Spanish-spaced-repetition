@@ -82,26 +82,9 @@ code keeps the decision, nobody keeps the reason. So, in order:
 
 **AD-004 — Dispatch on `card.type`, never `card.queue`.** → moved to `STATE-ARCHIVE.md`
 
-**AD-005 — Pause shifts `due` once on resume, and resume writes cards before
-clearing `pausedAt`.** (back-filled 2026-08-26, `archive/2026-07-09-006-…`)
-FSRS derives elapsed time as `ctx.today - (card.due - card.interval)`, so
-shifting `due` forward by the paused duration makes elapsed-time math, interval
-spacing and FSRS decay all come out right with **zero** changes to
-`todayNumber()`, `ReviewContext`, or anything under `core/scheduling/` — no
-"second clock". `POST /api/collection/resume` writes the card updates first and
-clears `pausedAt` second, because that is the recoverable failure direction: a
-crash between the two leaves `pausedAt` set with cards already shifted, and the
-client retries from the same unchanged `pausedAt`. Payloads carry absolute
-`due` values, not deltas, so re-applying converges. The reverse order looks
-resumed with cards unshifted and leaves no signal to retry — explicitly
-forbidden.
+**AD-005 — Pause shifts `due` once on resume, and resume writes cards before clearing `pausedAt`.** → moved to `STATE-ARCHIVE.md`
 
-**AD-006 — Deck colours derive from a deck-name hash and are never persisted.**
-(back-filled 2026-08-26, `archive/2026-07-07-003-…` Q3) `deckColor(name)` is a
-djb2 hash → `hsl(hue, 65%, 55%)` in `web/src/app/core/deck-color.ts`. Adding a
-`color` field to `Deck` would have been an on-disk shape change (and therefore
-a server change) for a purely presentational affordance. Deterministic per name
-is enough; the cost is that renaming a deck recolours it.
+**AD-006 — Deck colours derive from a deck-name hash and are never persisted.** → moved to `STATE-ARCHIVE.md`
 
 **AD-007 — `todayNumber` may be changed by 010, and its ≤1-day transition is accepted, never migrated.** → moved to `STATE-ARCHIVE.md`
 
@@ -236,6 +219,22 @@ it from `this`) that silently rejected the promise `Review.init()`
 unconditionally awaited. Neither was caught by the existing test suite because
 every mocked error used a plain object for `headers`, never a real
 `HttpHeaders` instance — see L-029.
+
+**AD-030 — Phase 4's staleness token is an explicit `card.rev` (the
+`RevlogEntry.id` that produced the state), not `card.modified` and not a
+collection-level generation token.** (`specs/024-cross-device-safety`, D1/D2,
+2026-10-11)
+`card.modified` is unusable, not merely divergent: both schedulers return
+`{ ...card, modified: ctx.now }` — a *client* clock the server never sees — so a
+naive precondition false-conflicts on every learning step. A collection-level
+token would invalidate every queued phone op on any desktop write, rejecting
+the normal *sequential* session constantly. `RevlogEntry.id` is already
+client-minted, unique and the server's dedupe key, so precondition value and
+dedupe key coincide by construction. Dedupe runs strictly **before** the
+precondition and a replay must **not** re-write the card, or Phase 3's
+retry-forever contract breaks and a replay clobbers a newer review. A 409 is
+resolved per *snapshot* (reload once, re-apply the rating), never per op: a 409
+is not 2xx, so per-op retries would spend the tier-1 20-failure budget.
 
 ## Blockers
 

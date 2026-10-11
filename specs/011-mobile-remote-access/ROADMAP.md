@@ -325,9 +325,25 @@ wholesale with the client's copy, with no version check — so the stale
 device silently overwrites newer scheduling state. Detection is cheap;
 silent loss is not acceptable.
 
-- [ ] Add a staleness precondition (per-card `modified`, or a
-      collection-level generation token) so a stale write is **rejected**
-      rather than applied.
+**In planning 2026-10-11** — `specs/024-cross-device-safety/` (`Analyst.md` +
+harden round 1 done; `tasks.md` awaits the human review of the one open
+question, re-apply vs. warn-only). Two findings already change what this
+section assumed:
+
+- **`card.modified` cannot be the token.** Both schedulers return
+  `{ ...card, modified: ctx.now }` — a *client* clock the server never sees, and
+  the server stamps its own on write — so a naive `expectedModified` would
+  false-conflict on every second review of a card in one session, i.e. on every
+  learning step. The spec uses an explicit `card.rev` whose value is the
+  `RevlogEntry.id` that produced the state: already client-minted, already
+  unique, already the server's dedupe key.
+- **A collection-level generation token is actively wrong here**, not just
+  coarse: any desktop write would invalidate every queued phone op, so the
+  normal *sequential* session — the actual use case — would reject constantly.
+
+- [ ] Add a staleness precondition (per-card `rev`, **not** `modified` and
+      **not** a collection-level generation token — see above) so a stale write
+      is **rejected** rather than applied.
 - [ ] Decide the client's response to a rejection — reload and re-apply, or
       warn the user. Either is fine; silently discarding is not.
 - [ ] Consider a lightweight "this collection is open elsewhere" signal so

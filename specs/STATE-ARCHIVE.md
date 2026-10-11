@@ -55,6 +55,27 @@ case a suspended review card would not have been due-shifted like its
 non-suspended counterpart, and would have been wrong the moment it was
 un-suspended.
 
+**AD-005 — Pause shifts `due` once on resume, and resume writes cards before
+clearing `pausedAt`.** (back-filled 2026-08-26, `archive/2026-07-09-006-…`)
+FSRS derives elapsed time as `ctx.today - (card.due - card.interval)`, so
+shifting `due` forward by the paused duration makes elapsed-time math, interval
+spacing and FSRS decay all come out right with **zero** changes to
+`todayNumber()`, `ReviewContext`, or anything under `core/scheduling/` — no
+"second clock". `POST /api/collection/resume` writes the card updates first and
+clears `pausedAt` second, because that is the recoverable failure direction: a
+crash between the two leaves `pausedAt` set with cards already shifted, and the
+client retries from the same unchanged `pausedAt`. Payloads carry absolute
+`due` values, not deltas, so re-applying converges. The reverse order looks
+resumed with cards unshifted and leaves no signal to retry — explicitly
+forbidden.
+
+**AD-006 — Deck colours derive from a deck-name hash and are never persisted.**
+(back-filled 2026-08-26, `archive/2026-07-07-003-…` Q3) `deckColor(name)` is a
+djb2 hash → `hsl(hue, 65%, 55%)` in `web/src/app/core/deck-color.ts`. Adding a
+`color` field to `Deck` would have been an on-disk shape change (and therefore
+a server change) for a purely presentational affordance. Deterministic per name
+is enough; the cost is that renaming a deck recolours it.
+
 **AD-007 — `todayNumber` may be changed by 010, and its ≤1-day transition is
 accepted, never migrated.** (2026-08-15, `specs/archive/2026-09-02-010-day-rollover-anchoring`)
 007 explicitly deferred the root cause and declared changing `todayNumber`
