@@ -3,7 +3,11 @@
 </div>
 
 <section class="review">
-  @if (loading()) {
+  @if (syncing() === 'draining') {
+    <p class="status">Syncing {{ outbox.pendingCount() }} unsaved reviews…</p>
+  } @else if (syncing() === 'stuck') {
+    <p class="status">{{ outbox.pendingCount() }} reviews not yet saved — reconnect to continue</p>
+  } @else if (loading()) {
     <p class="status">Loading…</p>
   } @else if (finished()) {
     @if (paused()) {

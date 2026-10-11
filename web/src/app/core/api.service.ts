@@ -82,4 +82,16 @@ export class ApiService {
   patchDeck(id: string, patch: Partial<Deck>): Observable<Deck> {
     return this.http.patch<Deck>(`${this.base}/decks/${id}`, patch);
   }
+
+  /**
+   * Generic passthrough used **only** by the outbox, which stores ops as
+   * `{ method, path, body }` and cannot call a typed method by name. Prefer a
+   * typed method above for anything else.
+   */
+  send(method: 'POST' | 'PATCH', path: string, body: unknown): Observable<unknown> {
+    const url = `${this.base}${path}`;
+    return method === 'POST'
+      ? this.http.post<unknown>(url, body)
+      : this.http.patch<unknown>(url, body);
+  }
 }

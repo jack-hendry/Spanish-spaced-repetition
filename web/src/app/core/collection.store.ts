@@ -4,6 +4,7 @@ import { lastValueFrom } from 'rxjs';
 import { ApiService } from './api.service';
 import { bumpDaily } from './daily-limits';
 import { isBuried, restoreQueue, siblingsToBury } from './lifecycle';
+import { OutboxService } from './outbox/outbox.service';
 import type { Card, Collection, Deck, DeckOptions, Note, NoteType } from './models';
 
 export interface DeckCounts {
@@ -61,6 +62,7 @@ export function todayNumber(collection: Collection, now = Date.now()): number {
 @Injectable({ providedIn: 'root' })
 export class CollectionStore {
   private readonly api = inject(ApiService);
+  private readonly outbox = inject(OutboxService);
 
   readonly collection = signal<Collection | null>(null);
   readonly noteTypes = signal<NoteType[]>([]);
@@ -143,7 +145,7 @@ export class CollectionStore {
       this.deckOptions.set(bundle.deckoptions);
       const cards = await lastValueFrom(this.api.getCards());
       this.cards.set(cards);
-      await this.unburyForNewDay();
+      this.unburyForNewDay();
     } catch (err) {
       this.error.set(err instanceof Error ? err.message : 'Failed to load collection');
     } finally {
@@ -259,40 +261,55 @@ export class CollectionStore {
    * Bury the siblings of a just-answered card for the rest of the day, honouring
    * the deck's bury options. Updates the cache immediately, then persists.
    */
-  async burySiblings(answered: Card, opts: DeckOptions): Promise<void> {
+  burySiblings(answered: Card, opts: DeckOptions): void {
     const targets = siblingsToBury(this.cards(), answered, opts);
     if (!targets.length) return;
     this.setQueues(new Map(targets.map((c) => [c.id, 'schedBuried' as const])));
-    await Promise.all(
-      targets.map((c) => lastValueFrom(this.api.patchCard(c.id, { queue: 'schedBuried' }))),
-    );
+    targets.forEach((c) => {
+      this.outbox.enqueue({
+        id: `bury-${c.id}-${Date.now()}`,
+        method: 'PATCH',
+        path: `/cards/${c.id}`,
+        body: { queue: 'schedBuried' },
+      });
+    });
   }
 
   /**
    * Record that a card was studied today, bumping its deck's daily tally so the
    * per-day new/review limits survive a reload. No-op for learning-step reviews.
    */
-  async recordStudied(card: Card): Promise<void> {
+  recordStudied(card: Card): void {
     const coll = this.collection();
     const deck = this.deckById(card.deckId);
     if (!coll || !deck) return;
     const daily = bumpDaily(deck, card, todayNumber(coll));
     if (!daily) return;
     this.decks.update((decks) => decks.map((d) => (d.id === deck.id ? { ...d, daily } : d)));
-    await lastValueFrom(this.api.patchDeck(deck.id, { daily }));
+    this.outbox.enqueue({
+      id: `daily-${deck.id}-${daily.day}`,
+      method: 'PATCH',
+      path: `/decks/${deck.id}`,
+      body: { daily },
+    });
   }
 
   /** Suspend a single card (hidden until manually un-suspended). */
-  async suspendCard(card: Card): Promise<void> {
+  suspendCard(card: Card): void {
     this.setQueues(new Map([[card.id, 'suspended']]));
-    await lastValueFrom(this.api.patchCard(card.id, { queue: 'suspended' }));
+    this.outbox.enqueue({
+      id: `susp-${card.id}-${Date.now()}`,
+      method: 'PATCH',
+      path: `/cards/${card.id}`,
+      body: { queue: 'suspended' },
+    });
   }
 
   /**
    * At the first study of a new day, restore every buried card to its active
    * queue and advance the collection's unbury checkpoint. No-op within a day.
    */
-  async unburyForNewDay(): Promise<void> {
+  unburyForNewDay(): void {
     const coll = this.collection();
     if (!coll) return;
     const today = todayNumber(coll);
@@ -301,12 +318,22 @@ export class CollectionStore {
     const buried = this.cards().filter(isBuried);
     if (buried.length) {
       this.setQueues(new Map(buried.map((c) => [c.id, restoreQueue(c.type)])));
-      await Promise.all(
-        buried.map((c) => lastValueFrom(this.api.patchCard(c.id, { queue: restoreQueue(c.type) }))),
-      );
+      buried.forEach((c) => {
+        this.outbox.enqueue({
+          id: `unbury-${c.id}-${today}`,
+          method: 'PATCH',
+          path: `/cards/${c.id}`,
+          body: { queue: restoreQueue(c.type) },
+        });
+      });
     }
 
     this.collection.set({ ...coll, lastUnburyDay: today });
-    await lastValueFrom(this.api.patchCollection({ lastUnburyDay: today }));
+    this.outbox.enqueue({
+      id: `unburyday-${today}`,
+      method: 'PATCH',
+      path: `/collection`,
+      body: { lastUnburyDay: today },
+    });
   }
 }

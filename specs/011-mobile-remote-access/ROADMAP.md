@@ -264,17 +264,56 @@ answered locally while the server never hears about it, and the review is
 gone on reload. This is the highest-likelihood way to lose progress once the
 phone is in play, and it is entirely a client-side fix.
 
-- [ ] Persist unsent reviews client-side (an outbox in `localStorage`/
+- [x] Persist unsent reviews client-side (an outbox in `localStorage`/
       IndexedDB) so a failed or interrupted POST survives a reload, a tab
       kill, or a subway tunnel.
-- [ ] Retry the outbox with backoff and drain it on reconnect; `/api/review`
+      — `localStorage` chosen over IndexedDB for its **synchronous** write
+      (spec 023 D2/AD-029): `enqueue` persists before it returns. User-verified
+      2026-09-18 by closing the tab offline and reopening; ops survived.
+- [x] Retry the outbox with backoff and drain it on reconnect; `/api/review`
       needs to be safe to replay (same review applied twice must not corrupt
       state or double-append the revlog).
-- [ ] Surface unsent state in the UI. Silent loss is the failure mode that
+      — Backoff floor 2 000 ms, cap 60 s, sized against the tier-1 rate limiter
+      (023 C-5). Replay-safety is server-side in `FileStore.appendRevlog`,
+      pinned by `server/src/routes/review-idempotency.integration.test.ts`
+      (3 cases): the route itself needed no change.
+- [x] Surface unsent state in the UI. Silent loss is the failure mode that
       matters — the user must be able to see "3 reviews not yet saved" and
       know not to close the tab.
-- [ ] Verify by doing it: airplane-mode mid-session, answer several cards,
+      — Shell banner in `app.html` (draining / will-retry / error + Retry
+      button) plus a `beforeunload` guard; the study route refuses to start
+      while ops are pending. User-verified 2026-09-18: the count climbed while
+      offline and drained to zero on reconnect.
+      **Amended 2026-10-11 (spec 023 Step 17):** the study-route refusal gate
+      itself hung indefinitely on re-entry until two stacked defects were
+      fixed — a `drain()` coalescing branch that bypassed its own scheduled
+      backoff, and an unrelated `this`-binding crash in `getRetryDelay()` that
+      silently rejected the awaited drain promise. User-verified end-to-end
+      after both fixes: offline re-entry now reaches "N reviews not yet saved
+      — reconnect to continue" and stays there correctly until reconnect, then
+      recovers and serves an unanswered card.
+- [x] Verify by doing it: airplane-mode mid-session, answer several cards,
       reconnect, confirm every review landed exactly once.
+      — **DONE 2026-09-18** on the phone against `spanish-srs.fly.dev`
+      (023 Step 14, criterion A8). **5 cards** answered in airplane mode; the
+      live `revlog.ndjson` went **3923 → 3928**, exactly +5 with five distinct
+      ids, and **no id appears more than once in any of the 3 928 live lines**.
+      `schedBuried` 4 → 9; the deck's `daily` reset to `{day: 86,
+      reviewStudied: 2}` — 2 and not 5 because `studiedKind()` returns `null`
+      for the three relearn steps. Nothing was re-served after reconnecting.
+      Ground truth is the live revlog pulled with `tools/pull-fly-state.sh`,
+      not the phone's UI (L-025). The user reported "between 4-5"; the revlog
+      settled it at 5, and 5 is the recorded count.
+      **Caveat: TEXT cards only.** Audio is served by Express and there is no
+      service worker, so a Listening card is unusable offline — see 023's
+      amended A1 and the `specs/BACKLOG.md` entry for hiding audio-only cards
+      offline.
+      **Second caveat: the first attempt was blocked by a production rate-limit
+      lockout** — the tier-1 limiter counts 401 auth challenges and sits before
+      `basicAuth`, so a cold SPA load can spend the 20-failure budget and lock
+      the phone out of the auth challenge itself. Cleared with
+      `fly apps restart spanish-srs`. Pre-existing, but it compounds with the
+      outbox's 60 s backoff cap; see 023's `## Discovered`.
 
 ## Phase 4 — Cross-device safety
 

@@ -7,7 +7,7 @@ import { describe, expect, it, vi, beforeEach, afterEach, type MockInstance } fr
 import { Review } from './review';
 import { CollectionStore } from '../../core/collection.store';
 import { StudyQueueService, type QueueCounts } from '../../core/study-queue.service';
-import { ApiService } from '../../core/api.service';
+import { OutboxService } from '../../core/outbox/outbox.service';
 import { Sm2Scheduler } from '../../core/scheduling/sm2';
 import type { Card, Deck, DeckOptions, Note, NoteType } from '../../core/models';
 
@@ -127,6 +127,8 @@ describe('Review', () => {
     recordStudied: ReturnType<typeof vi.fn>;
     burySiblings: ReturnType<typeof vi.fn>;
     suspendCard: ReturnType<typeof vi.fn>;
+    load: ReturnType<typeof vi.fn>;
+    loadNotes: ReturnType<typeof vi.fn>;
     collection: () => { dayCutoffHour: number; created: number };
   };
   let queueFake: {
@@ -137,7 +139,11 @@ describe('Review', () => {
     onAnswered: ReturnType<typeof vi.fn>;
     options: DeckOptions | null;
   };
-  let apiFake: { submitReview: ReturnType<typeof vi.fn> };
+  let outboxFake: {
+    enqueue: ReturnType<typeof vi.fn>;
+    drain: ReturnType<typeof vi.fn>;
+    pendingCount: () => number;
+  };
   let answerSpy: MockInstance<typeof Sm2Scheduler.prototype.answer>;
 
   /** One known card is served the first time next() is called; null after. */
@@ -160,6 +166,8 @@ describe('Review', () => {
       recordStudied: vi.fn(async () => {}),
       burySiblings: vi.fn(async () => {}),
       suspendCard: vi.fn(async () => {}),
+      load: vi.fn(async () => {}),
+      loadNotes: vi.fn(async () => {}),
       collection: () => ({ dayCutoffHour: 4, created: Date.now() - 30 * 86_400_000 }),
     };
 
@@ -173,8 +181,10 @@ describe('Review', () => {
     };
     seedQueueOneCard();
 
-    apiFake = {
-      submitReview: vi.fn(() => of(card())),
+    outboxFake = {
+      enqueue: vi.fn(),
+      drain: vi.fn(async () => {}),
+      pendingCount: () => 0,
     };
 
     answerSpy = vi.spyOn(Sm2Scheduler.prototype, 'answer');
@@ -185,7 +195,7 @@ describe('Review', () => {
         provideRouter([{ path: '', component: Stub }]),
         { provide: CollectionStore, useValue: storeFake },
         { provide: StudyQueueService, useValue: queueFake },
-        { provide: ApiService, useValue: apiFake },
+        { provide: OutboxService, useValue: outboxFake },
         {
           provide: ActivatedRoute,
           useValue: { paramMap: of(new Map([['deckId', 'd1']])) },
@@ -241,7 +251,7 @@ describe('Review', () => {
       fixture.detectChanges();
 
       expect(answerSpy).not.toHaveBeenCalled();
-      expect(apiFake.submitReview).not.toHaveBeenCalled();
+      expect(outboxFake.enqueue).not.toHaveBeenCalled();
     });
 
     it('enables buttons post-reveal and clicking one grades', async () => {
@@ -261,7 +271,7 @@ describe('Review', () => {
 
       expect(answerSpy).toHaveBeenCalledTimes(1);
       expect(answerSpy.mock.calls[0][1]).toBe('good');
-      expect(apiFake.submitReview).toHaveBeenCalledTimes(1);
+      expect(outboxFake.enqueue).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -642,6 +652,36 @@ describe('Review', () => {
       const pausedBlock = el.querySelector('.paused');
       expect(pausedBlock).toBeTruthy();
       expect(pausedBlock?.textContent.trim()).toContain('Scheduling is paused');
+    });
+  });
+
+  // --- Note cache preload (spec 023 D3) ----------------------------------------
+
+  describe('note cache preload', () => {
+    it('calls loadNotes() to warm the note cache before study starts', async () => {
+      storeFake.loadNotes = vi.fn(async () => {});
+
+      await createReview();
+
+      expect(storeFake.loadNotes).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not crash when loadNotes() rejects (offline with cold cache)', async () => {
+      storeFake.loadNotes = vi.fn(async () => {
+        throw new Error('Offline: cannot load notes');
+      });
+
+      // Should not throw
+      const fixture = await createReview();
+
+      // Session should still start (not in loading state)
+      expect(fixture.componentInstance.loading()).toBe(false);
+      // And should not be finished (there's a card in the queue)
+      expect(fixture.componentInstance.finished()).toBe(false);
+      // The card should be rendered despite the failed preload
+      const el = fixture.nativeElement as HTMLElement;
+      const rendered = el.querySelector('.rendered');
+      expect(rendered).toBeTruthy();
     });
   });
 });

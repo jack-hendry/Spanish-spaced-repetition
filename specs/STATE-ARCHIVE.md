@@ -19,6 +19,42 @@ Rules:
 
 (nothing rotated yet)
 
+**AD-001 — Scheduling lives in the frontend; the server never computes it.**
+(back-filled 2026-08-26, foundational — predates `specs/`) SM-2 and FSRS math,
+the study queue, daily limits and burying all live in `web/src/app/core/`. The
+server owns *card structure* (which cards exist for a note) and persistence,
+nothing else. The review loop is one round-trip: the SPA rates a card, the
+chosen `Scheduler` produces a new card state + a `RevlogEntry`, and both POST
+to `/api/review` together. Consequence: scheduling behaviour is added in
+`core/`, and the server changes only if the on-disk shape changes.
+
+**AD-002 — Re-import identity is a hash of `(bookSlug, Card_ID)`.**
+(back-filled 2026-08-26, `archive/2026-07-06-002-…`) Note `guid`s are derived
+deterministically rather than generated, so re-running the importer over the
+same source reconciles notes and cards **in place** and preserves their
+scheduling state. Verified end-to-end in 002 T007: a second converter +
+`npm run import` pass reused the same deck id and left 3638 cards and guids
+unchanged. This is why the content pipeline can be re-run safely at any time,
+and why changing the identity derivation is a data-loss-class change.
+
+**AD-003 — `card.due` is overloaded by queue, and learning `due` is epoch
+MILLISECONDS.** (back-filled 2026-08-26, `archive/…-004` Discovered → fixed in
+`…-006` T011) `new` → a position index (time-independent); `learning` /
+`relearning` → epoch **milliseconds** (`ctx.now + delayMin * 60_000`, compared
+against `ctx.now = Date.now()`); `review` → a day number. The doc-comment in
+`server/src/models/index.ts` and the `scheduling-domain` skill both said
+"epoch seconds" for over a month while every scheduler and consumer used ms.
+Trust the code. See **L-001**.
+
+**AD-004 — Dispatch on `card.type`, never `card.queue`.**
+(back-filled 2026-08-26, `archive/2026-07-09-006-…`) `queue` becomes
+`'suspended'` on suspension, which **erases** the review/learning distinction;
+`type` (`new`/`learning`/`relearning`/`review`) is unaffected. Any per-queue
+rule keyed on `queue` therefore silently mistreats suspended cards — in 006's
+case a suspended review card would not have been due-shifted like its
+non-suspended counterpart, and would have been wrong the moment it was
+un-suspended.
+
 **AD-007 — `todayNumber` may be changed by 010, and its ≤1-day transition is
 accepted, never migrated.** (2026-08-15, `specs/archive/2026-09-02-010-day-rollover-anchoring`)
 007 explicitly deferred the root cause and declared changing `todayNumber`

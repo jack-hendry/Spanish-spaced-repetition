@@ -124,3 +124,57 @@ at that point, strike it here with the date and a pointer to where it went.
   table — touches persistence, the data model, and the review loop. A lighter
   first cut was floated: cache collection/cards for read-only offline study
   only, defer the write-behind queue to a later pass. Not scoped yet.
+- [ ] (2026-09-18) **Hide audio-only cards while offline.** Raised by the user
+  during spec 023's Step 13 manual verification: with the outbox working, an
+  offline session still serves Listening cards whose audio cannot load, so the
+  card is unanswerable. Media is served by Express from `data/spanish/media/`
+  (7,241 files) and there is no service worker, so this cannot be fixed by
+  caching within 023's scope — see that spec's `## Discovered` and its amended
+  **A1** (text cards only). The filter itself looks small: `isListeningFront`
+  already exists (`review.ts:45`, `noteType.id === 'nt-spanish-2sided' &&
+  template.name === 'Listening'`) and gating on `navigator.onLine` mutates no
+  scheduling state, so a skipped card simply stays due. Open questions worth a
+  spec rather than a patch: whether the filter belongs in
+  `study-queue.service.ts` (correct home, but changes what the queue serves) or
+  in `review.ts` (narrower, but leaves the queue's counts disagreeing with what
+  is shown); what the deck's due counts should display offline; and what the
+  user sees when a deck is *entirely* audio. **At least Large** per the sizing
+  table — it touches the study queue. Not scoped.
+- [ ] (2026-09-18) **Shell banner labels every queued outbox op a "review".**
+  Found during spec 023's Step 13/14 manual runs: after 5 answered cards the
+  banner read "Saving 15 reviews…" (5 reviews + 1 daily tally + 9 buries), and
+  the phone run showed "12" for 5 cards. The queue itself is correct — only
+  the wording overstates unsaved study by roughly 3x, and this is the one
+  place the UI tells the user how much work is unsent. Fix is either honest
+  wording ("N unsaved changes") or counting only `path === '/review'` ops for
+  the review count. `app.ts` (`outboxBannerText`) is in no spec's `Files`
+  list. Small.
+- [ ] (2026-09-18) **The tier-1 rate limiter and the outbox's backoff can
+  deadlock each other on a flaky connection.** Found live during spec 023's
+  Step 14 phone run: the tier-1 limiter (`server/src/app.ts:70-78`, 20
+  non-2xx/IP/15min, `skipSuccessfulRequests`) counts every 401 auth challenge,
+  and `classify()` maps 429 → `'retry'`, so one outbox op stuck behind a 429
+  retries roughly once a minute — about 15 failures per 15-minute window from
+  a single op, ~75% of the whole budget, topping the window up nearly as fast
+  as it drains. Cleared for that run with `fly apps restart` (in-memory
+  limiter), which is an operator workaround, not a fix. Candidate fixes:
+  exclude 401 challenges from the tier-1 count (it exists to bound credential
+  *guessing*, not an unauthenticated first load), special-case 429 in the
+  outbox backoff to go well past 60 s, or treat a server `Retry-After` as a
+  floor even when it's smaller than the computed backoff. Touches
+  `server/src/app.ts` and the outbox backoff policy — both outside 023's
+  scope. Small-to-Medium.
+- [ ] (2026-09-18) **`CollectionStore.load()`'s self-guard discards the
+  in-flight call instead of joining it.** Found during spec 023 Step 10: `if
+  (this.loading()) return;` (`collection.store.ts:137`) returns immediately
+  rather than awaiting the load already running, so a second caller's `await
+  this.store.load()` resolves before the first load's data has actually
+  landed. Spec 023's C-2 gate (drain → reload → start) is narrowly safe today
+  only because the awaited `drain()` costs a network round-trip that usually
+  outlasts the startup load — the window is small but widest exactly where it
+  matters (slow mobile link, non-empty outbox). The same early-return-instead-
+  of-await shape was also the root cause of the `OutboxService.drain()` bug
+  Step 6/13 found and fixed — two instances of one pattern (see L-028). Real
+  fix: `load()` returns the in-flight promise instead of `void` when a load is
+  already running. Medium — touches a shared store method with several
+  callers.
