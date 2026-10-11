@@ -56,7 +56,18 @@ acceptance criteria met; see AD-027, AD-028, L-019 through L-027, and
 named there: an orphaned live Fly token still needs revoking, and no green run
 has yet happened at the shipping 6-hour cadence.
 
-No spec is currently live. Two follow-ups are recorded rather than started:
+The review outbox (`specs/archive/2026-10-11-023-review-outbox/`) is **finished
+and archived** (2026-10-11, PR #27). It closes **Phase 3** of
+`specs/011-mobile-remote-access/ROADMAP.md`: a rating's writes are now a durable
+FIFO outbox in `localStorage`, `/api/review` is replay-safe on `RevlogEntry.id`,
+and the shell surfaces unsent state. All eight acceptance criteria met,
+including a real airplane-mode run on the phone against production. See AD-029,
+L-028, L-029.
+
+**Phase 4 (cross-device safety) is the next spec** —
+`specs/024-cross-device-safety/`, Large, in planning.
+
+Two older follow-ups are recorded rather than started:
 consolidating `todayNumber` and `heatDateKey` behind one day-bucketing helper
 (they disagree on 4 minutes a year, both on DST-transition days), and a
 regression matrix for `tools/session_report.py`.
@@ -78,6 +89,7 @@ implementation steps. Restore the marker if delegated work resumes.
 Marker for `023-review-outbox` was removed at the end of Step 14 and **restored
 2026-09-18 for Step 17**: Step 15 found a user-facing defect (the offline
 re-entry gate hangs forever on "Loading…"), the user chose to fix it inside 023
-rather than archive around it, and Step 17 is delegated work.
-
-## Executing: 023-review-outbox
+rather than archive around it, and Step 17 is delegated work. **Removed again
+2026-10-11** when Step 16 (archive) ran — the run is over, and the marker had
+been left behind after the PR merged, so every direct top-level edit was being
+blocked by a stale marker. Restore it only if delegated work resumes.

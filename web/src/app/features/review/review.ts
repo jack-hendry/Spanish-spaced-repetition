@@ -305,7 +305,8 @@ export class Review {
       this.store.applyCard(next);
       this.queue.onAnswered(current.card);
       this.answeredCount.update((n) => n + 1);
-      // Durable, ordered hand-off — see specs/023-review-outbox Analyst D3/D4.
+      // Durable, ordered hand-off — see
+      // specs/archive/2026-10-11-023-review-outbox Analyst D3/D4.
       // `revlog.id` is the op id on purpose: it is also the server's dedupe key
       // (`FileStore.appendRevlog`), so a retry of this op cannot double-append.
       this.outbox.enqueue({
