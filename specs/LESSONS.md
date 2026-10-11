@@ -833,3 +833,66 @@ measured**, and the measurement is written down even when — especially when �
 it contradicts the plan that ordered the change. A plan's stated motivation is
 a hypothesis with the same standing as any other, and it is the easiest one to
 skip testing, because acting on it already feels like agreement.
+
+**L-028 — A guard that early-returns instead of awaiting in-flight work makes
+every caller's `await` on it meaningless.**
+(2026-09-18/2026-09-19, `023-review-outbox` Steps 6, 10, 13)
+
+`OutboxService.drain()`'s single-flight guard originally did
+`if (this.draining) return;` — if a drain was already running, a second call
+returned immediately instead of joining it. `Review.init()`'s gate does
+`await this.outbox.drain()` expecting it to resolve once the queue is
+actually empty; against the early-return guard it resolved instantly instead,
+while a real drain kept running underneath, so the gate read a stale
+`pendingCount()` and declared a healthy in-progress sync "stuck". Found only
+by a manual run (Step 13 run 1) that compared the UI's claim against the live
+revlog and saw the count had not moved — an assertion phrased as "`await
+drain()` resolves" cannot distinguish "resolved because it waited" from
+"resolved because it gave up," so no unit test caught it either, until one was
+written specifically to coalesce two calls and assert the second one still
+sees the first one's effects.
+The identical shape exists independently in `CollectionStore.load()`
+(`if (this.loading()) return;`, `collection.store.ts:137`) — not fixed as
+part of this spec (scope discipline; logged to `specs/BACKLOG.md` instead),
+but it is the same bug class and narrows the same C-2 gate's safety margin
+rather than closing it.
+The rule: **a method whose contract is "wait for this to finish" must await
+the in-flight work, never substitute an early return for it** — a return that
+looks like "nothing to do" and a return that means "already done" are
+indistinguishable to the caller unless the guard actually joins the promise.
+Test this by asserting an effect that only the awaited completion can
+produce (here: the queue is actually empty), not just that the `await`
+resolved.
+
+**L-029 — A method extracted from an object into a bare variable loses its
+`this`; a test that mocks the error as a plain object never exercises the
+real bound call.**
+(2026-10-11, `023-review-outbox` Step 17 second pass)
+
+`OutboxService.getRetryDelay()` read a `Retry-After` header as
+`const getMethod = headers?.['get']; const retryAfter = getMethod?.('Retry-
+After');` — extracting Angular's `HttpHeaders.get` into a standalone variable
+detaches it from the `headers` instance it was bound to. `HttpHeaders.get()`
+internally calls `this.init()` to lazily parse its backing map, so calling the
+detached reference throws `TypeError: Cannot read properties of undefined
+(reading 'init')`. This only reproduces against a **real** `HttpHeaders`
+instance, which a genuine `HttpErrorResponse` carries even for a status-0
+network failure; every test in the spec mocked the thrown error's `headers`
+as a plain object (`{}` or a hand-rolled stub), so none of them ever called
+the real method and the bug shipped invisibly through a falsifiable unit test
+pass, a full-suite checkpoint, and a first attempt at fixing a *different*,
+real bug in the same function's caller chain (L-028) — three separate green
+gates that could not have caught it as written. Because the throw happened
+synchronously inside `_runDrain()`'s `catch` block, nothing in the service
+caught it: the `async` function's returned promise **rejected** instead of
+resolving, which propagated silently through `Review.init()`'s unguarded
+`await this.outbox.drain()` and left the component permanently wedged,
+regardless of what the queue did in the background afterwards. Found only by
+adding temporary console instrumentation and reading a real browser's stack
+trace after a green test suite had already certified the code twice.
+The rule: **when a test mocks an error object to drive a catch path, mock it
+with the real class the framework actually throws (`HttpErrorResponse`, with
+a real `HttpHeaders`), not a plain object with the same shape** — a
+hand-rolled stub can satisfy every type check and property access a test
+writes while still being unable to reproduce a bug that only exists in the
+real object's method bindings.

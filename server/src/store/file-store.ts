@@ -68,6 +68,7 @@ export class FileStore {
   private data!: StoreData;
   private readonly pending = new Map<keyof FileNames, ReturnType<typeof setTimeout>>();
   private readonly debounceMs: number;
+  private revlogIds = new Set<string>();
 
   constructor(
     private readonly dataDir: string,
@@ -96,6 +97,10 @@ export class FileStore {
       notes: await readJson<Note[]>(this.path('notes'), []),
       cards: await readJson<Card[]>(this.path('cards'), []),
     };
+
+    // Load existing revlog for replay-safety deduplication
+    const entries = await this.readRevlog();
+    for (const e of entries) this.revlogIds.add(e.id);
 
     // Persist any freshly-seeded foundational files so subsequent reads are stable.
     if (!existsSync(this.path('collection'))) await this.flush('collection');
@@ -214,7 +219,9 @@ export class FileStore {
   }
 
   async appendRevlog(entry: RevlogEntry): Promise<void> {
+    if (this.revlogIds.has(entry.id)) return;
     await appendFile(this.path('revlog'), JSON.stringify(entry) + '\n', 'utf8');
+    this.revlogIds.add(entry.id);
   }
 
   /** Read the full review log (append-only ndjson); empty if none yet. */

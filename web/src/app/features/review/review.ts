@@ -23,8 +23,7 @@ import {
 } from '../../core/scheduling/types';
 import { StudyQueueService, type QueueCounts } from '../../core/study-queue.service';
 import { renderCard } from '../../core/templating/template-renderer';
-import { lastValueFrom } from 'rxjs';
-import { ApiService } from '../../core/api.service';
+import { OutboxService } from '../../core/outbox/outbox.service';
 
 interface RenderState {
   card: Card;
@@ -59,7 +58,7 @@ const TYPE_FILTER = /\{\{\s*type:/;
 export class Review {
   private readonly store = inject(CollectionStore);
   private readonly queue = inject(StudyQueueService);
-  private readonly api = inject(ApiService);
+  protected readonly outbox = inject(OutboxService);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -82,6 +81,8 @@ export class Review {
   readonly answeredCount = signal(0);
   /** Due count at session start; the denominator for "n of total". */
   readonly sessionTotal = signal(0);
+  /** Sync state at session start: 'no' (no sync needed), 'draining' (syncing), 'stuck' (sync failed). */
+  readonly syncing = signal<'no' | 'draining' | 'stuck'>('no');
 
   readonly deckName = computed(() => {
     const id = this.deckId();
@@ -172,7 +173,32 @@ export class Review {
   }
 
   private async init(): Promise<void> {
+    // Gate: drain outbox and reload collection before starting session (C-2)
+    if (this.outbox.pendingCount() > 0) {
+      this.syncing.set('draining');
+      await this.outbox.drain();
+      // Re-check: if drain failed, mark as stuck and bail
+      if (this.outbox.pendingCount() > 0) {
+        this.syncing.set('stuck');
+        this.loading.set(false);
+        return;
+      }
+      // Drain succeeded: unconditionally reload collection (not guarded by decks().length)
+      await this.store.load();
+      this.syncing.set('no');
+    }
     if (this.store.decks().length === 0) await this.store.load();
+    // Warm the note cache so getNote() is always a cache hit (spec 023 D3).
+    // This is critical for offline study to work: without it, the review loop
+    // stalls on cache misses. Preload is non-fatal (caught below); if it fails
+    // offline with a cold cache, individual notes load on demand.
+    try {
+      await this.store.loadNotes();
+    } catch (err) {
+      // Non-fatal: if preload fails (e.g., offline with cold cache), the session
+      // still starts and notes load individually on demand. Log for debugging.
+      console.error('Failed to preload notes for study session:', err);
+    }
     const id = this.deckId();
     const started =
       id === 'all' ? this.queue.startAll() : id != null && id !== '' ? this.queue.start(id) : false;
@@ -279,11 +305,19 @@ export class Review {
       this.store.applyCard(next);
       this.queue.onAnswered(current.card);
       this.answeredCount.update((n) => n + 1);
-      await lastValueFrom(this.api.submitReview(next, revlog));
+      // Durable, ordered hand-off — see specs/023-review-outbox Analyst D3/D4.
+      // `revlog.id` is the op id on purpose: it is also the server's dedupe key
+      // (`FileStore.appendRevlog`), so a retry of this op cannot double-append.
+      this.outbox.enqueue({
+        id: revlog.id,
+        method: 'POST',
+        path: '/review',
+        body: { card: next, revlog },
+      });
       // Persist the daily tally so limits survive a reload, and hide the other
       // cards of this note for the rest of the day.
-      await this.store.recordStudied(current.card);
-      await this.store.burySiblings(current.card, opts);
+      this.store.recordStudied(current.card);
+      this.store.burySiblings(current.card, opts);
       await this.loadNext();
     } finally {
       this.busy.set(false);
@@ -297,7 +331,7 @@ export class Review {
     this.busy.set(true);
     try {
       // The suspended card leaves the queue on its own; don't spend a daily slot.
-      await this.store.suspendCard(current.card);
+      this.store.suspendCard(current.card);
       await this.loadNext();
     } finally {
       this.busy.set(false);

@@ -74,41 +74,13 @@ code keeps the decision, nobody keeps the reason. So, in order:
 
 ## Decisions
 
-**AD-001 — Scheduling lives in the frontend; the server never computes it.**
-(back-filled 2026-08-26, foundational — predates `specs/`) SM-2 and FSRS math,
-the study queue, daily limits and burying all live in `web/src/app/core/`. The
-server owns *card structure* (which cards exist for a note) and persistence,
-nothing else. The review loop is one round-trip: the SPA rates a card, the
-chosen `Scheduler` produces a new card state + a `RevlogEntry`, and both POST
-to `/api/review` together. Consequence: scheduling behaviour is added in
-`core/`, and the server changes only if the on-disk shape changes.
+**AD-001 — Scheduling lives in the frontend; the server never computes it.** → moved to `STATE-ARCHIVE.md`
 
-**AD-002 — Re-import identity is a hash of `(bookSlug, Card_ID)`.**
-(back-filled 2026-08-26, `archive/2026-07-06-002-…`) Note `guid`s are derived
-deterministically rather than generated, so re-running the importer over the
-same source reconciles notes and cards **in place** and preserves their
-scheduling state. Verified end-to-end in 002 T007: a second converter +
-`npm run import` pass reused the same deck id and left 3638 cards and guids
-unchanged. This is why the content pipeline can be re-run safely at any time,
-and why changing the identity derivation is a data-loss-class change.
+**AD-002 — Re-import identity is a hash of `(bookSlug, Card_ID)`.** → moved to `STATE-ARCHIVE.md`
 
-**AD-003 — `card.due` is overloaded by queue, and learning `due` is epoch
-MILLISECONDS.** (back-filled 2026-08-26, `archive/…-004` Discovered → fixed in
-`…-006` T011) `new` → a position index (time-independent); `learning` /
-`relearning` → epoch **milliseconds** (`ctx.now + delayMin * 60_000`, compared
-against `ctx.now = Date.now()`); `review` → a day number. The doc-comment in
-`server/src/models/index.ts` and the `scheduling-domain` skill both said
-"epoch seconds" for over a month while every scheduler and consumer used ms.
-Trust the code. See **L-001**.
+**AD-003 — `card.due` is overloaded by queue, and learning `due` is epoch MILLISECONDS.** → moved to `STATE-ARCHIVE.md`
 
-**AD-004 — Dispatch on `card.type`, never `card.queue`.**
-(back-filled 2026-08-26, `archive/2026-07-09-006-…`) `queue` becomes
-`'suspended'` on suspension, which **erases** the review/learning distinction;
-`type` (`new`/`learning`/`relearning`/`review`) is unaffected. Any per-queue
-rule keyed on `queue` therefore silently mistreats suspended cards — in 006's
-case a suspended review card would not have been due-shifted like its
-non-suspended counterpart, and would have been wrong the moment it was
-un-suspended.
+**AD-004 — Dispatch on `card.type`, never `card.queue`.** → moved to `STATE-ARCHIVE.md`
 
 **AD-005 — Pause shifts `due` once on resume, and resume writes cards before
 clearing `pausedAt`.** (back-filled 2026-08-26, `archive/2026-07-09-006-…`)
@@ -240,6 +212,31 @@ ever wanted, the replacement is a **deploy** token (`fly tokens create deploy`),
 which must first be shown to permit `fly ssh sftp` -- the pull script depends
 on it.
 
+**AD-029 — The review outbox persists to `localStorage` (not IndexedDB) for
+its synchronous write, and FIFO with one in-flight op is a correctness
+requirement, not an ordering nicety.** (`specs/archive/2026-10-11-023-review-
+outbox`, D2/D4, 2026-09-18/2026-10-11; closes Phase 3 of
+`specs/011-mobile-remote-access/ROADMAP.md`)
+`OutboxService.enqueue()` must persist **before it returns**, synchronously,
+so a tab killed the instant after a card is rated still has the op on disk —
+an `IndexedDB` write is asynchronous and cannot give that guarantee without
+also blocking on it, which defeats the point of a non-blocking `rate()`
+(D3). FIFO with a single in-flight request is required because an outbox op
+carries an *absolute* card state (post-scheduling `due`/`interval`/`ease`),
+not a delta — replaying two ops for the same card out of order resurrects the
+older state. `RevlogEntry.id` doubles as the op id so the client's queue key
+and the server's dedupe key (`FileStore.appendRevlog`, A3) are the same value
+by construction.
+A5 (the study route refusing to start with pending ops) took two tries to
+land safely: a `drain()` coalescing branch that bypassed its own scheduled
+backoff, then — found only by a second round of manual re-verification with
+temporary console instrumentation — an unrelated `this`-binding crash in
+`getRetryDelay()` (extracting `HttpHeaders.get` into a bare variable detaches
+it from `this`) that silently rejected the promise `Review.init()`
+unconditionally awaited. Neither was caught by the existing test suite because
+every mocked error used a plain object for `headers`, never a real
+`HttpHeaders` instance — see L-029.
+
 ## Blockers
 
 (none open)
@@ -273,6 +270,8 @@ on it.
 - **L-025** — "Exercised in Step N" is a claim; `git log` is the evidence, and the two can disagree.
 - **L-026** — A credential that authenticates is not a credential that can act.
 - **L-027** — An unmeasured saving may not exist; measure before writing the justification down.
+- **L-028** — A guard that early-returns instead of awaiting in-flight work makes every caller's `await` on it meaningless.
+- **L-029** — A method extracted from an object into a bare variable loses its `this`; a test that mocks the error as a plain object never exercises the real bound call.
 
 ## Quick Tasks
 

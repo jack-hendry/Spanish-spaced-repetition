@@ -4,12 +4,14 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 import { CollectionStore, type DeckNode } from './core/collection.store';
 import { deckColor } from './core/deck-color';
 import { PauseService } from './core/pause.service';
+import { OutboxService } from './core/outbox/outbox.service';
 
 @Component({
   selector: 'app-root',
   imports: [RouterOutlet, RouterLink, RouterLinkActive],
   templateUrl: './app.html',
   styleUrl: './app.scss',
+  host: { '(window:beforeunload)': 'onBeforeUnload($event)' },
 })
 export class App {
   protected readonly title = 'Spanish SRS';
@@ -17,6 +19,7 @@ export class App {
   private readonly store = inject(CollectionStore);
   private readonly router = inject(Router);
   private readonly pauseService = inject(PauseService);
+  protected readonly outbox = inject(OutboxService);
 
   readonly loading = this.store.loading;
   readonly error = this.store.error;
@@ -24,6 +27,31 @@ export class App {
   /** Read-only shell banner (R16); the deck-list header button is the only
    * control that toggles pause state. */
   readonly paused = computed(() => this.store.collection()?.pausedAt != null);
+
+  /** Outbox banner text or null if no outbox state to show. */
+  readonly outboxBannerText = computed<string | null>(() => {
+    const pendingCount = this.outbox.pendingCount();
+    const failed = this.outbox.failed();
+
+    if (pendingCount === 0 && failed.length === 0) {
+      return null;
+    }
+
+    if (this.outbox.status() === 'draining') {
+      return `Saving ${pendingCount} ${pendingCount === 1 ? 'review' : 'reviews'}…`;
+    }
+
+    if (this.outbox.status() === 'waiting') {
+      const total = pendingCount + failed.length;
+      return `${total} ${total === 1 ? 'review' : 'reviews'} not yet saved — will retry`;
+    }
+
+    if (failed.length > 0) {
+      return `${failed.length} ${failed.length === 1 ? 'review' : 'reviews'} could not be saved`;
+    }
+
+    return null;
+  });
 
   /** Names of decks whose children are expanded. Top level shown by default. */
   private readonly expanded = signal<Set<string>>(new Set());
@@ -95,5 +123,12 @@ export class App {
   /** Deterministic per-deck color dot (see core/deck-color.ts). */
   colorFor(name: string): string {
     return deckColor(name);
+  }
+
+  /** Prevent tab close when there are unsaved reviews. */
+  onBeforeUnload(event: BeforeUnloadEvent): void {
+    if (this.outboxBannerText() !== null) {
+      event.preventDefault();
+    }
   }
 }

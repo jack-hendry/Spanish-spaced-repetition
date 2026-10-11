@@ -74,3 +74,10 @@ delegated; the three remaining steps (20, 21, 22) are all top-level — 21 and 2
 by design, 20 by necessity after the classifier refused the `haiku` spawn twice.
 The hook had therefore already done its job of keeping top-level out of the
 implementation steps. Restore the marker if delegated work resumes.
+
+Marker for `023-review-outbox` was removed at the end of Step 14 and **restored
+2026-09-18 for Step 17**: Step 15 found a user-facing defect (the offline
+re-entry gate hangs forever on "Loading…"), the user chose to fix it inside 023
+rather than archive around it, and Step 17 is delegated work.
+
+## Executing: 023-review-outbox

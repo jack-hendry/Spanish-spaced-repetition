@@ -203,7 +203,7 @@ export class Browser {
     this.busy.set(true);
     try {
       if (row.card.queue === 'suspended') await this.store.unsuspendCard(row.card);
-      else await this.store.suspendCard(row.card);
+      else this.store.suspendCard(row.card);
     } finally {
       this.busy.set(false);
     }

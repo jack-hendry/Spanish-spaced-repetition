@@ -2,6 +2,15 @@
   <div class="pause-banner" role="status">Scheduling paused</div>
 }
 
+@if (outboxBannerText(); as bannerText) {
+  <div class="outbox-banner" role="status">
+    {{ bannerText }}
+    @if (outbox.failed().length > 0) {
+      <button type="button" (click)="outbox.retryFailed()" class="outbox-retry-btn">Retry</button>
+    }
+  </div>
+}
+
 <div class="app-shell">
   <aside class="app-sidebar">
     <nav class="tabs" aria-label="Primary">
