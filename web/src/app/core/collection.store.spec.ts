@@ -1,6 +1,8 @@
 import { TestBed } from '@angular/core/testing';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { of, delay } from 'rxjs';
 
+import { ApiService } from './api.service';
 import { remainingLimits } from './daily-limits';
 import { heatDateKey } from './heatmap';
 import { CollectionStore, todayNumber } from './collection.store';
@@ -254,5 +256,54 @@ describe('daily allowance across a calendar-day boundary', () => {
     expect(remainingLimits([d], new Set(['d1']), nextMorning, opts).newRemaining).toBe(
       opts.new.perDay,
     );
+  });
+});
+
+describe('CollectionStore.load() concurrent requests (L-028)', () => {
+  it('two overlapping load() calls produce exactly one getCollection() call and both promises resolve only after cards are populated', async () => {
+    const mockApiService = {
+      getCollection: vi.fn(() =>
+        of({
+          collection: collection(),
+          notetypes: [],
+          decks: [deck()],
+          deckoptions: [deckOptions()],
+        }).pipe(delay(10)),
+      ),
+      getCards: vi.fn(() => of([card({ id: 'c1' }), card({ id: 'c2' })]).pipe(delay(10))),
+      getNote: vi.fn(),
+      getNotes: vi.fn(),
+      patchNote: vi.fn(),
+      patchCard: vi.fn(),
+      patchDeck: vi.fn(),
+      patchCollection: vi.fn(),
+      postReview: vi.fn(),
+    };
+
+    TestBed.configureTestingModule({
+      providers: [CollectionStore, { provide: ApiService, useValue: mockApiService }],
+    });
+
+    const store = TestBed.inject(CollectionStore);
+
+    // Start both loads concurrently, capturing both promises.
+    const p1 = store.load();
+    const p2 = store.load();
+
+    // Both promises should resolve.
+    await p1;
+    await p2;
+
+    // getCollection() should have been called exactly once.
+    expect(mockApiService.getCollection).toHaveBeenCalledTimes(1);
+
+    // Both promises should have resolved only after cards are populated.
+    expect(store.cards().length).toBe(2);
+    expect(store.collection()).not.toBeNull();
+
+    // Both promises should be the same instance when called concurrently.
+    // This pins the current implementation's promise-sharing behaviour; it is
+    // not L-028's contract (a distinct-but-equivalent promise is also correct).
+    expect(p1).toBe(p2);
   });
 });

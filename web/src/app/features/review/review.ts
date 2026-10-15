@@ -293,6 +293,9 @@ export class Review {
     try {
       const opts = this.queue.options;
       if (!opts) return;
+      // D9: capture the base token before scheduling, since the scheduler's
+      // `{ ...card }` spread carries the old `rev` forward.
+      const expectedRev = current.card.rev ?? null;
       const timeMs = Date.now() - this.answerStart;
       const { card: next, revlog } = schedulerFor(opts).answer(
         current.card,
@@ -301,8 +304,11 @@ export class Review {
         this.ctx(),
         timeMs,
       );
+      // D9: the client owns its local `rev` — set it to the revlog id so an
+      // offline chain of reviews is self-consistent with no server round-trip.
+      const nextWithRev: Card = { ...next, rev: revlog.id };
       // Optimistically update local state, then persist.
-      this.store.applyCard(next);
+      this.store.applyCard(nextWithRev);
       this.queue.onAnswered(current.card);
       this.answeredCount.update((n) => n + 1);
       // Durable, ordered hand-off — see
@@ -313,7 +319,7 @@ export class Review {
         id: revlog.id,
         method: 'POST',
         path: '/review',
-        body: { card: next, revlog },
+        body: { card: nextWithRev, revlog, expectedRev },
       });
       // Persist the daily tally so limits survive a reload, and hide the other
       // cards of this note for the rest of the day.

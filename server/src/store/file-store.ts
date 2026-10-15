@@ -251,6 +251,12 @@ export class FileStore {
     await this.flush('cards');
   }
 
+  /** Has this revlog entry already been appended? The route uses this to
+   *  detect a replay BEFORE writing the card (spec 024 D5). */
+  hasRevlogId(id: string): boolean {
+    return this.revlogIds.has(id);
+  }
+
   async appendRevlog(entry: RevlogEntry): Promise<void> {
     if (this.revlogIds.has(entry.id)) return;
     await appendFile(this.path('revlog'), JSON.stringify(entry) + '\n', 'utf8');

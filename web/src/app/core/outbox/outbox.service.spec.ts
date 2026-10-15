@@ -626,4 +626,225 @@ describe('OutboxService', () => {
 
     vi.useFakeTimers(); // Re-enable for next tests
   });
+
+  // T17: 409 with no handler registered → parks op in conflicts with 'no resolver'
+  it('409 with no handler registered parks op in conflicts with "no resolver"', async () => {
+    vi.useRealTimers();
+
+    const { service, send } = setup();
+
+    // A fails with 409 (conflict), no handler registered
+    const conflictError = new HttpErrorResponse({
+      status: 409,
+      headers: new HttpHeaders(),
+      error: { error: 'stale card', card: { id: 'c1', rev: 'old' } },
+    });
+    send.mockImplementationOnce(() => throwError(() => conflictError));
+    // B succeeds
+    send.mockImplementationOnce(() => of({}));
+
+    service.enqueue({
+      id: 'A',
+      method: 'POST',
+      path: '/review',
+      body: { expectedRev: 'old' },
+    });
+    service.enqueue({
+      id: 'B',
+      method: 'POST',
+      path: '/review',
+      body: { b: 2 },
+    });
+
+    // Wait for drain to complete
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // A should be in conflicts, B should have been attempted
+    expect(service.pending()).toHaveLength(0);
+    expect(service.conflicts()).toHaveLength(1);
+    expect(service.conflicts()[0].id).toBe('A');
+    expect(service.conflicts()[0].conflictReason).toBe('no resolver');
+    // B was attempted and succeeded
+    expect(send).toHaveBeenCalledTimes(2);
+
+    vi.useFakeTimers();
+  });
+
+  // T18: 409 with handler returning 'replaced' substitutes at queue head and drains
+  it('409 with handler returning "replaced" substitutes op at head and queue drains', async () => {
+    vi.useRealTimers();
+
+    const { service, send } = setup();
+
+    const conflictError = new HttpErrorResponse({
+      status: 409,
+      headers: new HttpHeaders(),
+      error: { error: 'stale card', card: { id: 'c1', rev: 'new' } },
+    });
+    send.mockImplementationOnce(() => throwError(() => conflictError));
+    // After replacement, the new op succeeds
+    send.mockImplementationOnce(() => of({}));
+    // B also succeeds
+    send.mockImplementationOnce(() => of({}));
+
+    const handler = vi.fn(async (op: OutboxOp, body: unknown) => {
+      void op;
+      void body;
+      return {
+        outcome: 'replaced' as const,
+        replacement: {
+          id: 'A-replaced',
+          method: 'POST' as const,
+          path: '/review',
+          body: { expectedRev: 'new' },
+        },
+      };
+    });
+    service.setConflictHandler(handler);
+
+    service.enqueue({
+      id: 'A',
+      method: 'POST',
+      path: '/review',
+      body: { expectedRev: 'old' },
+    });
+    service.enqueue({
+      id: 'B',
+      method: 'POST',
+      path: '/review',
+      body: { b: 2 },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // A should be gone (replaced), B should be gone (succeeded)
+    expect(service.pending()).toHaveLength(0);
+    expect(service.conflicts()).toHaveLength(0);
+    // Three calls: first A fails with 409, then replaced A succeeds, then B succeeds
+    expect(send).toHaveBeenCalledTimes(3);
+    // Second call should be with the replacement (new expectedRev)
+    expect(send.mock.calls[1]).toEqual(['POST', '/review', { expectedRev: 'new' }]);
+    // Handler was called
+    expect(handler).toHaveBeenCalledTimes(1);
+
+    vi.useFakeTimers();
+  });
+
+  // T19: 409 with handler returning 'unresolved' parks op with reason, queue behind drains
+  it('409 with handler returning "unresolved" parks op in conflicts and drains behind it', async () => {
+    vi.useRealTimers();
+
+    const { service, send } = setup();
+
+    const conflictError = new HttpErrorResponse({
+      status: 409,
+      headers: new HttpHeaders(),
+      error: { error: 'stale card' },
+    });
+    send.mockImplementationOnce(() => throwError(() => conflictError));
+    // B succeeds
+    send.mockImplementationOnce(() => of({}));
+
+    const handler = vi.fn(async (op: OutboxOp, body: unknown) => {
+      void op;
+      void body;
+      return {
+        outcome: 'unresolved' as const,
+        reason: 'reload budget exhausted',
+      };
+    });
+    service.setConflictHandler(handler);
+
+    service.enqueue({
+      id: 'A',
+      method: 'POST',
+      path: '/review',
+      body: { a: 1 },
+    });
+    service.enqueue({
+      id: 'B',
+      method: 'POST',
+      path: '/review',
+      body: { b: 2 },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // A should be in conflicts with handler's reason, B should be gone
+    expect(service.pending()).toHaveLength(0);
+    expect(service.conflicts()).toHaveLength(1);
+    expect(service.conflicts()[0].id).toBe('A');
+    expect(service.conflicts()[0].conflictReason).toBe('reload budget exhausted');
+    // Handler was called
+    expect(handler).toHaveBeenCalledTimes(1);
+    // B was attempted and succeeded
+    expect(send).toHaveBeenCalledTimes(2);
+
+    vi.useFakeTimers();
+  });
+
+  // T20: 409 does NOT increment attempts and does NOT schedule setTimeout backoff (A7)
+  it('409 does not increment attempts and does not schedule setTimeout backoff', async () => {
+    vi.useRealTimers();
+
+    const { service, send } = setup();
+
+    const conflictError = new HttpErrorResponse({
+      status: 409,
+      headers: new HttpHeaders(),
+      error: { error: 'stale card' },
+    });
+    send.mockImplementationOnce(() => throwError(() => conflictError));
+
+    service.enqueue({
+      id: 'A',
+      method: 'POST',
+      path: '/review',
+      body: { a: 1 },
+    });
+
+    // Wait for drain to complete
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // Op should be in conflicts, not pending
+    expect(service.conflicts()).toHaveLength(1);
+    expect(service.pending()).toHaveLength(0);
+
+    // A7: attempts must NOT be incremented for a 409
+    expect(service.conflicts()[0].attempts).toBe(0);
+
+    // A7: no setTimeout should be scheduled (status should not be 'waiting')
+    expect(service.status()).toBe('idle');
+
+    vi.useFakeTimers();
+  });
+
+  // T21: conflictCount increments on 409
+  it('conflictCount increments on 409', async () => {
+    vi.useRealTimers();
+
+    const { service, send } = setup();
+
+    expect(service.conflictCount()).toBe(0);
+
+    const conflictError = new HttpErrorResponse({
+      status: 409,
+      headers: new HttpHeaders(),
+      error: { error: 'stale card' },
+    });
+    send.mockImplementationOnce(() => throwError(() => conflictError));
+
+    service.enqueue({
+      id: 'A',
+      method: 'POST',
+      path: '/review',
+      body: { a: 1 },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(service.conflictCount()).toBe(1);
+
+    vi.useFakeTimers();
+  });
 });

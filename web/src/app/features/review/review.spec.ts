@@ -8,6 +8,7 @@ import { Review } from './review';
 import { CollectionStore } from '../../core/collection.store';
 import { StudyQueueService, type QueueCounts } from '../../core/study-queue.service';
 import { OutboxService } from '../../core/outbox/outbox.service';
+import type { OutboxOp } from '../../core/outbox/outbox-types';
 import { Sm2Scheduler } from '../../core/scheduling/sm2';
 import type { Card, Deck, DeckOptions, Note, NoteType } from '../../core/models';
 
@@ -682,6 +683,112 @@ describe('Review', () => {
       const el = fixture.nativeElement as HTMLElement;
       const rendered = el.querySelector('.rendered');
       expect(rendered).toBeTruthy();
+    });
+  });
+
+  // --- rev token in enqueued body (spec 024 D9) --------------------------------
+
+  describe('rev token in enqueued body', () => {
+    it('first review of a card with no rev enqueues expectedRev: null and card.rev === revlog.id', async () => {
+      const fixture = await createReview();
+      const component = fixture.componentInstance;
+      component.reveal();
+      fixture.detectChanges();
+
+      const el = fixture.nativeElement as HTMLElement;
+      const buttons = Array.from(el.querySelectorAll<HTMLButtonElement>('.rate'));
+      buttons[2].click(); // good
+      fixture.detectChanges();
+      await flushMicrotasks();
+      fixture.detectChanges();
+
+      expect(outboxFake.enqueue).toHaveBeenCalledTimes(1);
+      const enqueueCall = outboxFake.enqueue.mock.calls[0][0] as OutboxOp;
+      const body = enqueueCall.body as {
+        card: Card;
+        revlog: { id: string };
+        expectedRev: string | null | undefined;
+      };
+      expect(body.expectedRev).toBe(null);
+      expect(body.card.rev).toBe(body.revlog.id);
+    });
+
+    it("A4 chain: second review of same card in same session enqueues expectedRev equal to first review's revlog.id", async () => {
+      // Track the current version of the card as applyCard is called
+      let currentCard: Card = card({ id: 'c1', rev: undefined }); // Virgin card, no rev
+      let cardServeCount = 0;
+
+      // When applyCard is called, update the tracked card
+      storeFake.applyCard = vi.fn((updatedCard: Card) => {
+        currentCard = updatedCard;
+      });
+
+      // When queue.next is called, return the current card state
+      queueFake.next.mockImplementation(() => {
+        if (cardServeCount < 2) {
+          cardServeCount++;
+          return currentCard;
+        }
+        return null;
+      });
+
+      const fixture = await createReview();
+      const component = fixture.componentInstance;
+
+      // First review
+      component.reveal();
+      fixture.detectChanges();
+
+      let el = fixture.nativeElement as HTMLElement;
+      let buttons = Array.from(el.querySelectorAll<HTMLButtonElement>('.rate'));
+      buttons[2].click(); // good
+      fixture.detectChanges();
+      await flushMicrotasks();
+      fixture.detectChanges();
+
+      expect(outboxFake.enqueue).toHaveBeenCalledTimes(1);
+      const firstEnqueueCall = outboxFake.enqueue.mock.calls[0][0] as OutboxOp;
+      const firstBody = firstEnqueueCall.body as {
+        card: Card;
+        revlog: { id: string };
+        expectedRev: string | null | undefined;
+      };
+      const firstRevlogId = firstBody.revlog.id;
+
+      // Verify first review enqueued correctly
+      expect(firstBody.expectedRev).toBe(null);
+      expect(firstBody.card.rev).toBe(firstRevlogId);
+
+      // The state should now have the card with the rev from the first review
+      expect(component.state()).toBeTruthy();
+      const currentCardAfterFirst = component.state()!.card;
+      expect(currentCardAfterFirst.rev).toBe(firstRevlogId);
+
+      // Second review
+      component.reveal();
+      fixture.detectChanges();
+
+      el = fixture.nativeElement as HTMLElement;
+      buttons = Array.from(el.querySelectorAll<HTMLButtonElement>('.rate'));
+      buttons[2].click(); // good again
+      fixture.detectChanges();
+      await flushMicrotasks();
+      fixture.detectChanges();
+
+      expect(outboxFake.enqueue).toHaveBeenCalledTimes(2);
+      const secondEnqueueCall = outboxFake.enqueue.mock.calls[1][0] as OutboxOp;
+      const secondBody = secondEnqueueCall.body as {
+        card: Card;
+        revlog: { id: string };
+        expectedRev: string | null | undefined;
+      };
+      // The A4 chain: second review's expectedRev should be the first review's revlog.id
+      // (the concrete first-review id, not just any truthy value)
+      expect(secondBody.expectedRev).toBe(firstRevlogId);
+      // And the second review's card.rev should be its own revlog.id
+      expect(secondBody.card.rev).toBe(secondBody.revlog.id);
+      // Ensure it's a different revlog id (not the same review)
+      expect(secondBody.revlog.id).not.toBe(firstRevlogId);
     });
   });
 });

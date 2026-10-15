@@ -7,6 +7,7 @@ import { App } from './app';
 import { CollectionStore } from './core/collection.store';
 import type { Card, Collection, Deck } from './core/models';
 import { PauseService } from './core/pause.service';
+import { OutboxService } from './core/outbox/outbox.service';
 
 /** Trivial stand-ins for the lazy-loaded route components (routerLinkActive
  * only needs matching paths to resolve against Router.url; the real feature
@@ -170,5 +171,116 @@ describe('App', () => {
     fixture.detectChanges();
 
     expect(recoverOnLoad).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows conflict text when conflicts exist, even with a non-zero pending count', () => {
+    seedStore();
+    const outbox = TestBed.inject(OutboxService);
+    const conflictOp = {
+      id: 'op1',
+      method: 'POST' as const,
+      path: '/review',
+      body: {},
+      attempts: 0,
+      failedReason: null,
+      createdAt: Date.now(),
+    };
+    outbox.conflicts.set([conflictOp]);
+    outbox.pending.set([
+      {
+        id: 'op2',
+        method: 'POST' as const,
+        path: '/review',
+        body: {},
+        attempts: 0,
+        failedReason: null,
+        createdAt: Date.now(),
+      },
+    ]);
+
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    const bannerText = compiled.querySelector('.outbox-banner')?.textContent;
+    expect(bannerText).toContain('could not be merged — answered on another device');
+    expect(bannerText).not.toContain('not yet saved');
+  });
+
+  it('does not preventDefault when only conflicts exist', () => {
+    seedStore();
+    const outbox = TestBed.inject(OutboxService);
+    const conflictOp = {
+      id: 'op1',
+      method: 'POST' as const,
+      path: '/review',
+      body: {},
+      attempts: 0,
+      failedReason: null,
+      createdAt: Date.now(),
+    };
+    outbox.conflicts.set([conflictOp]);
+
+    const fixture = TestBed.createComponent(App);
+    const app = fixture.componentInstance;
+
+    const event = new Event('beforeunload');
+    const preventDefaultSpy = vi.spyOn(event, 'preventDefault');
+
+    app.onBeforeUnload(event);
+
+    expect(preventDefaultSpy).not.toHaveBeenCalled();
+  });
+
+  it('does preventDefault when pendingCount > 0', () => {
+    seedStore();
+    const outbox = TestBed.inject(OutboxService);
+    outbox.pending.set([
+      {
+        id: 'op1',
+        method: 'POST' as const,
+        path: '/review',
+        body: {},
+        attempts: 0,
+        failedReason: null,
+        createdAt: Date.now(),
+      },
+    ]);
+
+    const fixture = TestBed.createComponent(App);
+    const app = fixture.componentInstance;
+
+    const event = new Event('beforeunload');
+    const preventDefaultSpy = vi.spyOn(event, 'preventDefault');
+
+    app.onBeforeUnload(event);
+
+    expect(preventDefaultSpy).toHaveBeenCalled();
+  });
+
+  it('does preventDefault when failed count > 0', () => {
+    seedStore();
+    const outbox = TestBed.inject(OutboxService);
+    outbox.failed.set([
+      {
+        id: 'op1',
+        method: 'POST' as const,
+        path: '/review',
+        body: {},
+        attempts: 1,
+        failedReason: 'network error',
+        createdAt: Date.now(),
+      },
+    ]);
+
+    const fixture = TestBed.createComponent(App);
+    const app = fixture.componentInstance;
+
+    const event = new Event('beforeunload');
+    const preventDefaultSpy = vi.spyOn(event, 'preventDefault');
+
+    app.onBeforeUnload(event);
+
+    expect(preventDefaultSpy).toHaveBeenCalled();
   });
 });

@@ -74,6 +74,8 @@ export class CollectionStore {
   readonly error = signal<string | null>(null);
   readonly loaded = computed(() => this.collection() !== null && this.cards().length >= 0);
 
+  private loadPromise: Promise<void> | null = null;
+
   /** Per-deck own counts keyed by deckId. */
   private readonly ownCounts = computed<Map<string, DeckCounts>>(() => {
     const coll = this.collection();
@@ -133,8 +135,19 @@ export class CollectionStore {
     return nodes;
   });
 
-  async load(): Promise<void> {
-    if (this.loading()) return;
+  load(): Promise<void> {
+    // L-028: return the in-flight load so a caller's `await` means what it
+    // says. The old early-return guard resolved immediately and let the
+    // caller read the pre-load card array.
+    if (this.loadPromise) return this.loadPromise;
+    const p = this._runLoad().finally(() => {
+      if (this.loadPromise === p) this.loadPromise = null;
+    });
+    this.loadPromise = p;
+    return p;
+  }
+
+  private async _runLoad(): Promise<void> {
     this.loading.set(true);
     this.error.set(null);
     try {
