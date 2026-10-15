@@ -110,3 +110,16 @@ sets that state explicitly (`pending.set([])`, `failed.set([])`) and asserts it
 before acting, so a leak fails with a clear message instead of a confusing one.
 Running the suite again locally does not catch this class — it is timing, not
 logic.
+
+### 2026-10-15 — A real `CollectionStore.load()` in a harness enqueues outbox ops of its own
+
+(`specs/025-conflict-resolver-budget`, harden round 2 C-18)
+`_runLoad()` ends with `unburyForNewDay()`, which **enqueues a
+`PATCH /collection`** (and a `PATCH /cards/:id` per buried card) whenever
+`collection.lastUnburyDay` is behind today — and a fixture `Collection` usually
+has no `lastUnburyDay` at all. In any test that drives the real outbox and lets
+the real store load, that op lands at the tail of the drain mid-test and throws
+off every send count. Return `lastUnburyDay: Number.MAX_SAFE_INTEGER` from the
+fake `getCollection`, make every fake `send` answer non-target paths with
+`of({})`, and assert the paths the fake actually saw, so a regression shows up
+instead of hiding. `conflict-drain.spec.ts` is the worked example.

@@ -1,4 +1,4 @@
-import { Injectable, effect, inject } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 
 import { CollectionStore, todayNumber } from '../collection.store';
 import { schedulerFor } from '../scheduling/scheduler-factory';
@@ -8,34 +8,31 @@ import type { Rating } from '../scheduling/types';
 import { OutboxService } from './outbox.service';
 import type { ConflictOutcome, OutboxOp } from './outbox-types';
 
+/** Spec 025 D2 / AD-032: an original send plus at most two re-applied
+ *  sends — original (0) → 409 → (1) → 409 → (2) → 409 → parked. */
+export const MAX_REAPPLIES = 2;
+
 /**
- * D8 seam: the outbox detects a 409 and delegates to this resolver.
- * Resolves conflicts by reloading the collection once per stale snapshot,
- * then re-applying the rejected rating at the original answer instant (D10).
+ * D8 seam: the outbox detects a 409 and delegates to this resolver, which
+ * re-applies the rejected rating on top of the server's card at the
+ * original answer instant (D10).
  *
- * Bounded at 2 reload cycles per drain pass to avoid retry loops that
- * exhaust the tier-1 rate limiter's budget. Once exhausted, the op moves
- * to the visible conflicts list (A6).
+ * Spec 025 / AD-032: the store is reloaded at most once per drain pass
+ * (only a successful reload counts), and each review's lineage is
+ * re-applied at most MAX_REAPPLIES times before it is parked in the
+ * visible conflicts list. The bound follows the lineage, not the card: a
+ * conflict legitimately cascades along an offline chain of one card.
  */
 @Injectable({ providedIn: 'root' })
 export class ConflictResolver {
   private readonly store = inject(CollectionStore);
   private readonly outbox = inject(OutboxService);
 
-  private reloadsThisPass = 0;
+  private reloadedForPass: number | null = null;
 
   constructor() {
-    // D8: register as the conflict handler. Both parameters must be declared
-    // or this does not compile.
-    this.outbox.setConflictHandler((op, body) => this.resolve(op, body));
-
-    // Reset the per-pass reload budget when the queue empties, i.e. when the
-    // drain pass is over. An effect() reacts to the signal itself, not polling.
-    effect(() => {
-      if (this.outbox.pendingCount() === 0) {
-        this.reloadsThisPass = 0;
-      }
-    });
+    // D8: register as the conflict handler.
+    this.outbox.setConflictHandler((op, body, pass) => this.resolve(op, body, pass));
   }
 
   private extractRevlog(op: OutboxOp): Record<string, unknown> | null {
@@ -62,28 +59,22 @@ export class ConflictResolver {
     return { reviewedAt, timeMs };
   }
 
-  async resolve(op: OutboxOp, body: unknown): Promise<ConflictOutcome> {
-    // Non-/review path → unresolved
+  async resolve(op: OutboxOp, body: unknown, pass: number): Promise<ConflictOutcome> {
     if (op.path !== '/review') {
       return { outcome: 'unresolved', reason: 'conflict on non-review path' };
     }
 
-    // Budget check: 2 reloads per drain pass
-    if (this.reloadsThisPass >= 2) {
-      return { outcome: 'unresolved', reason: 'reload budget exhausted' };
+    // D2: bound per lineage, checked before anything spends the reload.
+    const reapplies = op.reapplies ?? 0;
+    if (reapplies >= MAX_REAPPLIES) {
+      return { outcome: 'unresolved', reason: 'reapply limit reached' };
     }
 
-    // Reload once per stale snapshot (Step 5 makes this await real)
-    await this.store.load();
-    this.reloadsThisPass++;
-
-    // Read the server card from the 409 body
     const serverCard = (body as Record<string, unknown> | null)?.['card'] as Card | undefined;
     if (!serverCard) {
       return { outcome: 'unresolved', reason: '409 without card' };
     }
 
-    // Recover the rating from the queued op
     const revlog = this.extractRevlog(op);
     if (!revlog) {
       return { outcome: 'unresolved', reason: 'no revlog in op body' };
@@ -94,7 +85,13 @@ export class ConflictResolver {
       return { outcome: 'unresolved', reason: 'invalid button' };
     }
 
-    // Resolve deck options: two lookups per the step
+    // D1: one successful reload per drain pass. load() swallows errors, so
+    // a failed reload is not recorded and the next conflict retries it.
+    if (this.reloadedForPass !== pass) {
+      await this.store.load();
+      if (this.store.error() === null) this.reloadedForPass = pass;
+    }
+
     const deck = this.store.deckById(serverCard.deckId);
     if (deck === undefined) {
       return { outcome: 'unresolved', reason: 'unknown deck' };
@@ -121,11 +118,10 @@ export class ConflictResolver {
       timeMs,
     );
 
-    // Apply the fresh card with the fresh revlog id
     const applied: Card = { ...fresh, rev: freshRevlog.id };
     this.store.applyCard(applied);
 
-    // Return the replacement op, preserving FIFO order (AD-029)
+    // Replace in place at the queue head, preserving FIFO (AD-029).
     return {
       outcome: 'replaced',
       replacement: {
@@ -137,6 +133,7 @@ export class ConflictResolver {
           revlog: freshRevlog,
           expectedRev: serverCard.rev ?? null,
         },
+        reapplies: reapplies + 1,
       },
     };
   }

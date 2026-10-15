@@ -5,7 +5,7 @@ import { CollectionStore } from '../collection.store';
 import { schedulerFor } from '../scheduling/scheduler-factory';
 import type { Card, Collection, Deck, DeckOptions, RevlogEntry } from '../models';
 import { OutboxService } from './outbox.service';
-import { ConflictResolver } from './conflict-resolver';
+import { ConflictResolver, MAX_REAPPLIES } from './conflict-resolver';
 import type { OutboxOp } from './outbox-types';
 
 // Minimal test fixtures
@@ -169,7 +169,7 @@ describe('ConflictResolver', () => {
       return originalLoad();
     };
 
-    const outcome = await resolver.resolve(op, body);
+    const outcome = await resolver.resolve(op, body, 1);
 
     expect(loadCalls).toBe(1);
     expect(outcome.outcome).toBe('replaced');
@@ -214,7 +214,7 @@ describe('ConflictResolver', () => {
       return originalAnswer.call(this, card, rating, opts, ctx, timeMs);
     });
 
-    const outcome = await resolver.resolve(op, body);
+    const outcome = await resolver.resolve(op, body, 1);
 
     // Verify the context was set to the old reviewedAt time
     expect(capturedCtx.now).toBe(oldReviewedAt);
@@ -225,31 +225,19 @@ describe('ConflictResolver', () => {
     expect(outcome.outcome).toBe('replaced');
   });
 
-  // Test 3: Third consecutive conflict returns 'unresolved' with budget reason
-  it('third consecutive conflict in one pass returns "unresolved" with budget reason', async () => {
-    const coll = makeCollection();
-    store.collection.set(coll);
-
-    const op1 = makeOp();
-    const op2 = makeOp({ id: 'rev2' });
-    const op3 = makeOp({ id: 'rev3' });
-
+  // Spec 025 D1: one successful reload per drain pass; a new pass reloads again.
+  it('conflicts in one pass reload once; a new pass reloads again', async () => {
+    const load = vi.spyOn(store, 'load').mockResolvedValue(undefined);
+    store.error.set(null);
     const body = { card: makeCard() };
 
-    // First conflict: succeeds and reloads
-    const outcome1 = await resolver.resolve(op1, body);
-    expect(outcome1.outcome).toBe('replaced');
+    expect((await resolver.resolve(makeOp({ id: 'rev1' }), body, 1)).outcome).toBe('replaced');
+    expect((await resolver.resolve(makeOp({ id: 'rev2' }), body, 1)).outcome).toBe('replaced');
+    expect((await resolver.resolve(makeOp({ id: 'rev3' }), body, 1)).outcome).toBe('replaced');
+    expect(load).toHaveBeenCalledTimes(1);
 
-    // Second conflict: succeeds and reloads
-    const outcome2 = await resolver.resolve(op2, body);
-    expect(outcome2.outcome).toBe('replaced');
-
-    // Third conflict: should hit budget limit (2 reloads per pass)
-    const outcome3 = await resolver.resolve(op3, body);
-    expect(outcome3.outcome).toBe('unresolved');
-    if (outcome3.outcome === 'unresolved') {
-      expect(outcome3.reason).toBe('reload budget exhausted');
-    }
+    expect((await resolver.resolve(makeOp({ id: 'rev4' }), body, 2)).outcome).toBe('replaced');
+    expect(load).toHaveBeenCalledTimes(2);
   });
 
   // Test 4: Non-/review path returns 'unresolved'
@@ -257,7 +245,7 @@ describe('ConflictResolver', () => {
     const op = makeOp({ path: '/cards/c1' });
     const body = { card: makeCard() };
 
-    const outcome = await resolver.resolve(op, body);
+    const outcome = await resolver.resolve(op, body, 1);
 
     expect(outcome.outcome).toBe('unresolved');
     if (outcome.outcome === 'unresolved') {
@@ -270,7 +258,7 @@ describe('ConflictResolver', () => {
     const op = makeOp();
     const body = {}; // No card
 
-    const outcome = await resolver.resolve(op, body);
+    const outcome = await resolver.resolve(op, body, 1);
 
     expect(outcome.outcome).toBe('unresolved');
     if (outcome.outcome === 'unresolved') {
@@ -278,35 +266,51 @@ describe('ConflictResolver', () => {
     }
   });
 
-  // Test 6: Verify loop bound — replacement op that itself 409s should not loop forever
-  // This test ensures that if a resolution produces an op that itself 409s,
-  // the budget prevents infinite loops.
-  it('a replacement op that itself 409s cannot loop forever — budget holds', async () => {
-    const coll = makeCollection();
-    store.collection.set(coll);
+  // Spec 025 D2: a lineage is parked after MAX_REAPPLIES re-applies, and a
+  // parked op spends no reload (C-5).
+  it('a lineage is parked after MAX_REAPPLIES re-applies, without spending a reload', async () => {
+    const load = vi.spyOn(store, 'load').mockResolvedValue(undefined);
+    store.error.set(null);
 
-    // Simulate multiple resolution attempts in sequence (as would happen in a drain loop)
-    // Each one should increment the reload counter and eventually hit the budget
-    const op = makeOp();
-    const serverCard = makeCard();
-    const body = { card: serverCard };
-
-    // First conflict: resolves
-    const outcome1 = await resolver.resolve(op, body);
-    expect(outcome1.outcome).toBe('replaced');
-
-    // Second conflict: resolves
-    const outcome2 = await resolver.resolve(op, body);
-    expect(outcome2.outcome).toBe('replaced');
-
-    // Third conflict: hits budget and returns unresolved
-    const outcome3 = await resolver.resolve(op, body);
-    expect(outcome3.outcome).toBe('unresolved');
-    if (outcome3.outcome === 'unresolved') {
-      expect(outcome3.reason).toBe('reload budget exhausted');
+    let op = makeOp();
+    for (let i = 1; i <= MAX_REAPPLIES; i++) {
+      const out = await resolver.resolve(op, { card: makeCard() }, i);
+      expect(out.outcome).toBe('replaced');
+      if (out.outcome === 'replaced') {
+        expect(out.replacement.reapplies).toBe(i);
+        op = { ...out.replacement, attempts: 0, failedReason: null, createdAt: Date.now() };
+      } else {
+        throw new Error('expected replaced');
+      }
     }
+    expect(load).toHaveBeenCalledTimes(2);
 
-    // The drain loop would then move this op to conflicts and continue,
-    // not retry it again in the same pass. Budget holds.
+    const callsBefore = load.mock.calls.length;
+    const last = await resolver.resolve(op, { card: makeCard() }, MAX_REAPPLIES + 1);
+    expect(last.outcome).toBe('unresolved');
+    if (last.outcome === 'unresolved') {
+      expect(last.reason).toBe('reapply limit reached');
+    }
+    expect(load.mock.calls.length).toBe(callsBefore);
+  });
+
+  // Spec 025 A7: a failed reload is not recorded, so the next conflict in the
+  // same pass retries it.
+  it('a failed reload is not recorded; the next conflict in the pass retries it', async () => {
+    const load = vi.spyOn(store, 'load').mockImplementation(async () => {
+      store.error.set('boom');
+    });
+    const body = { card: makeCard() };
+
+    expect((await resolver.resolve(makeOp({ id: 'rev1' }), body, 1)).outcome).toBe('replaced');
+    expect((await resolver.resolve(makeOp({ id: 'rev2' }), body, 1)).outcome).toBe('replaced');
+    expect(load).toHaveBeenCalledTimes(2);
+
+    load.mockImplementation(async () => {
+      store.error.set(null);
+    });
+    expect((await resolver.resolve(makeOp({ id: 'rev3' }), body, 2)).outcome).toBe('replaced');
+    expect((await resolver.resolve(makeOp({ id: 'rev4' }), body, 2)).outcome).toBe('replaced');
+    expect(load).toHaveBeenCalledTimes(3);
   });
 });

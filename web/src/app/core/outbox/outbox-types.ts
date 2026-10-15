@@ -16,6 +16,10 @@ export interface OutboxOp {
   /** Reason why the op is in the conflicts list (e.g., 'no resolver', or a
    *  ConflictHandler's unresolved reason). Only set for ops moved to conflicts. */
   conflictReason?: string;
+  /** How many times ConflictResolver has re-applied this review's lineage.
+   *  Carried onto each replacement op; absent = 0 (ops queued before spec
+   *  025). Bounds a ping-pong per review, not per drain pass (AD-032). */
+  reapplies?: number;
 }
 
 /** The shape of what is read from localStorage — conflicts may be absent in
@@ -52,4 +56,10 @@ export type ConflictOutcome =
   | { outcome: 'replaced'; replacement: Omit<OutboxOp, 'attempts' | 'failedReason' | 'createdAt'> }
   | { outcome: 'unresolved'; reason: string };
 
-export type ConflictHandler = (op: OutboxOp, body: unknown) => Promise<ConflictOutcome>;
+/** `pass` identifies the `_runDrain()` invocation the conflict arose in, so
+ *  the resolver can reload at most once per pass (spec 025 D1, AD-032). */
+export type ConflictHandler = (
+  op: OutboxOp,
+  body: unknown,
+  pass: number,
+) => Promise<ConflictOutcome>;
