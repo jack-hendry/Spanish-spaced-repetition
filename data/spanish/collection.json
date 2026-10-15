@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "created": 1782310835661,
-  "modified": 1791847687508,
+  "modified": 1792021176489,
   "dayCutoffHour": 4,
   "defaultDeckOptionsId": "opts-default",
   "tags": [],
-  "lastUnburyDay": 110,
-  "pausedAt": 1791847687477
+  "lastUnburyDay": 112,
+  "pausedAt": null
 }
