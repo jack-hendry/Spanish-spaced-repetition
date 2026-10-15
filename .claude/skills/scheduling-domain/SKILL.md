@@ -215,3 +215,14 @@ This skill's main section used to list heatmap buckets among the features that m
 The trap: the old `todayNumber` formula anchored on `collection.created`'s time-of-day, which pushed a same-day review made just after midnight into the next cell when the cutoff hour was 4am. That was a bug — spec 010 reanchored `todayNumber` to local calendar days.
 
 **Corrected rule (spec 010):** Both `todayNumber` and `heatDateKey` count local calendar days, rolling over at `collection.dayCutoffHour`:00 local. `todayNumber` is an integer that persisted `card.due` values are compared against; `heatDateKey` produces a calendar-date key for the visual grid. The two differ only in that `heatDateKey` shifts by **absolute hours** (wall-clock midnight + `dayCutoffHour`), while `todayNumber` shifts by **wall-clock hours** (add/subtract the offset then read the calendar date), so their boundaries sit up to an hour apart on the two DST-transition days a year. That difference is acceptable and deliberate — see `specs/archive/2026-09-02-010-day-rollover-anchoring`.
+
+### 2026-10-15 — Re-applying a rejected review schedules at the original `reviewedAt`, never at re-apply time
+
+(`specs/archive/2026-10-15-024-cross-device-safety`, D10, Step 8)
+
+When a review is rejected as stale (409) and re-applied on top of the server's card, `ConflictResolver` re-runs the scheduler with `ctx = { now: revlog.reviewedAt, today: todayNumber(coll, revlog.reviewedAt) }` — the instant the user **answered**, not `Date.now()`. The result is what would have happened had the op arrived in order. Two consequences that look like bugs and are not:
+
+- A re-applied **learning** card can come back with `due` (epoch ms) already **in the past**. That is correct: the step started when the user answered, possibly hours earlier offline. Do not "fix" it by clamping to now.
+- `card.lastReviewed` on the re-applied card equals the original answer instant, earlier than the server's `card.modified`. In Step 11's live run they differed by 80 ms; offline they can differ by hours.
+
+Both `now` and `today` must use `reviewedAt`. The broken variant `{ now: Date.now(), today: todayNumber(coll, reviewedAt) }` is easy to miss because half the line is right — an interrupted falsifiability check once left exactly that in the source. The rating is recovered as `RATINGS[revlog.button - 1]`, safe for both schedulers because `fsrs.ts`'s `GRADE` is `RATING_BUTTON`.

@@ -896,3 +896,93 @@ a real `HttpHeaders`), not a plain object with the same shape** — a
 hand-rolled stub can satisfy every type check and property access a test
 writes while still being unable to reproduce a bug that only exists in the
 real object's method bindings.
+
+**L-030 — Widen a persisted-state schema backward-compatibly; a version bump
+in a reader that rejects unknown versions silently discards every user's
+data.**
+(2026-10-11, `024-cross-device-safety` Step 7)
+
+Adding `conflicts` to the review outbox's `localStorage` state looked like a
+textbook reason to bump `version: 1` → `2`. But `parseState` returns
+`EMPTY_STATE` for any `version !== 1`, so a bump would have dropped every queued
+review in every existing client on its first load after deploy — real study
+progress, no error, no log. The fix was to keep `version: 1`, have `parseState`
+default the missing key (`conflicts = []`) immediately before its final deep
+copy (the copy does not invent keys, because it copies the stored object rather
+than building a known shape), and type the stored shape separately
+(`StoredOutboxState`, `conflicts?`) from the in-app one so the boot-time
+`?? []` guard is honest to the type checker. The rule: **before changing a
+persisted shape, read the reader's version check and ask what it does with data
+it does not recognise.** If the answer is "throw it away", add fields as
+optional-on-read and default them; reserve a version bump for a real migration
+that carries the old data across.
+
+**L-031 — A passing test count is not a passing suite; read the exit code of
+the exact command the gate names.**
+(2026-10-11, `024-cross-device-safety` Steps 2–8)
+
+From Step 2 to Step 8 this run reported "all gates clean" while
+`npm run test -w server` exited **1** on every run and printed "95 passed". An
+unhandled rejection (a debounced write landing after its test's temp dir was
+removed) fails the suite without failing any test. Verification was
+`… | grep -E "Test Files|Tests "`, which extracts the count and discards the
+exit status — and the Step 4 checkpoint inherited the same method and confirmed
+a false green. Two cousins showed up in the same run: an implementer reported
+`lint:ci` clean after running `npx eslint <one file>` instead of the repo-wide
+`eslint .` (six errors were waiting), and a checkpoint reported "no DI cycle"
+from server logs after `curl`-ing the HTML, which never executes the Angular
+bundle. The rule: **verify with `; echo "exit: $?"` on the exact command the
+gate names, and treat a substituted command as unverified** — a narrower or
+adjacent check reports green about something else (L-020's shape, applied to
+the verifier rather than the code).
+
+**L-032 — A test written while a code path was unreachable can pin a bug; the
+assertion only becomes wrong when a later phase makes the path reachable.**
+(2026-10-11, `024-cross-device-safety` Step 2)
+
+023's `review-idempotency` test POSTed the same `revlog.id` with a *different*
+card body and asserted the second one wins ("demonstrates last-write-wins").
+Under 023 a replay could only ever carry an identical body, so the assertion was
+harmless. 024 made a differing body reachable (a retry racing a review from
+another device), and at that moment the assertion became a description of the
+clobber bug the spec existed to prevent. Step 2's plan said the file must keep
+passing **unchanged** to protect A3 — which was unsatisfiable, and A3 itself was
+only ever defined over an *identical* body. The rule: **when a new phase changes
+what inputs are reachable, re-read the old tests that "protect" behaviour on
+that path and ask whether they assert a guarantee or merely the old
+implementation's accident.** A "must pass unchanged" bullet needs that check
+before it is written, not after an implementer hits it.
+
+**L-033 — A latent race surfaces wherever new load lands; fixing the file
+where the symptom appeared only moves it.**
+(2026-10-11, `024-cross-device-safety` Step 8)
+
+`FileStore.scheduleFlush` deleted its `pending` entry *before* starting a
+`void`-ed atomic write, so `flushAll()` could not await a write already in
+flight and a test's `rmSync` could land between `writeFile(tmp)` and
+`rename`. Seven server test files used `debounceMs: 0` and were exposed; the
+bug was older than 024. 024's new tests merely added requests, raising the odds
+that *some* file lost the race on a given run. The first fix (awaiting response
+bodies) changed nothing; the second (a long debounce in the new file only) made
+that file deterministic and the `ENOENT` reappeared under 023's file prefix. The
+diagnosis came from grepping **every** test's temp-dir prefix, not from
+comparing the new file with one neighbour. The rule: **when an intermittent
+failure first appears beside new code, check whether the defect is shared
+before calling it new** — list every caller of the suspect mechanism, and treat
+"it moved to another file" as proof the bug lives below the tests.
+
+**L-034 — A break-then-restore falsifiability check leaves the source broken
+if the run is interrupted between the two edits.**
+(2026-10-11, `024-cross-device-safety` Step 8)
+
+A subagent was stopped after temporarily changing `ctx.now` from `reviewedAt` to
+`Date.now()` to prove the D10 spec fails, and before changing it back. The
+result compiled, linted, passed every test except the D10 spec, and was half
+right (`today:` still read `reviewedAt`), so it would have read as correct at a
+glance — the exact defect D10 exists to prevent, sitting in the source. Caught
+only because the top-level session grepped the line after the interruption
+instead of trusting the last green report. The rule: **after any interrupted
+agent, grep every line a falsifiability check is known to touch, and tell
+agents to restore first and skip the check rather than run out of turns between
+the break and the restore.** `git stash` is not the answer either — this repo's
+specs ban it for the check because it can lose untracked test files.

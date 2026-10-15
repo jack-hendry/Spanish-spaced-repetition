@@ -125,43 +125,7 @@ code keeps the decision, nobody keeps the reason. So, in order:
 
 **AD-026 — The empty-store sentinel checks file *content*, and checks two files.** → moved to `STATE-ARCHIVE.md`
 
-**AD-027 — Retention is three layers with different depths; the 6-hour cron
-interval *is* the loss window.** (`archive/2026-09-18-022-backup-and-restore`
-D5/D6, Steps 7/8/16, 2026-09-17) Cadence and retention are the same question, so they get one
-answer. `backup.yml` runs `0 */6 * * *`, so **a total Fly loss costs at most
-~6 hours of reviews** (plus GitHub cron's best-effort lateness). Measured
-against real volume — 30 active study days in the 73 from 2026-07-06, median
-118 reviews on an active day, max 263 — that ceiling is a fraction of one
-session, where a 24-hour window would have admitted a whole one. Which layer
-answers which failure:
-
-| Layer | Depth | Survives losing Fly? | Answers |
-|---|---|---|---|
-| **git history** (the backup commits) | unbounded — every commit ever | **yes** — the only layer that does | deep rollback; a bad write that was faithfully backed up |
-| **Fly volume snapshots** | ≤ **5 days** (`Snapshot retention: 5`) | **no** — lives on Fly | fast rollback, cheap and quick |
-| the volume itself | none — it is the live writer | no | *nothing*; it is not a backup |
-
-Snapshots were measured, not assumed: zero existed at Step 16 (volume 19h
-old); the first appeared 2026-09-17. So the roadmap's "snapshots remain
-unconfigured" was wrong on configuration and, until then, right on outcome.
-They never satisfy "at least one copy off Fly" — they do not survive losing
-the account, a billing termination, or an org-wide mistake.
-
-**Two silent-failure modes are accepted and made visible, not engineered
-away** (D6). (1) GitHub auto-disables scheduled workflows after **60 days of
-repository inactivity** — which interacts with A3, because no-op runs
-deliberately commit nothing, so a study break longer than 60 days with no
-other push could disable the backup. GitHub emails the repository owner when
-it does; **that email is the designated signal**, so it must not be filtered.
-(2) The **Fly token expires** — the default is 175,200h (20 years), and a
-deliberately shorter expiry shrinks the leak window but guarantees an
-eventual silent stop. The token's dates are queried from Fly, never recorded
-here (D7), because a written-down expiry drifts. Neither mode is detected by
-the workflow itself: a backup that has stopped running produces no failure
-notification, only an absence.
-
-**What no cadence fixes:** a review lost *in flight* never reaches Fly, so no
-backup interval recovers it — Phase 3's residual risk.
+**AD-027 — Retention is three layers with different depths; the 6-hour cron interval *is* the loss window.** → moved to `STATE-ARCHIVE.md`
 
 **AD-028 — The backup workflow wakes production with an anonymous HTTP request
 and never stops it; CI's Fly token holds no machine permission.**
@@ -222,7 +186,7 @@ every mocked error used a plain object for `headers`, never a real
 
 **AD-030 — Phase 4's staleness token is an explicit `card.rev` (the
 `RevlogEntry.id` that produced the state), not `card.modified` and not a
-collection-level generation token.** (`specs/024-cross-device-safety`, D1/D2,
+collection-level generation token.** (`specs/archive/2026-10-15-024-cross-device-safety`, D1/D2,
 2026-10-11)
 `card.modified` is unusable, not merely divergent: both schedulers return
 `{ ...card, modified: ctx.now }` — a *client* clock the server never sees — so a
@@ -235,6 +199,11 @@ precondition and a replay must **not** re-write the card, or Phase 3's
 retry-forever contract breaks and a replay clobbers a newer review. A 409 is
 resolved per *snapshot* (reload once, re-apply the rating), never per op: a 409
 is not 2xx, so per-op retries would spend the tier-1 20-failure budget.
+**Amended 2026-10-15:** as built, the resolver reloads per *op* within a
+2-reload-per-drain-pass budget, not per snapshot — so a third conflicting op in
+one pass is parked. Open; see the Quick Tasks row of that date.
+
+**AD-031 — The `FileStore` in-flight-write fix shipped inside spec 024, not as its own spec.** → moved to `STATE-ARCHIVE.md`
 
 ## Blockers
 
@@ -271,6 +240,11 @@ is not 2xx, so per-op retries would spend the tier-1 20-failure budget.
 - **L-027** — An unmeasured saving may not exist; measure before writing the justification down.
 - **L-028** — A guard that early-returns instead of awaiting in-flight work makes every caller's `await` on it meaningless.
 - **L-029** — A method extracted from an object into a bare variable loses its `this`; a test that mocks the error as a plain object never exercises the real bound call.
+- **L-030** — Widen a persisted-state schema backward-compatibly; a version bump in a reader that rejects unknown versions silently discards every user's data.
+- **L-031** — A passing test count is not a passing suite; read the exit code of the exact command the gate names.
+- **L-032** — A test written while a code path was unreachable can pin a bug; the assertion only becomes wrong when a later phase makes the path reachable.
+- **L-033** — A latent race surfaces wherever new load lands; fixing the file where the symptom appeared only moves it.
+- **L-034** — A break-then-restore falsifiability check leaves the source broken if the run is interrupted between the two edits.
 
 ## Quick Tasks
 
@@ -296,3 +270,4 @@ is not 2xx, so per-op retries would spend the tier-1 20-failure budget.
 | 2026-09-01 | Deduplicated `L-017` in this file's `## Lessons` list | Small, noticed while running `specs/archive/2026-09-02-010-day-rollover-anchoring` and logged as a `## Discovered` note rather than fixed inline. The headline was listed twice, verbatim. It got resolved as a side effect of adding **L-018**: the second copy was the line replaced, so the list went 18 headlines / 18 bodies instead of gaining a 19th duplicate row. Recording it here rather than claiming it is still open. No `LESSONS.md` change — there was only ever one L-017 body, which is why the push gate (headline/body pairing) never caught the duplicate: it checks that every headline has a body, not that every headline appears once. |
 | 2026-09-17 | Added `format-check` + `eslint-check` as local `pre-push` hooks | Small. PR #22's CI `lint` job failed on `npm run lint:ci` for the second time — prompted by the user noticing it in the Actions log. `.pre-commit-config.yaml` had only ever run `clean-table-check`; added two more local hooks at the same `pre-push` stage running `npm run format:check` and `npm run lint:ci`, reinstalled via `pre-commit install --hook-type pre-push --overwrite`. Turning the hook on immediately failed on 12 pre-existing ESLint errors already committed on this branch (`server/src/store/file-store.flush.test.ts`: 3× `no-unsafe-member-access` on `JSON.parse(...)[0].reps`, fixed with a `Card[]` cast; `server/src/store/sentinel.test.ts`: 9× `no-confusing-void-expression`, fixed via `eslint --fix` then `prettier --write` to reconcile brace style) — user chose to fix rather than defer. All 8 affected tests still pass; `pre-commit run --hook-stage pre-push --all-files` is green. See **L-023**. |
 | 2026-09-18 | **Open:** four stale worktrees under `.claude/worktrees/`, at least two on merged branches | Noticed while running spec 022 Step 17 and deliberately not fixed inline (scope discipline). `git worktree list` shows `backlog+subagent-commit-delegation`, `lint-phase4-full-gate` (on the archive-spec-script branch, merged as PR #19), `redo-011-analysis`, and `spec-010-day-rollover` (merged as PR #21). CLAUDE.md's rule is that a worktree dies with its branch: `git worktree remove` then `git branch -d` — never `rm -rf`, which strands `.git/worktrees/<name>/` and a phantom row until someone prunes. `-d` not `-D`, so git refuses any that turn out unmerged. Check `git diff --cached --quiet` in each before touching it (AD-017, L-010). They also inflate every repo-wide search — this task's own roadmap lookup returned 13 hits, 9 of them worktree copies. Small. |
+| 2026-10-15 | **Open:** `ConflictResolver` parks the 3rd conflicting op in a drain pass | Found writing spec 024's A7 verdict; deliberately not fixed in the spec. `resolve()` reloads the store on **every** call and its 2-reload budget resets only when the outbox empties, so a stale queue with 3+ conflicting cards (phone studies offline, desktop studied the same cards) parks the remainder as `'reload budget exhausted'` — never retried, scheduling never applied — even though each 409 body already carries the server card needed to re-apply. The budget buys nothing against the rate limiter (each conflicting op costs one 409 either way; reloads are 2xx). Fix per D6's own wording: reload **once per snapshot** (skip if already reloaded this pass), bound re-applies **per op**. Touches the study loop and outbox, so size it Large. See `specs/archive/2026-10-15-024-cross-device-safety/Analyst.md` `## Discovered` and AD-030's amendment. |

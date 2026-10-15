@@ -245,22 +245,10 @@ A1 as the manual acceptance; make A2 a property of the automated test.
 
 ## Required changes to `Analyst.md` before `tasks.md`
 
-1. **Add D8** — resolver lives outside `OutboxService`; the outbox detects, a
-   `ConflictResolver` resolves; name the seam (C-1).
-2. **Rewrite D6** — resolve per snapshot (pause → reload once → re-apply →
-   resume), bound reload cycles rather than per-op attempts (C-2).
-3. **Restate A7** — a 409 does count against the tier-1 budget; claim bounded
-   contribution, not zero (C-2).
-4. **Add D9** — `rev` is assigned only where a `RevlogEntry` is minted, on both
-   sides, never carried by a spread (C-3).
-5. **Sharpen D4** — `undefined` = wildcard, `null` = assert absent, with the
-   one-time pre-deploy hole stated (C-4).
-6. **Add D10** — the resolver re-schedules at `revlog.reviewedAt`, not at
-   re-apply time (C-5).
-7. **Rewrite A2** — falsifiability attaches to the automated server test (C-7).
-8. **Add to scope** — a conflict counter (C-8).
-9. **Note** — revlog-id set completeness is now a correctness input (C-6), and
-   the resolver must not trust `load()` to have reloaded (C-2 / L-028).
+Nine, one per finding above (add D8, D9, D10; rewrite D6 per-snapshot; restate
+A7 as bounded, not zero; sharpen D4; move A2's falsifiability to the automated
+test; add the conflict counter; note C-6 and the `load()` early return). All
+nine were applied before `tasks.md` was written. *(Condensed at archive.)*
 
 ---
 
@@ -394,33 +382,15 @@ so saying so is cheap and prevents the failure mode.
 
 ## Also checked and found correct (no change needed)
 
-- `RATINGS[button - 1]` is a safe reverse mapping for **both** schedulers:
-  `RATING_BUTTON` is `{again:1,hard:2,good:3,easy:4}` (`types.ts:7-12`) and
-  `fsrs.ts:21` is literally `const GRADE = RATING_BUTTON`.
-- `todayNumber(collection, now)` takes an explicit instant
-  (`collection.store.ts:51`), so D10 is implementable as written.
-- `schedulerFor` is imported in `review.ts` from
-  `../../core/scheduling/scheduler-factory` (line 17) and `Card` is already
-  imported (line 16), so Step 6 adds no new import.
-- All three spec files Steps 5, 6 and 10 modify exist
-  (`collection.store.spec.ts`, `review.spec.ts`, `app.spec.ts`).
-- `web/src/app/core/models/index.ts` is a single file holding the mirror, so
-  Step 1's two-file edit is right.
-- `revlogIds` is a private `Set<string>` with no public accessor
-  (`file-store.ts:71`), so Step 2 genuinely must add `hasRevlogId`.
-- Step 3's `rev: revlog?.id ?? cards[idx].rev` reads the old value correctly —
-  the RHS is evaluated before the assignment.
-- Every step carries `Model:` and `Status:`, and the gate command in
-  `specs/TEMPLATE.md` passes (13 steps, 13 of each).
-- No two steps share a file *and* lack a `Depends on` link, so nothing here is
-  accidentally parallelisable in a way the ordering rules would miss.
+`RATINGS[button - 1]` is a safe reverse mapping for both schedulers
+(`fsrs.ts:21` is `const GRADE = RATING_BUTTON`); `todayNumber` takes an explicit
+instant, so D10 is implementable; `revlogIds` had no public accessor, so Step 2
+needed `hasRevlogId`; Step 3's `rev: revlog?.id ?? cards[idx].rev` reads the old
+value before assigning; imports, spec files and the gate's 13 `Model:`/`Status:`
+pairs all checked. *(Condensed at archive.)*
 
 ## One standing rule to add to the preamble
 
-023's Step 12 found that a `tasks.md` step pinning an exact code shape can be
-invalidated by a lint rule the planner never ran (`require-await` forced four
-methods from `async` to sync `void`; the deprecated `e.returnValue` was
-replaced by `preventDefault()`). Step 5 prescribes turning `load()` from `async`
-into a promise-returning method, which is exactly the shape that could trip such
-a rule. The preamble should say: if a lint rule rejects a prescribed shape,
-**report it and stop** — do not silently redesign, and do not disable the rule.
+If a lint rule rejects a prescribed shape, **report it and stop** — no silent
+redesign, no disabled rule (from 023 Step 12). Added; it fired once, at Step 7's
+`?? []` guard, and the user chose the fix. *(Condensed at archive.)*

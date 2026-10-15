@@ -64,8 +64,15 @@ and the shell surfaces unsent state. All eight acceptance criteria met,
 including a real airplane-mode run on the phone against production. See AD-029,
 L-028, L-029.
 
-**Phase 4 (cross-device safety) is the next spec** —
-`specs/024-cross-device-safety/`, Large, in planning.
+The cross-device-safety work
+(`specs/archive/2026-10-15-024-cross-device-safety/`) is **finished and
+archived** (2026-10-15). It closes **Phase 4** of
+`specs/011-mobile-remote-access/ROADMAP.md`: a stale review is rejected with a
+409 and re-applied on top of the newer state, so no device's review is lost.
+Deployed as release v6 and verified on the phone against production. A1-A6 and
+A8 met; **A7 partly not met** — a stale queue with 3+ conflicting cards in one
+drain pass parks the rest (`specs/STATE.md` Quick Tasks, 2026-10-15). Also
+shipped an out-of-scope `FileStore` fix. See AD-030, AD-031, L-030 to L-034.
 
 Two older follow-ups are recorded rather than started:
 consolidating `todayNumber` and `heatDateKey` behind one day-bucketing helper
