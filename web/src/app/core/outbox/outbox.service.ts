@@ -3,7 +3,7 @@ import { lastValueFrom, timeout } from 'rxjs';
 
 import { ApiService } from '../api.service';
 import { backoffMs, classify, OUTBOX_KEY, parseState, REQUEST_TIMEOUT_MS } from './outbox-ops';
-import type { OutboxOp, OutboxState } from './outbox-types';
+import type { ConflictHandler, OutboxOp, OutboxState } from './outbox-types';
 
 @Injectable({ providedIn: 'root' })
 export class OutboxService {
@@ -11,17 +11,24 @@ export class OutboxService {
 
   readonly pending = signal<OutboxOp[]>([]);
   readonly failed = signal<OutboxOp[]>([]);
+  readonly conflicts = signal<OutboxOp[]>([]);
   readonly status = signal<'idle' | 'draining' | 'waiting' | 'error'>('idle');
   readonly pendingCount = computed(() => this.pending().length);
+  readonly conflictCount = signal(0);
   readonly storageError = signal<string | null>(null);
 
   private drainPromise: Promise<void> | null = null;
+  private conflictHandler: ConflictHandler | null = null;
 
   constructor() {
     // Restore state from localStorage on init
     const state = parseState(localStorage.getItem(OUTBOX_KEY));
     this.pending.set(state.ops);
     this.failed.set(state.failed);
+    // Belt-and-braces: the ??: [] is deliberate. Setting this signal to `undefined`
+    // would throw on the first `.length` read, in the constructor, at app boot,
+    // for precisely the users who have queued reviews.
+    this.conflicts.set(state.conflicts ?? []);
 
     // Update status based on loaded state
     this.updateStatus();
@@ -123,6 +130,44 @@ export class OutboxService {
           this.persist();
           this.updateStatus();
           // Continue with next op
+        } else if (classification === 'conflict') {
+          // Conflict (409): delegate to resolver or park in conflicts
+          // A7: 409 must NOT increment attempts and must NOT schedule backoff
+          this.conflictCount.update((c) => c + 1);
+
+          if (!this.conflictHandler) {
+            // No handler registered: park the op in conflicts with reason
+            this.pending.update((ops) => ops.slice(1));
+            this.conflicts.update((ops) => [...ops, { ...op, conflictReason: 'no resolver' }]);
+            this.persist();
+            // Continue with next op
+          } else {
+            // Handler registered: delegate resolution
+            const outcome = await this.conflictHandler(op, errObj['error']);
+
+            if (outcome.outcome === 'replaced') {
+              // Replace at head: build the fresh op with the replacement body + metadata
+              const replacement: OutboxOp = {
+                ...outcome.replacement,
+                attempts: 0,
+                failedReason: null,
+                createdAt: Date.now(),
+              };
+              this.pending.update((ops) => {
+                const updated = [...ops];
+                updated[0] = replacement;
+                return updated;
+              });
+              this.persist();
+              // Continue with the queue (loop continues to next iteration)
+            } else {
+              // Unresolved: move to conflicts with the handler's reason
+              this.pending.update((ops) => ops.slice(1));
+              this.conflicts.update((ops) => [...ops, { ...op, conflictReason: outcome.reason }]);
+              this.persist();
+              // Continue with next op
+            }
+          }
         } else if (classification === 'retry') {
           // Retryable: increment attempts, persist, schedule backoff, and stop
           const retryDelay = this.getRetryDelay(err as Record<string, unknown>, op.attempts);
@@ -166,6 +211,14 @@ export class OutboxService {
   }
 
   /**
+   * Register a conflict handler. Called by the ConflictResolver.
+   * The handler will be invoked for 409 conflicts during drain.
+   */
+  setConflictHandler(h: ConflictHandler): void {
+    this.conflictHandler = h;
+  }
+
+  /**
    * Persist the current state to localStorage. Sets storageError on failure
    * but never throws.
    */
@@ -175,6 +228,7 @@ export class OutboxService {
         version: 1,
         ops: this.pending(),
         failed: this.failed(),
+        conflicts: this.conflicts(),
       };
       localStorage.setItem(OUTBOX_KEY, JSON.stringify(state));
       this.storageError.set(null);

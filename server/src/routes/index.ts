@@ -113,11 +113,33 @@ export function buildRouter(store: FileStore, opts: { allowImport?: boolean } = 
   // Convenience for the review loop: persist the updated card and append its
   // revlog entry in one round-trip.
   r.post('/review', async (req, res) => {
-    const { card, revlog } = req.body as { card: Card; revlog?: RevlogEntry };
+    const { card, revlog, expectedRev } = req.body as {
+      card: Card;
+      revlog?: RevlogEntry;
+      expectedRev?: string | null;
+    };
     const cards = store.getCards();
     const idx = cards.findIndex((c) => c.id === card.id);
     if (idx === -1) return res.status(404).json({ error: 'card not found' });
-    cards[idx] = { ...card, modified: Date.now() };
+
+    // D5: a replay of an already-applied review must NOT re-write the card.
+    // The response that never arrived is what makes the client retry, and
+    // re-applying its card state would clobber a newer review from another
+    // device. Return the stored card so the contract is unchanged.
+    if (revlog && store.hasRevlogId(revlog.id)) {
+      return res.json(cards[idx]);
+    }
+
+    // D4/D3: equality-only precondition. `undefined` is a wildcard for ops
+    // queued by a pre-024 client; an explicit `null` asserts "no rev yet".
+    if (expectedRev !== undefined) {
+      const storedRev = cards[idx].rev ?? null;
+      if (storedRev !== expectedRev) {
+        return res.status(409).json({ error: 'stale card', card: cards[idx] });
+      }
+    }
+
+    cards[idx] = { ...card, modified: Date.now(), rev: revlog?.id ?? cards[idx].rev };
     store.saveCardsSoon();
     if (revlog) await store.appendRevlog(revlog);
     res.json(cards[idx]);

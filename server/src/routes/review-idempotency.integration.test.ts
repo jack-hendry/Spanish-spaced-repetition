@@ -154,7 +154,7 @@ describe('POST /review idempotency', () => {
     expect(matching).toHaveLength(1);
   });
 
-  it('card write still applies on the replay', async () => {
+  it('a replay with a differing body does NOT overwrite the stored card', async () => {
     const revlogId = `rev-2-${Date.now()}`;
     const card = {
       id: 'c1-0',
@@ -198,7 +198,9 @@ describe('POST /review idempotency', () => {
     });
     expect(res1.status).toBe(200);
 
-    // Second POST with same id but interval: 9 (demonstrates last-write-wins for card)
+    // D5: a replay must not re-write the card. Re-applying would clobber a newer
+    // review from another device. Second POST with same id but interval: 9 should
+    // return 200 but NOT update the stored card.
     const body2 = {
       card: { ...card, interval: 9 },
       revlog: {
@@ -223,7 +225,7 @@ describe('POST /review idempotency', () => {
     });
     expect(res2.status).toBe(200);
     const updatedCard = (await res2.json()) as Card;
-    expect(updatedCard.interval).toBe(9);
+    expect(updatedCard.interval).toBe(5);
 
     // Assert the revlog still has exactly one entry for this id
     const revlog = await store.readRevlog();

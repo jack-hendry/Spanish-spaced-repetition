@@ -5,6 +5,7 @@ import { CollectionStore, type DeckNode } from './core/collection.store';
 import { deckColor } from './core/deck-color';
 import { PauseService } from './core/pause.service';
 import { OutboxService } from './core/outbox/outbox.service';
+import { ConflictResolver } from './core/outbox/conflict-resolver';
 
 @Component({
   selector: 'app-root',
@@ -20,6 +21,7 @@ export class App {
   private readonly router = inject(Router);
   private readonly pauseService = inject(PauseService);
   protected readonly outbox = inject(OutboxService);
+  private readonly conflictResolver = inject(ConflictResolver);
 
   readonly loading = this.store.loading;
   readonly error = this.store.error;
@@ -30,8 +32,15 @@ export class App {
 
   /** Outbox banner text or null if no outbox state to show. */
   readonly outboxBannerText = computed<string | null>(() => {
+    const conflicts = this.outbox.conflicts();
     const pendingCount = this.outbox.pendingCount();
     const failed = this.outbox.failed();
+
+    // Conflicts take priority over unsent work because they need action.
+    if (conflicts.length > 0) {
+      const n = conflicts.length;
+      return `${n} ${n === 1 ? 'review' : 'reviews'} could not be merged — answered on another device`;
+    }
 
     if (pendingCount === 0 && failed.length === 0) {
       return null;
@@ -127,7 +136,9 @@ export class App {
 
   /** Prevent tab close when there are unsaved reviews. */
   onBeforeUnload(event: BeforeUnloadEvent): void {
-    if (this.outboxBannerText() !== null) {
+    // Unsent work only. A parked conflict is surfaced in the banner but must
+    // NOT block closing the tab — it is never auto-cleared (critic R-6).
+    if (this.outbox.pendingCount() > 0 || this.outbox.failed().length > 0) {
       event.preventDefault();
     }
   }

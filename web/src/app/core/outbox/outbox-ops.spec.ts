@@ -81,6 +81,20 @@ describe('classify', () => {
       expect(classify(423)).toBe('retry');
     });
   });
+
+  describe('conflict cases', () => {
+    it('returns "conflict" for 409 (conflict)', () => {
+      expect(classify(409)).toBe('conflict');
+    });
+
+    it('returns "retry" for boundary 408 (not conflict)', () => {
+      expect(classify(408)).toBe('retry');
+    });
+
+    it('returns "retry" for boundary 410 (not conflict)', () => {
+      expect(classify(410)).toBe('retry');
+    });
+  });
 });
 
 describe('backoffMs', () => {
@@ -165,6 +179,7 @@ describe('parseState', () => {
       version: 1,
       ops: [op],
       failed: [],
+      conflicts: [],
     };
     const serialized = JSON.stringify(state);
     const result = parseState(serialized);
@@ -199,6 +214,7 @@ describe('parseState', () => {
           failedReason: 'poison: 422',
         },
       ],
+      conflicts: [],
     };
 
     const serialized = JSON.stringify(original);
@@ -206,6 +222,37 @@ describe('parseState', () => {
 
     expect(recovered).toEqual(original);
     expect(recovered).not.toBe(original);
+  });
+
+  it('restores a pre-024 state with no conflicts key, defaulting to []', () => {
+    // A pre-spec-024 stored state has no 'conflicts' key at all.
+    // parseState must add it automatically to maintain backward compatibility.
+    const pre024State = {
+      version: 1,
+      ops: [
+        {
+          id: 'op1',
+          method: 'POST',
+          path: '/review',
+          body: { card: 'c1' },
+          createdAt: 1000,
+          attempts: 0,
+          failedReason: null,
+        },
+      ],
+      failed: [],
+      // Note: no 'conflicts' key
+    };
+
+    const serialized = JSON.stringify(pre024State);
+    const recovered = parseState(serialized);
+
+    // Should restore the ops and failed as-is, and add conflicts: []
+    expect(recovered.version).toBe(1);
+    expect(recovered.ops).toHaveLength(1);
+    expect(recovered.ops[0].id).toBe('op1');
+    expect(recovered.failed).toHaveLength(0);
+    expect(recovered.conflicts).toEqual([]);
   });
 });
 
@@ -215,6 +262,6 @@ describe('constants', () => {
   });
 
   it('exports EMPTY_STATE with version 1 and empty arrays', () => {
-    expect(EMPTY_STATE).toEqual({ version: 1, ops: [], failed: [] });
+    expect(EMPTY_STATE).toEqual({ version: 1, ops: [], failed: [], conflicts: [] });
   });
 });

@@ -55,6 +55,27 @@ case a suspended review card would not have been due-shifted like its
 non-suspended counterpart, and would have been wrong the moment it was
 un-suspended.
 
+**AD-005 — Pause shifts `due` once on resume, and resume writes cards before
+clearing `pausedAt`.** (back-filled 2026-08-26, `archive/2026-07-09-006-…`)
+FSRS derives elapsed time as `ctx.today - (card.due - card.interval)`, so
+shifting `due` forward by the paused duration makes elapsed-time math, interval
+spacing and FSRS decay all come out right with **zero** changes to
+`todayNumber()`, `ReviewContext`, or anything under `core/scheduling/` — no
+"second clock". `POST /api/collection/resume` writes the card updates first and
+clears `pausedAt` second, because that is the recoverable failure direction: a
+crash between the two leaves `pausedAt` set with cards already shifted, and the
+client retries from the same unchanged `pausedAt`. Payloads carry absolute
+`due` values, not deltas, so re-applying converges. The reverse order looks
+resumed with cards unshifted and leaves no signal to retry — explicitly
+forbidden.
+
+**AD-006 — Deck colours derive from a deck-name hash and are never persisted.**
+(back-filled 2026-08-26, `archive/2026-07-07-003-…` Q3) `deckColor(name)` is a
+djb2 hash → `hsl(hue, 65%, 55%)` in `web/src/app/core/deck-color.ts`. Adding a
+`color` field to `Deck` would have been an on-disk shape change (and therefore
+a server change) for a purely presentational affordance. Deterministic per name
+is enough; the cost is that renaming a deck recolours it.
+
 **AD-007 — `todayNumber` may be changed by 010, and its ≤1-day transition is
 accepted, never migrated.** (2026-08-15, `specs/archive/2026-09-02-010-day-rollover-anchoring`)
 007 explicitly deferred the root cause and declared changing `todayNumber`
@@ -396,6 +417,61 @@ an empty volume; it is passed transiently via `fly deploy --env` and **must
 never be committed to `fly.toml`**, which would permanently disarm the guard.
 Every throw names the absolute path *and* the literal `ALLOW_EMPTY_STORE`, so
 the operator learns the escape hatch from the failure itself.
+
+**AD-027 — Retention is three layers with different depths; the 6-hour cron
+interval *is* the loss window.** (`archive/2026-09-18-022-backup-and-restore`
+D5/D6, Steps 7/8/16, 2026-09-17) Cadence and retention are the same question, so they get one
+answer. `backup.yml` runs `0 */6 * * *`, so **a total Fly loss costs at most
+~6 hours of reviews** (plus GitHub cron's best-effort lateness). Measured
+against real volume — 30 active study days in the 73 from 2026-07-06, median
+118 reviews on an active day, max 263 — that ceiling is a fraction of one
+session, where a 24-hour window would have admitted a whole one. Which layer
+answers which failure:
+
+| Layer | Depth | Survives losing Fly? | Answers |
+|---|---|---|---|
+| **git history** (the backup commits) | unbounded — every commit ever | **yes** — the only layer that does | deep rollback; a bad write that was faithfully backed up |
+| **Fly volume snapshots** | ≤ **5 days** (`Snapshot retention: 5`) | **no** — lives on Fly | fast rollback, cheap and quick |
+| the volume itself | none — it is the live writer | no | *nothing*; it is not a backup |
+
+Snapshots were measured, not assumed: zero existed at Step 16 (volume 19h
+old); the first appeared 2026-09-17. So the roadmap's "snapshots remain
+unconfigured" was wrong on configuration and, until then, right on outcome.
+They never satisfy "at least one copy off Fly" — they do not survive losing
+the account, a billing termination, or an org-wide mistake.
+
+**Two silent-failure modes are accepted and made visible, not engineered
+away** (D6). (1) GitHub auto-disables scheduled workflows after **60 days of
+repository inactivity** — which interacts with A3, because no-op runs
+deliberately commit nothing, so a study break longer than 60 days with no
+other push could disable the backup. GitHub emails the repository owner when
+it does; **that email is the designated signal**, so it must not be filtered.
+(2) The **Fly token expires** — the default is 175,200h (20 years), and a
+deliberately shorter expiry shrinks the leak window but guarantees an
+eventual silent stop. The token's dates are queried from Fly, never recorded
+here (D7), because a written-down expiry drifts. Neither mode is detected by
+the workflow itself: a backup that has stopped running produces no failure
+notification, only an absence.
+
+**What no cadence fixes:** a review lost *in flight* never reaches Fly, so no
+backup interval recovers it — Phase 3's residual risk.
+
+**AD-031 — The `FileStore` in-flight-write fix shipped inside spec 024, not as
+its own spec.** (`specs/archive/2026-10-15-024-cross-device-safety` Step 8 + `## Discovered`, user
+decisions 2026-10-11 and 2026-10-14)
+`scheduleFlush` deleted its `pending` entry before starting a `void`-ed atomic
+write, so `flushAll()` could not await a write already in flight; seven server
+test files using `debounceMs: 0` were exposed to an intermittent `ENOENT`
+(L-033). Fixed by tracking in-flight writes in an `inFlight` map (identity-guarded
+clear) that `flushAll()` and `saveCards()` both await; `index.ts`'s shutdown now
+wraps `flushAll()` in try/catch, because it can now reject and would otherwise
+hang SIGINT/SIGTERM before `server.close`. Persistence-layer work is normally
+sized Large on its own (CLAUDE.md), but splitting it out would leave 024's new
+server tests intermittently red, it is small, and it was green over 10+
+consecutive runs. In production it is benign-to-better: it also closes a restart
+window where an in-flight card write could be cut off. Deployed as release v6
+(2026-10-14). Lands as its **own commit** on the 024 branch so history shows it
+as a distinct change.
 
 ## Blockers
 

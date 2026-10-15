@@ -71,6 +71,10 @@ export interface Card {
   lastReviewed: number | null;
   created: number;
   modified: number;
+  /** Optimistic-concurrency token: the `RevlogEntry.id` of the review that
+   *  produced this state. Absent on cards not yet reviewed under spec 024.
+   *  Compared by EQUALITY only, never by ordering (D3). */
+  rev?: string;
   ease: number;
   interval: number;
   stability: number | null;

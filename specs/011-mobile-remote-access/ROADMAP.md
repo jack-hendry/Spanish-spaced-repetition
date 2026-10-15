@@ -325,13 +325,39 @@ wholesale with the client's copy, with no version check — so the stale
 device silently overwrites newer scheduling state. Detection is cheap;
 silent loss is not acceptable.
 
-- [ ] Add a staleness precondition (per-card `modified`, or a
-      collection-level generation token) so a stale write is **rejected**
-      rather than applied.
-- [ ] Decide the client's response to a rejection — reload and re-apply, or
-      warn the user. Either is fine; silently discarding is not.
-- [ ] Consider a lightweight "this collection is open elsewhere" signal so
-      the second device knows before a session, not after.
+**Done 2026-10-15** — `specs/archive/2026-10-15-024-cross-device-safety/`, deployed as release v6
+and verified on the phone against production three times (no review lost,
+checked in pulled live state). One known limit is left open: a stale queue
+with three or more conflicting cards in one drain pass parks the rest as
+"could not be merged" instead of re-applying them (`specs/STATE.md` Quick Tasks,
+2026-10-15). Two planning findings changed what this section assumed:
+
+- **`card.modified` cannot be the token.** Both schedulers return
+  `{ ...card, modified: ctx.now }` — a *client* clock the server never sees, and
+  the server stamps its own on write — so a naive `expectedModified` would
+  false-conflict on every second review of a card in one session, i.e. on every
+  learning step. The spec uses an explicit `card.rev` whose value is the
+  `RevlogEntry.id` that produced the state: already client-minted, already
+  unique, already the server's dedupe key.
+- **A collection-level generation token is actively wrong here**, not just
+  coarse: any desktop write would invalidate every queued phone op, so the
+  normal *sequential* session — the actual use case — would reject constantly.
+
+- [x] Add a staleness precondition (per-card `rev`, **not** `modified` and
+      **not** a collection-level generation token — see above) so a stale write
+      is **rejected** rather than applied. *(024: `POST /review` answers 409 on
+      an `expectedRev` mismatch; the server assigns `rev` from `revlog.id`.)*
+- [x] Decide the client's response to a rejection — reload and re-apply, or
+      warn the user. Either is fine; silently discarding is not. *(024 chose
+      re-apply: `ConflictResolver` reloads, re-runs the scheduler at the
+      original `reviewedAt`, and re-sends; anything it cannot resolve is shown
+      as "could not be merged", never silently dropped.)*
+- [x] Consider a lightweight "this collection is open elsewhere" signal so
+      the second device knows before a session, not after. *(Considered and
+      declined in 024: re-apply makes the conflict harmless, so a presence
+      signal would only warn about something already handled.
+      `OutboxService.conflictCount` counts 409s; if it shows conflicts are
+      frequent, that is the evidence for revisiting.)*
 
 ## Phase 5 — Mobile UI audit
 
