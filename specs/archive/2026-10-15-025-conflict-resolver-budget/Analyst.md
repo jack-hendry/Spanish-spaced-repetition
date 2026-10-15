@@ -6,8 +6,8 @@ scheduling or the on-disk shape is at least Large". Closes the 2026-10-15 Open
 Quick Task in `specs/STATE.md` and AD-030's amendment. Decision: AD-032.
 
 Status: **implemented 2026-10-15 — all of A1–A9 MET (verdicts in §5a).**
-Human-reviewed; two harden rounds (`CriticReview.md` C-1…C-27). Not yet
-committed or archived.
+Human-reviewed; two harden rounds (`CriticReview.md` C-1…C-27). Merged (PR #30) and
+archived 2026-10-15.
 
 ## 1. Problem
 
