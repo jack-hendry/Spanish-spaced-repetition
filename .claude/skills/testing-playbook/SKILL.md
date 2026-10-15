@@ -90,4 +90,23 @@ trust the code, then fix both.
 Project and process lessons go to `specs/STATE.md` + `specs/LESSONS.md` as
 `L-NNN` instead -- that pair is what the pre-push gate enforces (AD-009).
 
-_None yet._
+### 2026-10-15 — A spec using the real `OutboxService` must reset its `localStorage` key
+
+(`specs/archive/2026-10-15-024-cross-device-safety`, PR #28 CI failure)
+
+`OutboxService` restores its queue from `localStorage` (`OUTBOX_KEY`) in its
+constructor, and an earlier test's drain can persist a retried op there
+**asynchronously**, after that test has finished. So a later test that builds a
+fresh `OutboxService` can start with a pending op it never created. `App`'s
+"does not preventDefault when only conflicts exist" passed every local run and
+failed on CI (`preventDefault` called once) purely because CI is slower and the
+late write landed first. Reproduced by seeding one op under `OUTBOX_KEY` before
+the test.
+
+Rule: any spec that injects the real `OutboxService` (directly, or via `App` /
+`CollectionStore`) does `localStorage.removeItem(OUTBOX_KEY)` in `beforeEach`
+and `afterEach`. A test asserting something about *empty* outbox state also
+sets that state explicitly (`pending.set([])`, `failed.set([])`) and asserts it
+before acting, so a leak fails with a clear message instead of a confusing one.
+Running the suite again locally does not catch this class — it is timing, not
+logic.

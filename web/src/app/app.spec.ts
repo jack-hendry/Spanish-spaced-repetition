@@ -8,6 +8,7 @@ import { CollectionStore } from './core/collection.store';
 import type { Card, Collection, Deck } from './core/models';
 import { PauseService } from './core/pause.service';
 import { OutboxService } from './core/outbox/outbox.service';
+import { OUTBOX_KEY } from './core/outbox/outbox-ops';
 
 /** Trivial stand-ins for the lazy-loaded route components (routerLinkActive
  * only needs matching paths to resolve against Router.url; the real feature
@@ -71,6 +72,10 @@ describe('App', () => {
   let recoverOnLoad: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
+    // OutboxService restores its queue from localStorage in its constructor,
+    // and an earlier test's drain can persist a retried op there
+    // asynchronously. Start every test from an empty outbox.
+    localStorage.removeItem(OUTBOX_KEY);
     recoverOnLoad = vi.fn().mockResolvedValue(undefined);
     await TestBed.configureTestingModule({
       imports: [App],
@@ -83,6 +88,10 @@ describe('App', () => {
         { provide: PauseService, useValue: { recoverOnLoad } },
       ],
     }).compileComponents();
+  });
+
+  afterEach(() => {
+    localStorage.removeItem(OUTBOX_KEY);
   });
 
   it('should create the app', () => {
@@ -219,10 +228,17 @@ describe('App', () => {
       failedReason: null,
       createdAt: Date.now(),
     };
+    // Pin "only conflicts" explicitly rather than trusting storage: a leaked
+    // pending op is exactly what made this fail on CI while passing locally.
+    outbox.pending.set([]);
+    outbox.failed.set([]);
     outbox.conflicts.set([conflictOp]);
 
     const fixture = TestBed.createComponent(App);
     const app = fixture.componentInstance;
+
+    expect(outbox.pendingCount()).toBe(0);
+    expect(outbox.failed()).toHaveLength(0);
 
     const event = new Event('beforeunload');
     const preventDefaultSpy = vi.spyOn(event, 'preventDefault');
