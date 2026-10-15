@@ -67,6 +67,7 @@ async function writeJsonAtomic(path: string, value: unknown): Promise<void> {
 export class FileStore {
   private data!: StoreData;
   private readonly pending = new Map<keyof FileNames, ReturnType<typeof setTimeout>>();
+  private readonly inFlight = new Map<keyof FileNames, Promise<void>>();
   private readonly debounceMs: number;
   private revlogIds = new Set<string>();
 
@@ -157,19 +158,45 @@ export class FileStore {
       name,
       setTimeout(() => {
         this.pending.delete(name);
-        void this.flush(name);
+        const p = this.flush(name);
+        this.inFlight.set(name, p);
+        p.finally(() => {
+          // Guard: only clear if this promise is still the one tracked for this name
+          if (this.inFlight.get(name) === p) {
+            this.inFlight.delete(name);
+          }
+        }).catch(() => {
+          // Explicitly handle the promise to prevent unhandled rejection warnings
+        });
       }, this.debounceMs),
     );
   }
 
   /** Force all pending debounced writes to disk (used on shutdown / tests). */
   async flushAll(): Promise<void> {
+    // Drain all pending timers
     const names = [...this.pending.keys()];
     for (const name of names) {
       const t = this.pending.get(name);
       if (t) clearTimeout(t);
       this.pending.delete(name);
       await this.flush(name);
+    }
+
+    // Await any in-flight writes that may have been started by the timers
+    // or by direct calls to flush(). Keep looping until empty, in case
+    // the flush itself triggers new writes (unlikely but safe).
+    let inFlightNames = [...this.inFlight.keys()];
+    while (inFlightNames.length > 0) {
+      const promises: Promise<void>[] = [];
+      for (const name of inFlightNames) {
+        const p = this.inFlight.get(name);
+        if (p) promises.push(p);
+      }
+      if (promises.length > 0) {
+        await Promise.all(promises);
+      }
+      inFlightNames = [...this.inFlight.keys()];
     }
   }
 
@@ -196,13 +223,19 @@ export class FileStore {
   /**
    * Persist cards immediately (awaited) — used by ordered writes such as the
    * resume endpoint, where the card write must be guaranteed committed to disk
-   * before a subsequent collection write. Cancels any pending debounced write.
+   * before a subsequent collection write. Cancels any pending debounced write
+   * and awaits any in-flight write.
    */
   async saveCards(): Promise<void> {
     const existing = this.pending.get('cards');
     if (existing) {
       clearTimeout(existing);
       this.pending.delete('cards');
+    }
+    // Await any in-flight write from a previous debounced flush
+    const inFlightWrite = this.inFlight.get('cards');
+    if (inFlightWrite) {
+      await inFlightWrite;
     }
     await this.flush('cards');
   }

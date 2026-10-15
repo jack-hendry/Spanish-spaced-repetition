@@ -45,7 +45,14 @@ async function main(): Promise<void> {
   // explicitly-voided IIFE rather than an async listener.
   const shutdown = () => {
     void (async () => {
-      await store.flushAll();
+      try {
+        await store.flushAll();
+      } catch (err: unknown) {
+        // A failed flush must not strand the process: `server.close` below is
+        // what lets it exit, and a hung SIGTERM gets force-killed by the
+        // platform instead. Report and continue shutting down.
+        console.error('[server] flush on shutdown failed:', err);
+      }
       server.close(() => process.exit(0));
     })();
   };
