@@ -113,7 +113,7 @@ logic.
 
 ### 2026-10-15 — A real `CollectionStore.load()` in a harness enqueues outbox ops of its own
 
-(`specs/025-conflict-resolver-budget`, harden round 2 C-18)
+(`specs/archive/2026-10-15-025-conflict-resolver-budget`, harden round 2 C-18)
 `_runLoad()` ends with `unburyForNewDay()`, which **enqueues a
 `PATCH /collection`** (and a `PATCH /cards/:id` per buried card) whenever
 `collection.lastUnburyDay` is behind today — and a fixture `Collection` usually
