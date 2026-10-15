@@ -19,6 +19,8 @@ export class OutboxService {
 
   private drainPromise: Promise<void> | null = null;
   private conflictHandler: ConflictHandler | null = null;
+  /** Incremented once per `_runDrain()`; passed to the conflict handler. */
+  private drainPass = 0;
 
   constructor() {
     // Restore state from localStorage on init
@@ -102,6 +104,7 @@ export class OutboxService {
    * Private async function that performs the actual drain work.
    */
   private async _runDrain(): Promise<void> {
+    const pass = ++this.drainPass;
     while (this.pending().length > 0) {
       const op = this.pending()[0];
       this.status.set('draining');
@@ -143,7 +146,7 @@ export class OutboxService {
             // Continue with next op
           } else {
             // Handler registered: delegate resolution
-            const outcome = await this.conflictHandler(op, errObj['error']);
+            const outcome = await this.conflictHandler(op, errObj['error'], pass);
 
             if (outcome.outcome === 'replaced') {
               // Replace at head: build the fresh op with the replacement body + metadata

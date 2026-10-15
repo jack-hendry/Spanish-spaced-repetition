@@ -750,7 +750,7 @@ describe('OutboxService', () => {
       void body;
       return {
         outcome: 'unresolved' as const,
-        reason: 'reload budget exhausted',
+        reason: 'test: unresolved',
       };
     });
     service.setConflictHandler(handler);
@@ -774,7 +774,7 @@ describe('OutboxService', () => {
     expect(service.pending()).toHaveLength(0);
     expect(service.conflicts()).toHaveLength(1);
     expect(service.conflicts()[0].id).toBe('A');
-    expect(service.conflicts()[0].conflictReason).toBe('reload budget exhausted');
+    expect(service.conflicts()[0].conflictReason).toBe('test: unresolved');
     // Handler was called
     expect(handler).toHaveBeenCalledTimes(1);
     // B was attempted and succeeded

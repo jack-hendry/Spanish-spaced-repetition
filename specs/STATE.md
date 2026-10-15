@@ -202,8 +202,24 @@ is not 2xx, so per-op retries would spend the tier-1 20-failure budget.
 **Amended 2026-10-15:** as built, the resolver reloads per *op* within a
 2-reload-per-drain-pass budget, not per snapshot — so a third conflicting op in
 one pass is parked. Open; see the Quick Tasks row of that date.
+→ superseded by AD-032 (the bound only; the `card.rev` token stands).
 
 **AD-031 — The `FileStore` in-flight-write fix shipped inside spec 024, not as its own spec.** → moved to `STATE-ARCHIVE.md`
+
+**AD-032 — The conflict resolver reloads at most once per drain pass (only a
+successful reload counts), and bounds re-applies per op *lineage* via a
+persisted `OutboxOp.reapplies`, not per pass or per card.** (`specs/025-
+conflict-resolver-budget`, D1/D2, 2026-10-15; supersedes the bound in AD-030's
+2026-10-15 amendment and 024 D6's "2 reload cycles per drain pass")
+The per-pass reload budget saved no rate-limiter budget (a reload is a 2xx;
+each conflicting op costs one 409 regardless) and parked every conflict after
+the second. A pass is one `_runDrain()`, whose id the outbox passes into the
+handler, so the resolver needs no reset `effect()`. The bound follows the
+lineage because a replacement gets a fresh id, and **not** the card because a
+conflict legitimately cascades along an offline chain of one card's reviews
+(each later op's absolute state was computed from the earlier op's superseded
+result, so it must 409 and be recomputed — patching its `expectedRev` would
+clobber). `MAX_REAPPLIES = 2`: at most three sends per review.
 
 ## Blockers
 
@@ -272,3 +288,5 @@ one pass is parked. Open; see the Quick Tasks row of that date.
 | 2026-09-18 | **Open:** four stale worktrees under `.claude/worktrees/`, at least two on merged branches | Noticed while running spec 022 Step 17 and deliberately not fixed inline (scope discipline). `git worktree list` shows `backlog+subagent-commit-delegation`, `lint-phase4-full-gate` (on the archive-spec-script branch, merged as PR #19), `redo-011-analysis`, and `spec-010-day-rollover` (merged as PR #21). CLAUDE.md's rule is that a worktree dies with its branch: `git worktree remove` then `git branch -d` — never `rm -rf`, which strands `.git/worktrees/<name>/` and a phantom row until someone prunes. `-d` not `-D`, so git refuses any that turn out unmerged. Check `git diff --cached --quiet` in each before touching it (AD-017, L-010). They also inflate every repo-wide search — this task's own roadmap lookup returned 13 hits, 9 of them worktree copies. Small. |
 | 2026-10-15 | **Open:** `ConflictResolver` parks the 3rd conflicting op in a drain pass | Found writing spec 024's A7 verdict; deliberately not fixed in the spec. `resolve()` reloads the store on **every** call and its 2-reload budget resets only when the outbox empties, so a stale queue with 3+ conflicting cards (phone studies offline, desktop studied the same cards) parks the remainder as `'reload budget exhausted'` — never retried, scheduling never applied — even though each 409 body already carries the server card needed to re-apply. The budget buys nothing against the rate limiter (each conflicting op costs one 409 either way; reloads are 2xx). Fix per D6's own wording: reload **once per snapshot** (skip if already reloaded this pass), bound re-applies **per op**. Touches the study loop and outbox, so size it Large. See `specs/archive/2026-10-15-024-cross-device-safety/Analyst.md` `## Discovered` and AD-030's amendment. |
 | 2026-10-15 | Global Web Storage reset + shuffled order for web tests | Small. Prompted by the App unload-guard spec failing on CI from `OutboxService` state leaked by an earlier spec (fixed in 5cf38eb); this closes the class. `web/src/test-setup.ts` clears `localStorage`/`sessionStorage` before and after every test, registered via the unit-test target's `setupFiles` in `web/angular.json` (and added to `tsconfig.spec.json`'s `include`; hooks imported from `vitest` explicitly, or typed ESLint flags `no-unsafe-call`). `runnerConfig` points at `web/vitest-base.config.ts` with `sequence.shuffle: true`, so order-coupled specs fail locally too; replay a failure with the printed seed. 290/290 passed across 6 shuffled seeds; lint + format clean. The per-spec `localStorage.clear()` calls in `pause.service.spec.ts` / `outbox.service.spec.ts` are now redundant but harmless, left alone. |
+| 2026-10-15 | **Open:** a mid-drain reload can re-serve, and double-schedule, an already-answered card | Found by spec 025's harden round 1 (C-2); deliberately not fixed there. `ConflictResolver` reloads the store on a conflict; every card whose op is still queued behind it reverts to server state, and an op that then succeeds never calls `applyCard`, so `StudyQueueService.next()` sees the card as due again. `Review.init()` forces a reload only when `pendingCount() > 0` at init, so a drain that finished earlier (boot, `online` event) or runs mid-session leaves the stale cache. Re-answering sends the pre-review `expectedRev` → 409 → re-applied on top: the card is reviewed twice. Cheap fix: `/review` already returns the stored card on 200 — have the outbox hand it to `store.applyCard`. Touches the study loop and outbox: size it Large. See `specs/025-conflict-resolver-budget/Analyst.md` `## Discovered`. |
+| 2026-10-15 | **Closed:** `ConflictResolver` parks the 3rd conflicting op in a drain pass | Fixed by `specs/025-conflict-resolver-budget` (AD-032): one successful reload per drain pass, re-applies bounded per op lineage by a persisted `OutboxOp.reapplies` (max 2). New `conflict-drain.spec.ts` runs the real outbox + resolver over a fake API; 4 of its 5 tests shown red on the pre-fix resolver. Web 290 → 296, server 95, build/lint/format green. The C-2 double-schedule row above stays Open. |
