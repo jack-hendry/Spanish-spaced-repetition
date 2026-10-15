@@ -241,6 +241,16 @@ Three rules:
 - **A regression + wrap-up step last**, walking the acceptance criteria in
   `Analyst.md`, updating `STATE.md`, filling in the retrospective, and ending
   with **do not commit — ask the user first**.
+- **The archive is the last commit of the feature PR — never a follow-up PR
+  after the merge.** Once the wrap-up step is done (every step's `Status:` is
+  `done`, since the archive drops `tasks.md`), the same branch gets one more
+  commit: `python3 tools/archive_spec.py <spec-dir> --apply`, the old path
+  repointed wherever it is referenced (grep for a path that wraps across two
+  lines in `STATE.md`), `state_rotate.py --check`, and
+  `RANGE_OVERRIDE=origin/main..HEAD bash scripts/clean-table-check.sh`. Put it
+  in the wrap-up step's **Do** list as its own numbered item, before the
+  "do not commit" line, so the run cannot end without it. Spec 025 archived
+  after its merge and cost an extra PR and CI run; spec 024 got it right.
 
 ### What the critic pass verifies
 
