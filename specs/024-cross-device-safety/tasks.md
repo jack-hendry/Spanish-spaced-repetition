@@ -35,7 +35,11 @@ Required reading before touching code: `.claude/skills/scheduling-domain`
 
 **Model:** haiku
 
-**Status:** not started
+**Status:** done 2026-10-11 — `rev?: string` added after `modified` in both mirrors
+(`server/src/models/index.ts:97`, `web/src/app/core/models/index.ts:74`), grep
+returns 1 each. `npm run build` exit 0 both workspaces. `npm run test`: server
+**88 / 14 files**, web **268 / 23 files** — unchanged from baseline, as expected
+for a type-only step. No drift between the two `Card` interfaces.
 
 **Files**
 - MODIFY `server/src/models/index.ts` — anchor: `export interface Card` (~line 77)
@@ -79,7 +83,16 @@ a pre-existing problem outside this spec.
 
 **Model:** haiku
 
-**Status:** not started
+**Status:** done 2026-10-11 — `hasRevlogId()` added beside `appendRevlog`
+(`file-store.ts:221`); D5 replay branch in `r.post('/review')`
+(`routes/index.ts:120-126`), placed after the 404 guard and before any write,
+verified by reading the diff. New `review-staleness.integration.test.ts` 2/2
+(identical-replay byte-identity + the differing-body clobber case). The
+amendment above was applied under the user's decision: 023's differing-body case
+rewritten, diff confined to that one `it(...)` block (3 hunks: name, comment,
+`toBe(5)`); 023's other two cases byte-identical. `npm run test -w server`
+**90 passed / 15 files, 0 failures** (88 baseline + 2 new). `npm run build`,
+`npm run lint:ci`, `npm run format:check` all exit 0.
 
 **Depends on:** Step 1 — needs `Card.rev` to exist so the route compiles once
 Step 3 assigns it. (This step does not read `rev` yet.)
@@ -88,8 +101,27 @@ Step 3 assigns it. (This step does not read `rev` yet.)
 - MODIFY `server/src/store/file-store.ts` — anchor: `appendRevlog` (~line 221)
 - MODIFY `server/src/routes/index.ts` — anchor: `r.post('/review'` (~line 115)
 - CREATE `server/src/routes/review-staleness.integration.test.ts`
-- DO NOT TOUCH: `server/src/routes/review-idempotency.integration.test.ts`
-  (023's file — it must keep passing **unchanged**; that is A3)
+- MODIFY `server/src/routes/review-idempotency.integration.test.ts` — **one case
+  only**, per the amendment below.
+
+> **Amendment, 2026-10-11 (user decision).** This step originally said
+> `DO NOT TOUCH: review-idempotency.integration.test.ts` — "023's 3 cases must
+> keep passing unchanged; that is A3". That bullet was **unsatisfiable**. 023's
+> case `card write still applies on the replay` POSTs the *same* `revlog.id`
+> with a *different* card body (`interval: 5` then `interval: 9`) and asserts
+> the second wins; its own comment reads "demonstrates last-write-wins for
+> card". D5 exists precisely to remove that behaviour
+> (`Analyst.md:196-199` calls re-applying a differing body "the exact bug this
+> spec exists to prevent").
+>
+> **A3 is not in conflict** and is not being weakened: `Analyst.md:306` defines
+> A3 over an *identical* body twice → 200, one revlog line, card byte-identical.
+> D5 delivers exactly that, and `review-staleness.integration.test.ts` pins it.
+> Only the differing-body case encodes the pre-024 contract.
+>
+> Resolution: rewrite **that one case** to assert the D5 behaviour and rename it.
+> 023's other two cases stay untouched. The behaviour change is deliberate and is
+> recorded here, in `Analyst.md`'s `## Discovered`, and in this step's `Status:`.
 
 **Context**
 `revlogIds` is a private `Set<string>` on `FileStore`, populated at `init()` and
@@ -134,8 +166,11 @@ test file.
 - `npm run build` — exit 0 both workspaces.
 - `npm test -w server -- review-staleness.integration.test.ts` — the new cases
   pass.
-- `npm test -w server -- review-idempotency.integration.test.ts` — 023's 3 cases
-  still pass, file unmodified (`git diff --quiet -- server/src/routes/review-idempotency.integration.test.ts`).
+- `npm test -w server -- review-idempotency.integration.test.ts` — all 3 cases
+  pass, with the differing-body case rewritten per the amendment above. The two
+  cases that do **not** concern a differing body are unchanged — verify with
+  `git diff -- server/src/routes/review-idempotency.integration.test.ts` and
+  confirm the diff touches only the one `it(...)` block.
 - `npm run test -w server` — 88 + the new cases, 0 failures.
 
 **If blocked**
@@ -149,7 +184,24 @@ Discovered / C-6).
 
 **Model:** haiku
 
-**Status:** not started
+**Status:** done 2026-10-11 — body type widened to
+`{ card: Card; revlog?: RevlogEntry; expectedRev?: string | null }`; D4/D3
+equality-only precondition inserted **after** the Step 2 replay branch (ordering
+verified by reading the diff: 404 guard → replay → precondition → write); write
+is now `{ ...card, modified: Date.now(), rev: revlog?.id ?? cards[idx].rev }`, so
+the server owns the token and the client's `card.rev` is discarded (D9).
+`review-staleness.integration.test.ts` extended with all five prescribed cases.
+
+**A2 falsifiability:** with the precondition block commented out, the
+stale-rejection case failed with **`expected 200 to be 409 // Object.is
+equality`** (received 200 at the `expect(res2.status).toBe(409)` assertion);
+uncommenting restored green. Verified by commenting out, not `git stash`.
+
+`npm run test -w server` **95 passed / 15 files, 0 failures** (88 baseline + 7
+new across Steps 2–3). `npm run build` exit 0 both workspaces;
+`grep -c "409" server/src/routes/index.ts` returns 1; `lint:ci` and
+`format:check` exit 0. The four out-of-scope routes are untouched — the
+`routes/index.ts` diff is confined to the `/review` handler.
 
 **Depends on:** Step 2 — the precondition must sit *after* the replay branch it
 adds; that ordering is D5 and is load-bearing.
@@ -219,7 +271,25 @@ has no `rev`, STOP — Step 1 did not land.
 
 **Model:** haiku
 
-**Status:** not started
+**Status:** done 2026-10-11 — **PASS on all four points.** Re-verified, actual
+numbers: `npm run test` → server **95 / 15 files**, web **268 / 23 files**, 0
+failures. `npm run build`, `npm run lint:ci`, `npm run format:check` all exit 0.
+`grep -c "rev?: string"` → 1 in each mirror; `grep -c "409"` → 1 in
+`routes/index.ts`.
+
+Changed-file list matches the permitted set exactly, no drift: the five Steps 1–3
+source files (incl. the new `review-staleness.integration.test.ts` and the
+one-block amendment to `review-idempotency.integration.test.ts`), plus
+`specs/024-cross-device-safety/{tasks,Analyst}.md` and the root `STATE.md` run
+marker. No client code changed beyond Step 1's type-only field — nothing under
+`web/src/app/features/`, `web/src/app/core/outbox/`, or `collection.store.ts`.
+`data/spanish/` clean.
+
+One committed-but-pre-existing item checked and cleared: `origin/main..HEAD`
+shows a 1-line change to `web/src/app/features/review/review.ts`, which is a
+comment reflow from the 023 archive commit (`specs/023-review-outbox` →
+`specs/archive/2026-10-11-023-review-outbox`). It sits immediately above the
+`outbox.enqueue` call Step 6 edits but changes no code. Not drift.
 
 **Depends on:** Steps 1–3.
 
@@ -251,7 +321,35 @@ If any earlier step's `Done when` no longer holds, mark **that** step
 
 **Model:** haiku
 
-**Status:** not started
+**Status:** done 2026-10-11 — `private loadPromise` added; `load()` returns the
+in-flight promise; old body moved to `private async _runLoad()` with the
+`if (this.loading()) return;` guard removed and the `loading` signal + its
+`finally` reset preserved for the UI. `grep -c "if (this.loading()) return"` → 0.
+**No lint rule objected** to the `async` → returns-a-promise change, so standing
+rule 3 never fired. No caller needed changing, as intended.
+
+`npm run test -w web` **269 passed / 23 files**, 0 failures (268 + 1);
+server unchanged at 95. `npm run build`, `lint:ci`, `format:check` exit 0.
+
+**Falsifiability — recorded precisely.** The spec first shipped leading with
+`expect(p1).toBe(p2)` (promise identity), which short-circuited the reverted run
+and yielded only `expected Promise{…} to be Promise{…}` — evidence about
+plumbing, not about whether a caller's `await` waits. Promise identity is also
+not L-028's contract: `return this.loadPromise.then()` would honour it and fail
+that line. The block was reordered so the behavioural assertions run first, with
+the identity check kept last and commented as an implementation pin. Re-verified
+failure, now behavioural:
+
+> `AssertionError: expected "vi.fn()" to be called 1 times, but got 2 times`
+> at `collection.store.spec.ts:298` (the `getCollection` call-count assertion)
+
+**Residual gap, deliberately not chased further:** that revert was
+`load() { return this._runLoad(); }` (drops promise-caching, keeps the await
+real), which proves the *dedupe* assertion is live but not the
+*resolves-after-cards-populated* one. A true early-return revert would fail both
+(instant resolve → `cards().length` 0). The test does assert both, so a
+reintroduced early return is caught either way; only the direct evidence is
+one-sided.
 
 **Depends on:** none — it shares no file with Steps 1–4.
 
@@ -313,7 +411,27 @@ match.
 
 **Model:** haiku
 
-**Status:** not started
+**Status:** done 2026-10-11 — `const expectedRev = current.card.rev ?? null;`
+captured **before** `answer()` (ordering verified by reading the diff, since
+reading it after would defeat D9); `const nextWithRev: Card = { ...next, rev:
+revlog.id };` passed to both `applyCard()` and the enqueued
+`body: { card: nextWithRev, revlog, expectedRev }`. `recordStudied`,
+`burySiblings` and `await this.loadNext()` untouched. Schedulers untouched —
+`git status --porcelain web/src/app/core/scheduling/` is empty.
+
+`npm run test -w web` **271 passed / 23 files**, 0 failures (269 + 2); server
+unchanged at 95. `npm run build`, `lint:ci`, `format:check` exit 0.
+`grep -c "expectedRev" review.ts` → 2.
+
+**A4 chain spec quality — checked by reading it, not from the report.** It is a
+genuine chain, not a restated mock: two real `.rate` button clicks drive the
+component, `storeFake.applyCard` updates the tracked card and `queueFake.next`
+serves that updated card back (mirroring how the real store/queue behave), so
+the second review reads its `expectedRev` from state the first review wrote. It
+asserts the **concrete** `firstRevlogId` (`expect(secondBody.expectedRev).toBe(
+firstRevlogId)`), plus `component.state()!.card.rev === firstRevlogId` and that
+the two revlog ids differ. A truthiness-only assertion would have passed while
+the common path — every 10-minute learning step — false-conflicted.
 
 **Depends on:** Step 3 — the server now reads `expectedRev`; Step 1 — `Card.rev`.
 
@@ -365,7 +483,46 @@ read from the wrong object.
 
 **Model:** haiku
 
-**Status:** not started
+**Status:** done 2026-10-11 — `conflicts: OutboxOp[]` on `OutboxState`,
+`conflictReason?: string` on `OutboxOp`, `ConflictOutcome` / `ConflictHandler`
+added; `classify` returns `'conflict'` for 409; `EMPTY_STATE` carries
+`conflicts: []`; `OutboxService` gains `conflicts` / `conflictCount` signals,
+`setConflictHandler`, `conflicts` in `persist()`, constructor restore via
+`?? []`, and the `'conflict'` branch in `_runDrain` **before** the retry branch.
+
+**The data-loss trap was not tripped.** `grep -c "version: 1" outbox-ops.ts` → 1,
+no `version: 2` anywhere. `parseState` writes the defaulted `conflicts` key
+immediately before its final `JSON.parse(JSON.stringify(obj))`, so a pre-024
+stored state restores its `ops` intact. Guard spec at `outbox-ops.spec.ts:227`.
+**D8 holds:** `grep -c "CollectionStore" outbox.service.ts` → 0.
+
+`npm run test -w web` **280 passed / 23 files**, 0 failures (271 + 9); server
+unchanged at 95. `npm run build`, `lint:ci`, `format:check` exit 0.
+
+Specs T17–T21 in `outbox.service.spec.ts` use **real** framework objects per
+L-029 — 6 × `new HttpErrorResponse({ status: 409, headers: new HttpHeaders(),
+… })`. T18 is substantive rather than handler-call-counting: it asserts the
+replacement is actually re-sent (`send.mock.calls[1]` carries the new
+`expectedRev`) and that the op behind it still drains.
+
+**A7 is proven by proxy, not directly — recorded honestly.** T20 asserts
+`conflicts()[0].attempts === 0` and `status() === 'idle'`. It runs on real
+timers, so it cannot assert "no timer was scheduled" directly. The two
+assertions together do fail the realistic regression (a 409 falling through to
+the retry branch, which sets `attempts: 1` **and** `status: 'waiting'` together),
+but a contrived change that scheduled a timer without touching status or attempts
+would slip past.
+
+**Open, for Step 9 to confirm:** nothing here bounds a replacement op that
+*itself* 409s — the `'replaced'` path re-attempts at the head, so the bound comes
+entirely from Step 8's reload budget (2 cycles per drain pass, `'unresolved'`
+thereafter). Verify at the checkpoint rather than assuming.
+
+**Run note:** the first Step 7 agent was stopped mid-run, having completed the
+types/ops/service work but never opening `outbox.service.spec.ts`, which left
+`ng test` non-compiling (required `conflicts` missing from pre-existing
+`OutboxState` literals) while `npm run build` stayed green — standing rule 1 in
+reverse. A fresh agent finished from the partial work on disk.
 
 **Depends on:** Step 6 — ops now carry `expectedRev`, so a 409 is reachable.
 
@@ -461,7 +618,43 @@ value, STOP and report the call site rather than widening it blind.
 
 **Model:** haiku
 
-**Status:** not started
+**Status:** done 2026-10-11 — `ConflictResolver` created, `@Injectable({
+providedIn: 'root' })`, registering itself in its constructor; `resolve()`
+implements every prescribed branch (non-`/review`, budget exhausted, `409`
+without card, unknown deck, no deck options, no collection) and the two-lookup
+`deckById` → `optionsFor` → `defaultDeckOptions()` chain. Instantiated via
+`inject(ConflictResolver)` in `App`, not in `Review`, so resolution works on any
+route. Schedulers untouched.
+
+**D10 holds and is falsifiable.** `ctx = { now: reviewedAt, today:
+todayNumber(coll, reviewedAt) }`; `grep -c "reviewedAt"` → 5. Temporarily
+changing `now:` to `Date.now()` fails the D10 spec with:
+
+> `AssertionError: expected 1791742213771 to be 1791741913771`
+
+— a 300,000 ms gap, exactly the spec's 5-minute `reviewedAt` offset. Verified by
+editing directly, not `git stash`.
+
+**Why that spec actually works** (checked, because it looks like it shouldn't):
+it patches a scheduler obtained from `schedulerFor(...)`, which returns
+**module-level singletons** (`scheduler-factory.ts` holds one `Sm2Scheduler` and
+one `FsrsScheduler`), so the patch does reach the instance the resolver builds
+internally. `vi.restoreAllMocks()` was added at `conflict-resolver.spec.ts:155`
+because it was not restoring, which leaked the patch into the four later tests.
+
+**Step 7's open question is answered:** a replacement op that itself 409s cannot
+loop — `conflict-resolver.spec.ts:273` proves the budget converts repeated
+conflicts to `'unresolved'` and the drain terminates.
+
+**Budget reset was reimplemented.** The first pass used a 100 ms `setInterval`
+polling `pendingCount()` — never cleared, running for the app's whole lifetime,
+and firing on a wall-clock tick rather than on the signal. Replaced with
+`effect(() => { if (this.outbox.pendingCount() === 0) this.reloadsThisPass = 0; })`
+and the dead `checkInterval` field deleted. `grep -c "setInterval"` → 0.
+
+`npm run test -w web` **286 passed / 24 files**, exit 0; server **95 / 15**,
+exit 0 across 10 consecutive runs; `build`, `lint:ci` (repo-wide `eslint .`),
+`format:check` all exit 0.
 
 **Depends on:** Step 7 — consumes `ConflictHandler` / `ConflictOutcome` and
 `setConflictHandler`; Step 5 — relies on `load()` actually awaiting.
@@ -548,7 +741,43 @@ side effect.
 
 **Model:** haiku
 
-**Status:** not started
+**Status:** done 2026-10-11 — **PASS.** Server **95 passed / 15 files**, web
+**286 passed / 24 files**, `npm run build`, `npm run lint:ci` (repo-wide
+`eslint .`) and `npm run format:check` **all exit 0** — verified by exit code,
+not by test count (see the run note below). `npm run test -w server` run five
+times by the checkpoint and three more independently: **eight consecutive
+exit 0**, so Step 8's race fix holds.
+
+D8 confirmed by the authoritative greps, not the boot:
+`grep -rn "collection.store" outbox.service.ts` → nothing;
+`grep -c "CollectionStore" outbox.service.ts` → 0. (`conflict-resolver.ts` does
+import `CollectionStore` — that is the seam working as designed, not a
+violation.) `grep -c "version: 1" outbox-ops.ts` → 1;
+`grep -c "setInterval" conflict-resolver.ts` → 0. The `ctx` line, verified
+verbatim rather than assumed:
+
+> `115:    const ctx = { now: reviewedAt, today: todayNumber(coll, reviewedAt) };`
+
+`data/spanish/` clean after `git checkout --` (L-002). Changed-file list matches
+Steps 1–8's footprint with no drift.
+
+**Boot check — what was actually observed, corrected.** The checkpoint reported
+"no DI cycle warnings" from `npm run dev` having curled `/api/health` and
+fetched the app HTML. Neither executes the Angular bundle, so that evidence came
+from **server** logs, where an Angular DI cycle cannot appear; the browser
+console was never observed. The substantive evidence for no cycle is instead:
+(1) the D8 greps, which this step designates authoritative precisely because a
+type-only import would not fail at runtime at all, and (2) `app.spec.ts` calling
+`TestBed.createComponent(App)` four times — `App` injects `ConflictResolver`, so
+a real cycle would fail those specs, and all 286 web tests pass. Step 11's manual
+run will exercise a real browser.
+
+**Run note (candidate `L-NNN`):** between Steps 2 and 8 this run reported
+"all gates clean" while `npm run test -w server` was exiting **1** and printing
+"95 passed". Verification was done with `grep -E "Test Files|Tests "`, which
+reads the count and discards the exit status. Step 4's checkpoint inherited the
+same method and so confirmed a false green. Every gate from here on is checked
+with `; echo "exit: $?"`.
 
 **Depends on:** Steps 1–8.
 
@@ -583,7 +812,37 @@ violated — report which import introduced it.
 
 **Model:** haiku
 
-**Status:** not started
+**Status:** done 2026-10-11 — conflict branch added to `outboxBannerText`
+**before** the existing ones, so it takes priority over the pending-count text;
+returns `` `${n} ${n === 1 ? 'review' : 'reviews'} could not be merged —
+answered on another device` ``. `Retry` left bound to `outbox.retryFailed()`,
+nothing added for conflicts. No `app.html` change was needed — the template
+already renders the computed signal's text.
+
+**The R-6 regression was averted**, which is the substance of this step:
+`onBeforeUnload` now keys on `this.outbox.pendingCount() > 0 ||
+this.outbox.failed().length > 0` instead of `outboxBannerText() !== null`. Left
+as-was, adding a conflict branch to the banner would have prompted "leave site?"
+on every tab close **forever**, since a parked conflict is never auto-cleared
+and the user has no way to clear it. The `failed` half is unchanged, preserving
+023's choice that a poisoned op blocks close.
+
+**Existing strings untouched** — verified by reading `git diff web/src/app/app.ts`:
+the draining, waiting and failed wording is byte-identical. 023's recorded issue
+that this banner calls every op a "review" (overstating unsaved work ~3×) was
+deliberately **not** touched; that is a separate issue and fixing it here would
+be drift.
+
+Four new specs, all using **real** `new Event('beforeunload')` + `vi.spyOn(event,
+'preventDefault')` per standing rule 2: conflict text wins over a non-zero
+pending count; no `preventDefault` when only a parked conflict exists; and —
+importantly — `preventDefault` **is** called when `pendingCount() > 0` and when
+`failed().length > 0`. Without those positive cases a guard broken to never fire
+at all would have passed the negative test.
+
+`npm run test -w web` **290 passed / 24 files exit 0** (286 + 4); server **95 /
+15 exit 0**; `build`, `lint:ci` (repo-wide), `format:check` all **exit 0** —
+verified by exit code. `git diff --stat` confirms no stray files.
 
 **Depends on:** Step 7 — reads `outbox.conflicts()` and `outbox.conflictCount()`.
 
@@ -646,7 +905,49 @@ changing unrelated expectations.
 
 **Model:** top-level
 
-**Status:** not started
+**Status:** done 2026-10-14 — **PASS.** The open question below is resolved:
+the "1 review could not be saved" banner was a **stale 023 artefact**, not this
+run — `failed` held one op, `PATCH /cards/does-not-exist`, `HTTP 404`,
+`createdAt 2026-09-18T19:35:51.988Z` (023 Step 17's deliberate poison op; never
+auto-deleted by design). The `409 (Conflict)` console error in window A is the
+browser logging the expected 4xx.
+
+**Caveat, recorded rather than glossed:** both windows printed the identical
+`failed` op, so they were **one browser profile sharing one `localStorage`**, not
+the two the step asked for. The result still holds — the conflict arose from each
+tab's in-memory card (A held a stale `rev: null`) and the server-side evidence
+below is unambiguous — but this run did **not** exercise two independent
+outboxes. Step 12 (phone vs desktop) does, by construction.
+
+`git checkout -- data/spanish/` done; `git status --porcelain data/spanish/`
+empty.
+
+Evidence (2026-10-14):
+User ran the two-window test 2026-10-14; evidence read from the store, not the UI:
+
+- Revlog **4036 → 4038**: exactly 2 lines, both `cardId:
+  "ccc5d3a221d49156d-0"`, distinct ids `r1792020449563-skzqic` (B) and
+  `r1792020456357-iyobsu` (A, re-applied).
+- Card X `rev: r1792020456357-iyobsu` — the **second**, re-applied id. `reps`
+  **28 → 30**: two increments, so neither review was lost (a clobber leaves 29).
+- A applied **on top of** B, visible in the revlog itself: B `relearn` 1→1, A
+  `review` 1→2. A clobber would make A's entry a copy of B's, since both windows
+  started from the same state (HEAD: `relearning`, interval 1, `rev` null).
+- **A7:** window A's network panel shows one `review 409` → `collection` →
+  `cards` → `review 200`. One 409, one reload, no retry loop.
+- D10, supporting only: card `lastReviewed` `…456357` = A's original answer
+  instant; server `modified` `…456437`, 80 ms later, after the 409 + reload.
+
+**Open:** both windows showed "1 review could not be saved" — the `failed`
+(poison) banner, not the conflict one. Not explained by A's network panel, where
+everything after the 409 succeeded. Suspected stale `localStorage` from earlier
+dev work; awaiting the `failed` ops' `createdAt` from each window to confirm.
+`data/spanish/` deliberately left dirty until resolved.
+
+Earlier note, 2026-10-11 — paused pending the user's manual two-profile run. Steps 1–10 are complete and green (server **95 / 15**, web **290 / 24**,
+`build` / `lint:ci` / `format:check` all exit 0, eight consecutive green server
+runs). Browser automation deliberately **not** attempted, per this step's
+`If blocked` note and 023's retrospective. Nothing is committed yet.
 
 **Depends on:** Steps 1–10.
 
@@ -704,6 +1005,29 @@ budget reset is wrong. Report rather than patching inline — a fix is a new ste
 
 **Status:** not started
 
+**Status:** done 2026-10-15 — **A1 PASS on production, 3 of 3.** User ran
+phone-vs-desktop three times on release v6. Live revlog **4034 → 4040**: two
+entries for each of three cards, **0 duplicate ids** across the whole log. Per
+card (baseline → after, pulled with `tools/pull-fly-state.sh` into a scratch dir):
+`c4025ccd683f86f1e-0` reps 6→8, `rev r1792069757052-ecfn0e`;
+`ccc5d3a221d49156d-0` reps 28→30, `rev r1792069816158-3axacu`;
+`c00f8119f941fc61c-0` reps 3→5, `rev r1792069830937-20e7j5` — in every case
+`rev` equals the **second** entry's id and the second entry builds on the first
+(`relearn 1→1` then `review 1→2`; `review 45→126` then `126→353`), so neither
+device's review was lost. No banner appeared on the phone — expected on a
+successful resolve, which completes in one 409 + reload + replacement round trip.
+Limits: the data cannot identify *which* device answered second (only that the
+second write was re-applied on top); the 409 count (A7) was evidenced in Step 11,
+not here. Not rate-limited; no restart needed. `data/spanish/` untouched.
+
+Deploy note, 2026-10-14 — deployed; awaited the user's phone run.
+`fly deploy` from the **uncommitted** working tree, at the user's direction
+(they chose not to commit first) → release **v6**, machine `850d53cd95d668`
+healthy, DNS verified. Previous release v5 (2026-09-18). Ships the out-of-scope
+`FileStore` + shutdown fix with 024, per the user's scope decision recorded in
+`Analyst.md` `## Discovered`. Live baseline pulled to a scratch dir (not
+`data/spanish/`, which stays clean): **revlog 4034 lines**.
+
 **Depends on:** Step 11 — do not deploy a mechanism that has not worked locally.
 
 **Files**
@@ -750,7 +1074,24 @@ both observations side by side. Do not iterate against production.
 
 **Model:** top-level
 
-**Status:** not started
+**Status:** done 2026-10-15 — A1–A8 verdicts with evidence in `Analyst.md` §5:
+A1–A6 and A8 **met**; **A7 partly not met** — no blind retry holds, but a stale
+queue with 3+ conflicting cards in one drain pass parks the rest (found by
+reading `conflict-resolver.ts` while writing the verdict; recorded in
+`## Discovered`, AD-030's amendment and an open Quick Task, not fixed).
+D10 lesson appended to `scheduling-domain`'s `## Lessons (auto-appended)`.
+New `L-030`…`L-034` (headline in `specs/STATE.md`, body in `specs/LESSONS.md`;
+34/34 pair) and `AD-031` (the `FileStore` fix shipping with 024, per the user).
+`specs/STATE.md` hit 324/300, so `state_rotate.py --apply` ran (standing user
+instruction, 2026-10-15): AD-031 and AD-027 moved to `STATE-ARCHIVE.md` with
+stubs, now 273 lines. ROADMAP Phase 4's three boxes ticked; presence signalling
+recorded as declined with `conflictCount` as the evidence for revisiting.
+Gates, all **exit 0**: `npm run test -w server` (95), `npm run test -w web`
+(290), `npm run build`, `npm run lint:ci`, `npm run format:check`,
+`state_rotate.py --check`, `scripts/clean-table-check.sh` — the last ran over
+committed history only, since nothing is committed, so lesson pairing was also
+checked directly. `data/spanish/` clean. `## Executing:` marker removed from
+root `STATE.md`. **Not committed, not archived** — both wait on the user.
 
 **Depends on:** Steps 1–12.
 
