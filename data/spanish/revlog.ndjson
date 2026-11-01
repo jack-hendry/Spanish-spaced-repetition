@@ -4038,3 +4038,13 @@
 {"id":"r1792069816158-3axacu","cardId":"ccc5d3a221d49156d-0","reviewedAt":1792069816158,"button":3,"type":"review","interval":2,"lastInterval":1,"factorOrStability":1300,"timeMs":50281}
 {"id":"r1792069826149-lday9y","cardId":"c00f8119f941fc61c-0","reviewedAt":1792069826149,"button":3,"type":"review","interval":126,"lastInterval":45,"factorOrStability":2800,"timeMs":22356}
 {"id":"r1792069830937-20e7j5","cardId":"c00f8119f941fc61c-0","reviewedAt":1792069830937,"button":3,"type":"review","interval":353,"lastInterval":126,"factorOrStability":2800,"timeMs":14770}
+{"id":"r1793477517169-n9nnb3","cardId":"c28d0110486ec1879-0","reviewedAt":1793477517169,"button":4,"type":"review","interval":164,"lastInterval":45,"factorOrStability":2950,"timeMs":10519}
+{"id":"r1793477547937-teqlig","cardId":"ccc1ec6fef0c18035-0","reviewedAt":1793477547937,"button":3,"type":"review","interval":32,"lastInterval":16,"factorOrStability":2000,"timeMs":30757}
+{"id":"r1793477565491-y1oxd7","cardId":"cbe4a27ab629a5968-0","reviewedAt":1793477565491,"button":1,"type":"review","interval":0.006944444444444444,"lastInterval":16,"factorOrStability":1750,"timeMs":17544}
+{"id":"r1793477653175-hmw6d7","cardId":"c321d3f07a0408b88-0","reviewedAt":1793477653175,"button":3,"type":"review","interval":8,"lastInterval":4,"factorOrStability":2100,"timeMs":87675}
+{"id":"r1793477669881-uj9fxf","cardId":"cb2e61397e0f2a8a7-0","reviewedAt":1793477669881,"button":3,"type":"review","interval":25,"lastInterval":10,"factorOrStability":2500,"timeMs":16697}
+{"id":"r1793477686643-8gyy2p","cardId":"c61c244a5bb86fa8c-0","reviewedAt":1793477686643,"button":2,"type":"review","interval":5,"lastInterval":4,"factorOrStability":2200,"timeMs":16759}
+{"id":"r1793477809739-x480ak","cardId":"c1ac90f8438adac80-0","reviewedAt":1793477809739,"button":2,"type":"review","interval":5,"lastInterval":4,"factorOrStability":2200,"timeMs":123089}
+{"id":"r1793477855633-akmzt4","cardId":"cd76783587cb4c1a4-0","reviewedAt":1793477855633,"button":3,"type":"review","interval":55,"lastInterval":25,"factorOrStability":2200,"timeMs":45869}
+{"id":"r1793477861702-fpddkc","cardId":"c9ec509da19074a1f-0","reviewedAt":1793477861702,"button":3,"type":"review","interval":36,"lastInterval":17,"factorOrStability":2100,"timeMs":6044}
+{"id":"r1793477889162-awx5ve","cardId":"caefae6d4f31a1799-0","reviewedAt":1793477889162,"button":3,"type":"review","interval":49,"lastInterval":21,"factorOrStability":2350,"timeMs":27452}
